@@ -1,0 +1,70 @@
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Plus } from "lucide-react";
+
+interface PoolCoverageCardProps {
+  groupName: string;
+  specifications: string[];
+  inventoryRequired: number;
+  poolUnits: number;
+  coveragePercentage: number;
+  onExpand?: () => void;
+}
+
+export default function PoolCoverageCard({
+  groupName,
+  specifications,
+  inventoryRequired,
+  poolUnits,
+  coveragePercentage,
+  onExpand,
+}: PoolCoverageCardProps) {
+  const getCoverageColor = (percentage: number) => {
+    if (percentage >= 15) return "text-green-600 dark:text-green-500";
+    if (percentage >= 10) return "text-yellow-600 dark:text-yellow-500";
+    return "text-red-600 dark:text-red-500";
+  };
+
+  return (
+    <Card data-testid={`card-pool-${groupName.toLowerCase().replace(/\s+/g, "-")}`} className="hover-elevate">
+      <CardHeader className="space-y-2 pb-4">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-base font-medium">{groupName}</h3>
+          <span className={`text-2xl font-bold ${getCoverageColor(coveragePercentage)}`} data-testid={`text-coverage-${groupName.toLowerCase().replace(/\s+/g, "-")}`}>
+            {coveragePercentage.toFixed(1)}%
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {specifications.map((spec, idx) => (
+            <Badge key={idx} variant="secondary" className="text-xs">
+              {spec}
+            </Badge>
+          ))}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Coverage</span>
+          <span className="font-mono font-medium" data-testid={`text-units-${groupName.toLowerCase().replace(/\s+/g, "-")}`}>
+            {poolUnits} / {inventoryRequired} units
+          </span>
+        </div>
+        <Progress value={coveragePercentage} className="h-2" />
+      </CardContent>
+      <CardFooter>
+        <Button 
+          variant="outline" 
+          className="w-full" 
+          size="sm"
+          onClick={onExpand}
+          data-testid={`button-expand-${groupName.toLowerCase().replace(/\s+/g, "-")}`}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Expand Pool
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
