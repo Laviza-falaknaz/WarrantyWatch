@@ -76,13 +76,29 @@ export const coveragePool = pgTable("coverage_pool", {
   modifiedOn: timestamp("modified_on").notNull().defaultNow(),
 });
 
+// Helper for date validation - handles both Date objects and ISO strings
+const dateSchema = z.union([
+  z.date(),
+  z.string().transform((str, ctx) => {
+    const date = new Date(str);
+    if (isNaN(date.getTime())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid date string",
+      });
+      return z.NEVER;
+    }
+    return date;
+  })
+]);
+
 export const insertSpareUnitSchema = createInsertSchema(spareUnit).omit({
   id: true,
   createdOn: true,
   modifiedOn: true,
 }).extend({
   // Allow date strings from JSON (ADF sends dates as strings)
-  retiredDate: z.union([z.date(), z.string().transform(str => new Date(str))]).optional().nullable(),
+  retiredDate: dateSchema.optional().nullable(),
 });
 
 export const insertCoveredUnitSchema = createInsertSchema(coveredUnit).omit({
@@ -92,10 +108,20 @@ export const insertCoveredUnitSchema = createInsertSchema(coveredUnit).omit({
   coverageDurationDays: true, // Will be auto-calculated from dates
 }).extend({
   // Allow date strings from JSON (ADF sends dates as strings)
-  coverageStartDate: z.union([z.date(), z.string().transform(str => new Date(str))]),
-  coverageEndDate: z.union([z.date(), z.string().transform(str => new Date(str))]),
-  orderDate: z.union([z.date(), z.string().transform(str => new Date(str))]).optional().nullable(),
-});
+  coverageStartDate: dateSchema,
+  coverageEndDate: dateSchema,
+  orderDate: dateSchema.optional().nullable(),
+}).refine(
+  (data) => {
+    const start = data.coverageStartDate instanceof Date ? data.coverageStartDate : new Date(data.coverageStartDate);
+    const end = data.coverageEndDate instanceof Date ? data.coverageEndDate : new Date(data.coverageEndDate);
+    return start <= end;
+  },
+  {
+    message: "Coverage start date must be before or equal to end date",
+    path: ["coverageEndDate"],
+  }
+);
 
 export const insertCoveragePoolSchema = createInsertSchema(coveragePool).omit({
   id: true,

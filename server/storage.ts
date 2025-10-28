@@ -140,24 +140,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkReplaceSpareUnits(data: InsertSpareUnit[]): Promise<number> {
-    // Start a transaction: truncate then insert
-    await db.delete(spareUnit);
-    
-    if (data.length === 0) {
-      return 0;
-    }
-    
-    // Insert in batches of 500 to avoid query size limits
-    const batchSize = 500;
-    let totalInserted = 0;
-    
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = data.slice(i, i + batchSize);
-      await db.insert(spareUnit).values(batch);
-      totalInserted += batch.length;
-    }
-    
-    return totalInserted;
+    // Wrap truncate and insert in a transaction to prevent data loss
+    return await db.transaction(async (tx) => {
+      // Truncate existing data
+      await tx.delete(spareUnit);
+      
+      if (data.length === 0) {
+        return 0;
+      }
+      
+      // Insert in batches of 500 to avoid query size limits
+      const batchSize = 500;
+      let totalInserted = 0;
+      
+      for (let i = 0; i < data.length; i += batchSize) {
+        const batch = data.slice(i, i + batchSize);
+        await tx.insert(spareUnit).values(batch);
+        totalInserted += batch.length;
+      }
+      
+      return totalInserted;
+    });
   }
 
   async getCoveredUnits(filters?: {
@@ -248,36 +251,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkReplaceCoveredUnits(data: InsertCoveredUnit[]): Promise<number> {
-    // Start a transaction: truncate then insert
-    await db.delete(coveredUnit);
-    
-    if (data.length === 0) {
-      return 0;
-    }
-    
-    // Calculate coverage duration days for each item
-    const dataWithDuration = data.map(item => {
-      const startDate = item.coverageStartDate instanceof Date ? item.coverageStartDate : new Date(item.coverageStartDate);
-      const endDate = item.coverageEndDate instanceof Date ? item.coverageEndDate : new Date(item.coverageEndDate);
-      const coverageDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    // Wrap truncate and insert in a transaction to prevent data loss
+    return await db.transaction(async (tx) => {
+      // Truncate existing data
+      await tx.delete(coveredUnit);
       
-      return {
-        ...item,
-        coverageDurationDays
-      };
+      if (data.length === 0) {
+        return 0;
+      }
+      
+      // Calculate coverage duration days for each item
+      const dataWithDuration = data.map(item => {
+        const startDate = item.coverageStartDate instanceof Date ? item.coverageStartDate : new Date(item.coverageStartDate);
+        const endDate = item.coverageEndDate instanceof Date ? item.coverageEndDate : new Date(item.coverageEndDate);
+        const coverageDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        return {
+          ...item,
+          coverageDurationDays
+        };
+      });
+      
+      // Insert in batches of 500 to avoid query size limits
+      const batchSize = 500;
+      let totalInserted = 0;
+      
+      for (let i = 0; i < dataWithDuration.length; i += batchSize) {
+        const batch = dataWithDuration.slice(i, i + batchSize);
+        await tx.insert(coveredUnit).values(batch);
+        totalInserted += batch.length;
+      }
+      
+      return totalInserted;
     });
-    
-    // Insert in batches of 500 to avoid query size limits
-    const batchSize = 500;
-    let totalInserted = 0;
-    
-    for (let i = 0; i < dataWithDuration.length; i += batchSize) {
-      const batch = dataWithDuration.slice(i, i + batchSize);
-      await db.insert(coveredUnit).values(batch);
-      totalInserted += batch.length;
-    }
-    
-    return totalInserted;
   }
 
   async getCoveragePools(): Promise<CoveragePool[]> {
