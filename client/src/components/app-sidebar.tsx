@@ -18,18 +18,18 @@ const menuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Inventory",
-    url: "/inventory",
+    title: "Spare Pool",
+    url: "/spare-pool",
     icon: Package,
   },
   {
-    title: "Warranties",
-    url: "/warranties",
+    title: "Covered Units",
+    url: "/covered-units",
     icon: Shield,
   },
   {
-    title: "Pool Groups",
-    url: "/pool-groups",
+    title: "Coverage Pools",
+    url: "/coverage-pools",
     icon: Layers,
   },
   {
@@ -47,7 +47,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-base font-semibold px-2 mb-2">
-            Warranty Management
+            Coverage Pool Management
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

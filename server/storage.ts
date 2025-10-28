@@ -1,46 +1,51 @@
 import { 
-  type Inventory, 
-  type InsertInventory, 
-  type Warranty, 
-  type InsertWarranty, 
-  type PoolGroup, 
-  type InsertPoolGroup,
-  inventory,
-  warranty,
-  poolGroup
+  type SpareUnit, 
+  type InsertSpareUnit, 
+  type CoveredUnit, 
+  type InsertCoveredUnit, 
+  type CoveragePool, 
+  type InsertCoveragePool,
+  spareUnit,
+  coveredUnit,
+  coveragePool
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, like, or, sql, desc, inArray } from "drizzle-orm";
 
 export interface IStorage {
-  // Inventory methods
-  getInventory(filters?: {
+  // Spare Unit methods (units in pool available to cover warranties)
+  getSpareUnits(filters?: {
     make?: string[];
     model?: string[];
     processor?: string[];
     ram?: string[];
     category?: string[];
     search?: string;
-  }): Promise<Inventory[]>;
-  getInventoryById(id: string): Promise<Inventory | undefined>;
-  createInventory(data: InsertInventory): Promise<Inventory>;
-  updateInventory(id: string, data: Partial<InsertInventory>): Promise<Inventory | undefined>;
+  }): Promise<SpareUnit[]>;
+  getSpareUnitById(id: string): Promise<SpareUnit | undefined>;
+  createSpareUnit(data: InsertSpareUnit): Promise<SpareUnit>;
+  updateSpareUnit(id: string, data: Partial<InsertSpareUnit>): Promise<SpareUnit | undefined>;
   
-  // Warranty methods
-  getWarranties(filters?: {
+  // Covered Unit methods (units in field under warranty coverage)
+  getCoveredUnits(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
     status?: string[];
     search?: string;
-  }): Promise<Warranty[]>;
-  getWarrantyById(id: string): Promise<Warranty | undefined>;
-  createWarranty(data: InsertWarranty): Promise<Warranty>;
-  updateWarranty(id: string, data: Partial<InsertWarranty>): Promise<Warranty | undefined>;
+  }): Promise<CoveredUnit[]>;
+  getCoveredUnitById(id: string): Promise<CoveredUnit | undefined>;
+  createCoveredUnit(data: InsertCoveredUnit): Promise<CoveredUnit>;
+  updateCoveredUnit(id: string, data: Partial<InsertCoveredUnit>): Promise<CoveredUnit | undefined>;
   
-  // Pool Group methods
-  getPoolGroups(): Promise<PoolGroup[]>;
-  getPoolGroupById(id: string): Promise<PoolGroup | undefined>;
-  createPoolGroup(data: InsertPoolGroup): Promise<PoolGroup>;
-  updatePoolGroup(id: string, data: Partial<InsertPoolGroup>): Promise<PoolGroup | undefined>;
-  deletePoolGroup(id: string): Promise<boolean>;
+  // Coverage Pool methods
+  getCoveragePools(): Promise<CoveragePool[]>;
+  getCoveragePoolById(id: string): Promise<CoveragePool | undefined>;
+  createCoveragePool(data: InsertCoveragePool): Promise<CoveragePool>;
+  updateCoveragePool(id: string, data: Partial<InsertCoveragePool>): Promise<CoveragePool | undefined>;
+  deleteCoveragePool(id: string): Promise<boolean>;
   
   // Filter options
   getFilterOptions(): Promise<{
@@ -53,54 +58,55 @@ export interface IStorage {
   
   // Analytics
   getAnalytics(): Promise<{
-    totalInventory: number;
-    activeWarranties: number;
-    expiringWarranties: number;
-    averageCoverage: number;
+    totalSpareUnits: number;
+    totalCoveredUnits: number;
+    activeCoverage: number;
+    expiringCoverage: number;
+    averageCoverageRatio: number;
   }>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async getInventory(filters?: {
+  async getSpareUnits(filters?: {
     make?: string[];
     model?: string[];
     processor?: string[];
     ram?: string[];
     category?: string[];
     search?: string;
-  }): Promise<Inventory[]> {
-    let query = db.select().from(inventory);
+  }): Promise<SpareUnit[]> {
+    let query = db.select().from(spareUnit);
     
     const conditions = [];
     
     if (filters?.make && filters.make.length > 0) {
-      conditions.push(inArray(inventory.make, filters.make));
+      conditions.push(inArray(spareUnit.make, filters.make));
     }
     
     if (filters?.model && filters.model.length > 0) {
-      conditions.push(inArray(inventory.model, filters.model));
+      conditions.push(inArray(spareUnit.model, filters.model));
     }
     
     if (filters?.processor && filters.processor.length > 0) {
-      conditions.push(inArray(inventory.processor, filters.processor));
+      conditions.push(inArray(spareUnit.processor, filters.processor));
     }
     
     if (filters?.ram && filters.ram.length > 0) {
-      conditions.push(inArray(inventory.ram, filters.ram));
+      conditions.push(inArray(spareUnit.ram, filters.ram));
     }
     
     if (filters?.category && filters.category.length > 0) {
-      conditions.push(inArray(inventory.category, filters.category));
+      conditions.push(inArray(spareUnit.category, filters.category));
     }
     
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
       conditions.push(
         or(
-          like(inventory.serialNumber, searchTerm),
-          like(inventory.make, searchTerm),
-          like(inventory.model, searchTerm),
-          like(inventory.productDescription, searchTerm)
+          like(spareUnit.serialNumber, searchTerm),
+          like(spareUnit.make, searchTerm),
+          like(spareUnit.model, searchTerm),
+          like(spareUnit.productDescription, searchTerm)
         )
       );
     }
@@ -109,41 +115,66 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions)) as any;
     }
     
-    return query.orderBy(desc(inventory.createdOn));
+    return query.orderBy(desc(spareUnit.createdOn));
   }
 
-  async getInventoryById(id: string): Promise<Inventory | undefined> {
-    const [item] = await db.select().from(inventory).where(eq(inventory.id, id));
+  async getSpareUnitById(id: string): Promise<SpareUnit | undefined> {
+    const [item] = await db.select().from(spareUnit).where(eq(spareUnit.id, id));
     return item || undefined;
   }
 
-  async createInventory(data: InsertInventory): Promise<Inventory> {
-    const [item] = await db.insert(inventory).values(data).returning();
+  async createSpareUnit(data: InsertSpareUnit): Promise<SpareUnit> {
+    const [item] = await db.insert(spareUnit).values(data).returning();
     return item;
   }
 
-  async updateInventory(id: string, data: Partial<InsertInventory>): Promise<Inventory | undefined> {
+  async updateSpareUnit(id: string, data: Partial<InsertSpareUnit>): Promise<SpareUnit | undefined> {
     const [item] = await db
-      .update(inventory)
+      .update(spareUnit)
       .set({ ...data, modifiedOn: new Date() })
-      .where(eq(inventory.id, id))
+      .where(eq(spareUnit.id, id))
       .returning();
     return item || undefined;
   }
 
-  async getWarranties(filters?: {
+  async getCoveredUnits(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
     status?: string[];
     search?: string;
-  }): Promise<Warranty[]> {
-    let query = db.select().from(warranty);
+  }): Promise<CoveredUnit[]> {
+    let query = db.select().from(coveredUnit);
     
     const conditions = [];
     
+    if (filters?.make && filters.make.length > 0) {
+      conditions.push(inArray(coveredUnit.make, filters.make));
+    }
+    
+    if (filters?.model && filters.model.length > 0) {
+      conditions.push(inArray(coveredUnit.model, filters.model));
+    }
+    
+    if (filters?.processor && filters.processor.length > 0) {
+      conditions.push(inArray(coveredUnit.processor, filters.processor));
+    }
+    
+    if (filters?.ram && filters.ram.length > 0) {
+      conditions.push(inArray(coveredUnit.ram, filters.ram));
+    }
+    
+    if (filters?.category && filters.category.length > 0) {
+      conditions.push(inArray(coveredUnit.category, filters.category));
+    }
+    
     if (filters?.status && filters.status.length > 0) {
       if (filters.status.includes("Active")) {
-        conditions.push(eq(warranty.isActive, true));
+        conditions.push(eq(coveredUnit.isCoverageActive, true));
       } else if (filters.status.includes("Inactive")) {
-        conditions.push(eq(warranty.isActive, false));
+        conditions.push(eq(coveredUnit.isCoverageActive, false));
       }
     }
     
@@ -151,8 +182,10 @@ export class DatabaseStorage implements IStorage {
       const searchTerm = `%${filters.search}%`;
       conditions.push(
         or(
-          like(warranty.serialNumber, searchTerm),
-          like(warranty.warrantyDescription, searchTerm)
+          like(coveredUnit.serialNumber, searchTerm),
+          like(coveredUnit.make, searchTerm),
+          like(coveredUnit.model, searchTerm),
+          like(coveredUnit.coverageDescription, searchTerm)
         )
       );
     }
@@ -161,53 +194,53 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions)) as any;
     }
     
-    return query.orderBy(desc(warranty.createdOn));
+    return query.orderBy(desc(coveredUnit.createdOn));
   }
 
-  async getWarrantyById(id: string): Promise<Warranty | undefined> {
-    const [item] = await db.select().from(warranty).where(eq(warranty.id, id));
+  async getCoveredUnitById(id: string): Promise<CoveredUnit | undefined> {
+    const [item] = await db.select().from(coveredUnit).where(eq(coveredUnit.id, id));
     return item || undefined;
   }
 
-  async createWarranty(data: InsertWarranty): Promise<Warranty> {
-    const [item] = await db.insert(warranty).values(data).returning();
+  async createCoveredUnit(data: InsertCoveredUnit): Promise<CoveredUnit> {
+    const [item] = await db.insert(coveredUnit).values(data).returning();
     return item;
   }
 
-  async updateWarranty(id: string, data: Partial<InsertWarranty>): Promise<Warranty | undefined> {
+  async updateCoveredUnit(id: string, data: Partial<InsertCoveredUnit>): Promise<CoveredUnit | undefined> {
     const [item] = await db
-      .update(warranty)
+      .update(coveredUnit)
       .set({ ...data, modifiedOn: new Date() })
-      .where(eq(warranty.id, id))
+      .where(eq(coveredUnit.id, id))
       .returning();
     return item || undefined;
   }
 
-  async getPoolGroups(): Promise<PoolGroup[]> {
-    return db.select().from(poolGroup).orderBy(desc(poolGroup.createdOn));
+  async getCoveragePools(): Promise<CoveragePool[]> {
+    return db.select().from(coveragePool).orderBy(desc(coveragePool.createdOn));
   }
 
-  async getPoolGroupById(id: string): Promise<PoolGroup | undefined> {
-    const [item] = await db.select().from(poolGroup).where(eq(poolGroup.id, id));
+  async getCoveragePoolById(id: string): Promise<CoveragePool | undefined> {
+    const [item] = await db.select().from(coveragePool).where(eq(coveragePool.id, id));
     return item || undefined;
   }
 
-  async createPoolGroup(data: InsertPoolGroup): Promise<PoolGroup> {
-    const [item] = await db.insert(poolGroup).values(data).returning();
+  async createCoveragePool(data: InsertCoveragePool): Promise<CoveragePool> {
+    const [item] = await db.insert(coveragePool).values(data).returning();
     return item;
   }
 
-  async updatePoolGroup(id: string, data: Partial<InsertPoolGroup>): Promise<PoolGroup | undefined> {
+  async updateCoveragePool(id: string, data: Partial<InsertCoveragePool>): Promise<CoveragePool | undefined> {
     const [item] = await db
-      .update(poolGroup)
+      .update(coveragePool)
       .set({ ...data, modifiedOn: new Date() })
-      .where(eq(poolGroup.id, id))
+      .where(eq(coveragePool.id, id))
       .returning();
     return item || undefined;
   }
 
-  async deletePoolGroup(id: string): Promise<boolean> {
-    const result = await db.delete(poolGroup).where(eq(poolGroup.id, id));
+  async deleteCoveragePool(id: string): Promise<boolean> {
+    const result = await db.delete(coveragePool).where(eq(coveragePool.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
@@ -218,51 +251,70 @@ export class DatabaseStorage implements IStorage {
     rams: string[];
     categories: string[];
   }> {
-    const items = await db.select({
-      make: inventory.make,
-      model: inventory.model,
-      processor: inventory.processor,
-      ram: inventory.ram,
-      category: inventory.category,
-    }).from(inventory);
+    // Get filter options from both spare units and covered units
+    const spareItems = await db.select({
+      make: spareUnit.make,
+      model: spareUnit.model,
+      processor: spareUnit.processor,
+      ram: spareUnit.ram,
+      category: spareUnit.category,
+    }).from(spareUnit);
     
-    const makes = Array.from(new Set(items.map(i => i.make).filter(Boolean) as string[])).sort();
-    const models = Array.from(new Set(items.map(i => i.model).filter(Boolean) as string[])).sort();
-    const processors = Array.from(new Set(items.map(i => i.processor).filter(Boolean) as string[])).sort();
-    const rams = Array.from(new Set(items.map(i => i.ram).filter(Boolean) as string[])).sort();
-    const categories = Array.from(new Set(items.map(i => i.category).filter(Boolean) as string[])).sort();
+    const coveredItems = await db.select({
+      make: coveredUnit.make,
+      model: coveredUnit.model,
+      processor: coveredUnit.processor,
+      ram: coveredUnit.ram,
+      category: coveredUnit.category,
+    }).from(coveredUnit);
+    
+    const allItems = [...spareItems, ...coveredItems];
+    
+    const makes = Array.from(new Set(allItems.map(i => i.make).filter(Boolean) as string[])).sort();
+    const models = Array.from(new Set(allItems.map(i => i.model).filter(Boolean) as string[])).sort();
+    const processors = Array.from(new Set(allItems.map(i => i.processor).filter(Boolean) as string[])).sort();
+    const rams = Array.from(new Set(allItems.map(i => i.ram).filter(Boolean) as string[])).sort();
+    const categories = Array.from(new Set(allItems.map(i => i.category).filter(Boolean) as string[])).sort();
     
     return { makes, models, processors, rams, categories };
   }
 
   async getAnalytics(): Promise<{
-    totalInventory: number;
-    activeWarranties: number;
-    expiringWarranties: number;
-    averageCoverage: number;
+    totalSpareUnits: number;
+    totalCoveredUnits: number;
+    activeCoverage: number;
+    expiringCoverage: number;
+    averageCoverageRatio: number;
   }> {
-    const [inventoryCount] = await db.select({ count: sql<number>`count(*)` }).from(inventory);
-    const [activeWarrantyCount] = await db.select({ count: sql<number>`count(*)` }).from(warranty).where(eq(warranty.isActive, true));
+    const [spareCount] = await db.select({ count: sql<number>`count(*)` }).from(spareUnit);
+    const [coveredCount] = await db.select({ count: sql<number>`count(*)` }).from(coveredUnit);
+    const [activeCoverageCount] = await db.select({ count: sql<number>`count(*)` }).from(coveredUnit).where(eq(coveredUnit.isCoverageActive, true));
     
-    // Count warranties expiring in next 30 days
+    // Count coverage expiring in next 30 days
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
     
     const [expiringCount] = await db
       .select({ count: sql<number>`count(*)` })
-      .from(warranty)
+      .from(coveredUnit)
       .where(
         and(
-          eq(warranty.isActive, true),
-          sql`${warranty.warrantyEndDate} <= ${thirtyDaysFromNow}`
+          eq(coveredUnit.isCoverageActive, true),
+          sql`${coveredUnit.coverageEndDate} <= ${thirtyDaysFromNow}`
         )
       );
     
+    // Calculate average coverage ratio
+    const totalSpare = Number(spareCount?.count || 0);
+    const totalCovered = Number(coveredCount?.count || 0);
+    const averageCoverageRatio = totalCovered > 0 ? (totalSpare / totalCovered) * 100 : 0;
+    
     return {
-      totalInventory: Number(inventoryCount?.count || 0),
-      activeWarranties: Number(activeWarrantyCount?.count || 0),
-      expiringWarranties: Number(expiringCount?.count || 0),
-      averageCoverage: 0, // Will calculate based on pool groups
+      totalSpareUnits: totalSpare,
+      totalCoveredUnits: totalCovered,
+      activeCoverage: Number(activeCoverageCount?.count || 0),
+      expiringCoverage: Number(expiringCount?.count || 0),
+      averageCoverageRatio,
     };
   }
 }

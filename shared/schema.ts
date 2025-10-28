@@ -3,11 +3,13 @@ import { pgTable, text, varchar, timestamp, integer, boolean, decimal } from "dr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const inventory = pgTable("inventory", {
+// Spare units available in the pool to cover warranty claims
+export const spareUnit = pgTable("spare_unit", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   serialNumber: varchar("serial_number", { length: 100 }).notNull(),
   areaId: varchar("area_id", { length: 50 }).notNull(),
   itemId: varchar("item_id", { length: 50 }).notNull(),
+  // Specification fields for filtering
   make: varchar("make", { length: 100 }).notNull(),
   model: varchar("model", { length: 100 }).notNull(),
   processor: varchar("processor", { length: 100 }),
@@ -17,73 +19,91 @@ export const inventory = pgTable("inventory", {
   displaySize: varchar("display_size", { length: 50 }),
   touchscreen: boolean("touchscreen").default(false),
   category: varchar("category", { length: 50 }),
-  allocatedOrder: varchar("allocated_order", { length: 100 }),
-  soldOrder: varchar("sold_order", { length: 100 }),
-  customer: varchar("customer", { length: 200 }),
-  soldDate: timestamp("sold_date"),
+  // Pool management fields
+  reservedForCase: varchar("reserved_for_case", { length: 100 }), // formerly allocatedOrder
+  retiredOrder: varchar("retired_order", { length: 100 }), // formerly soldOrder
+  currentHolder: varchar("current_holder", { length: 200 }), // formerly customer
+  retiredDate: timestamp("retired_date"), // formerly soldDate
   productDescription: text("product_description"),
   productNumber: varchar("product_number", { length: 100 }),
   createdOn: timestamp("created_on").notNull().defaultNow(),
   modifiedOn: timestamp("modified_on").notNull().defaultNow(),
 });
 
-export const warranty = pgTable("warranty", {
+// Units deployed in the field under warranty coverage (need potential replacement)
+export const coveredUnit = pgTable("covered_unit", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   serialNumber: varchar("serial_number", { length: 100 }).notNull(),
   areaId: varchar("area_id", { length: 50 }).notNull(),
   itemId: varchar("item_id", { length: 50 }).notNull(),
-  warrantyStartDate: timestamp("warranty_start_date").notNull(),
-  warrantyEndDate: timestamp("warranty_end_date").notNull(),
-  warrantyDescription: text("warranty_description"),
-  durationInDays: integer("duration_in_days").notNull(),
-  isActive: boolean("is_active").notNull().default(true),
+  // Specification fields for filtering (must match spare units for pool matching)
+  make: varchar("make", { length: 100 }).notNull(),
+  model: varchar("model", { length: 100 }).notNull(),
+  processor: varchar("processor", { length: 100 }),
+  generation: varchar("generation", { length: 50 }),
+  ram: varchar("ram", { length: 50 }),
+  hdd: varchar("hdd", { length: 50 }),
+  displaySize: varchar("display_size", { length: 50 }),
+  touchscreen: boolean("touchscreen").default(false),
+  category: varchar("category", { length: 50 }),
+  // Coverage period fields
+  coverageStartDate: timestamp("coverage_start_date").notNull(),
+  coverageEndDate: timestamp("coverage_end_date").notNull(),
+  coverageDescription: text("coverage_description"),
+  coverageDurationDays: integer("coverage_duration_days").notNull(),
+  isCoverageActive: boolean("is_coverage_active").notNull().default(true),
+  // Deployment information
+  currentHolder: varchar("current_holder", { length: 200 }), // customer/location
+  productDescription: text("product_description"),
+  productNumber: varchar("product_number", { length: 100 }),
   createdOn: timestamp("created_on").notNull().defaultNow(),
   modifiedOn: timestamp("modified_on").notNull().defaultNow(),
 });
 
-export const poolGroup = pgTable("pool_group", {
+// Coverage pool groups showing spare/covered ratios by specifications
+export const coveragePool = pgTable("coverage_pool", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
-  filterCriteria: text("filter_criteria").notNull(), // JSON string of filter criteria
+  filterCriteria: text("filter_criteria").notNull(), // JSON string of filter criteria (applies to both spare and covered units)
   createdOn: timestamp("created_on").notNull().defaultNow(),
   modifiedOn: timestamp("modified_on").notNull().defaultNow(),
 });
 
-export const insertInventorySchema = createInsertSchema(inventory).omit({
+export const insertSpareUnitSchema = createInsertSchema(spareUnit).omit({
   id: true,
   createdOn: true,
   modifiedOn: true,
 });
 
-export const insertWarrantySchema = createInsertSchema(warranty).omit({
+export const insertCoveredUnitSchema = createInsertSchema(coveredUnit).omit({
   id: true,
   createdOn: true,
   modifiedOn: true,
 });
 
-export const insertPoolGroupSchema = createInsertSchema(poolGroup).omit({
+export const insertCoveragePoolSchema = createInsertSchema(coveragePool).omit({
   id: true,
   createdOn: true,
   modifiedOn: true,
 });
 
-export type InsertInventory = z.infer<typeof insertInventorySchema>;
-export type Inventory = typeof inventory.$inferSelect;
+export type InsertSpareUnit = z.infer<typeof insertSpareUnitSchema>;
+export type SpareUnit = typeof spareUnit.$inferSelect;
 
-export type InsertWarranty = z.infer<typeof insertWarrantySchema>;
-export type Warranty = typeof warranty.$inferSelect;
+export type InsertCoveredUnit = z.infer<typeof insertCoveredUnitSchema>;
+export type CoveredUnit = typeof coveredUnit.$inferSelect;
 
-export type InsertPoolGroup = z.infer<typeof insertPoolGroupSchema>;
-export type PoolGroup = typeof poolGroup.$inferSelect;
+export type InsertCoveragePool = z.infer<typeof insertCoveragePoolSchema>;
+export type CoveragePool = typeof coveragePool.$inferSelect;
 
 // Combined types for joins
-export type InventoryWithWarranty = Inventory & {
-  warranty?: Warranty;
+export type SpareUnitWithCoverage = SpareUnit & {
+  coveredUnit?: CoveredUnit;
 };
 
-export type PoolGroupWithStats = PoolGroup & {
-  inventoryCount: number;
-  poolCount: number;
-  coveragePercentage: number;
+export type CoveragePoolWithStats = CoveragePool & {
+  spareCount: number; // spare units available in pool
+  coveredCount: number; // units in field under coverage
+  coverageRatio: number; // spareCount / coveredCount
 };

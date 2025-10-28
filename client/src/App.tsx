@@ -18,10 +18,14 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/spare-pool" component={Inventory} />
+      <Route path="/covered-units" component={Warranties} />
+      <Route path="/coverage-pools" component={PoolGroups} />
+      <Route path="/analytics" component={Analytics} />
+      {/* Legacy routes for compatibility */}
       <Route path="/inventory" component={Inventory} />
       <Route path="/warranties" component={Warranties} />
       <Route path="/pool-groups" component={PoolGroups} />
-      <Route path="/analytics" component={Analytics} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -7,18 +7,18 @@ import { Plus } from "lucide-react";
 interface PoolCoverageCardProps {
   groupName: string;
   specifications: string[];
-  inventoryRequired: number;
-  poolUnits: number;
-  coveragePercentage: number;
+  inventoryRequired: number; // coveredCount - units in field under coverage
+  poolUnits: number; // spareCount - spare units available in pool
+  coveragePercentage: number; // coverageRatio
   onExpand?: () => void;
 }
 
 export default function PoolCoverageCard({
   groupName,
   specifications,
-  inventoryRequired,
-  poolUnits,
-  coveragePercentage,
+  inventoryRequired: coveredCount,
+  poolUnits: spareCount,
+  coveragePercentage: coverageRatio,
   onExpand,
 }: PoolCoverageCardProps) {
   const getCoverageColor = (percentage: number) => {
@@ -28,12 +28,12 @@ export default function PoolCoverageCard({
   };
 
   return (
-    <Card data-testid={`card-pool-${groupName.toLowerCase().replace(/\s+/g, "-")}`} className="hover-elevate">
+    <Card data-testid={`card-coverage-pool-${groupName.toLowerCase().replace(/\s+/g, "-")}`} className="hover-elevate">
       <CardHeader className="space-y-2 pb-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-medium">{groupName}</h3>
-          <span className={`text-2xl font-bold ${getCoverageColor(coveragePercentage)}`} data-testid={`text-coverage-${groupName.toLowerCase().replace(/\s+/g, "-")}`}>
-            {coveragePercentage.toFixed(1)}%
+          <span className={`text-2xl font-bold ${getCoverageColor(coverageRatio)}`} data-testid={`text-coverage-ratio-${groupName.toLowerCase().replace(/\s+/g, "-")}`}>
+            {coverageRatio.toFixed(1)}%
           </span>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -46,12 +46,12 @@ export default function PoolCoverageCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Coverage</span>
-          <span className="font-mono font-medium" data-testid={`text-units-${groupName.toLowerCase().replace(/\s+/g, "-")}`}>
-            {poolUnits} / {inventoryRequired} units
+          <span className="text-muted-foreground">Coverage Ratio</span>
+          <span className="font-mono font-medium" data-testid={`text-coverage-units-${groupName.toLowerCase().replace(/\s+/g, "-")}`}>
+            {spareCount} spare / {coveredCount} covered
           </span>
         </div>
-        <Progress value={coveragePercentage} className="h-2" />
+        <Progress value={coverageRatio} className="h-2" />
       </CardContent>
       <CardFooter>
         <Button 
@@ -59,7 +59,7 @@ export default function PoolCoverageCard({
           className="w-full" 
           size="sm"
           onClick={onExpand}
-          data-testid={`button-expand-${groupName.toLowerCase().replace(/\s+/g, "-")}`}
+          data-testid={`button-expand-coverage-pool-${groupName.toLowerCase().replace(/\s+/g, "-")}`}
         >
           <Plus className="h-4 w-4 mr-2" />
           Expand Pool

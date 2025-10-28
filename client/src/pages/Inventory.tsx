@@ -7,22 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
-
-interface InventoryItem {
-  id: string;
-  serialNumber: string;
-  make: string;
-  model: string;
-  processor: string | null;
-  ram: string | null;
-  hdd: string | null;
-  category: string | null;
-  soldOrder: string | null;
-  warranty?: {
-    isActive: boolean;
-    warrantyEndDate: Date;
-  };
-}
+import type { SpareUnit } from "@shared/schema";
 
 export default function Inventory() {
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
@@ -32,8 +17,8 @@ export default function Inventory() {
     queryKey: ["/api/filters"],
   });
 
-  const { data: inventoryWithWarranty, isLoading } = useQuery({
-    queryKey: ["/api/inventory-with-warranty", selectedFilters, searchQuery],
+  const { data: spareUnits, isLoading } = useQuery({
+    queryKey: ["/api/spare-units", selectedFilters, searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams();
       
@@ -45,8 +30,8 @@ export default function Inventory() {
         params.append("search", searchQuery);
       }
       
-      const response = await fetch(`/api/inventory-with-warranty?${params}`);
-      if (!response.ok) throw new Error("Failed to fetch inventory");
+      const response = await fetch(`/api/spare-units?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch spare units");
       return response.json();
     },
   });
@@ -94,25 +79,21 @@ export default function Inventory() {
     },
   ];
 
-  const getWarrantyStatus = (item: InventoryItem) => {
-    if (!item.warranty) return "No Warranty";
-    if (!item.warranty.isActive) return "Inactive";
-    
-    const endDate = new Date(item.warranty.warrantyEndDate);
-    const now = new Date();
-    const daysUntilExpiry = Math.floor((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (daysUntilExpiry < 30) return "Expiring Soon";
-    return "Active";
+  const getAvailabilityStatus = (unit: SpareUnit) => {
+    if (unit.retiredOrder) return "Retired";
+    if (unit.reservedForCase) return "Reserved";
+    return "Available";
   };
 
-  const columns: Column<InventoryItem>[] = [
+  const columns: Column<SpareUnit>[] = [
     {
       key: "serialNumber",
       header: "Serial Number",
       width: "160px",
-      render: (item) => (
-        <span className="font-mono text-sm">{item.serialNumber}</span>
+      render: (unit) => (
+        <span className="font-mono text-sm" data-testid={`text-spare-unit-serial-${unit.id}`}>
+          {unit.serialNumber}
+        </span>
       ),
     },
     {
@@ -129,35 +110,36 @@ export default function Inventory() {
       key: "processor",
       header: "Processor",
       width: "140px",
-      render: (item) => <span>{item.processor || "-"}</span>,
+      render: (unit) => <span>{unit.processor || "-"}</span>,
     },
     {
       key: "ram",
       header: "RAM",
       width: "80px",
-      render: (item) => <span>{item.ram || "-"}</span>,
+      render: (unit) => <span>{unit.ram || "-"}</span>,
     },
     {
       key: "hdd",
       header: "Storage",
       width: "100px",
-      render: (item) => <span>{item.hdd || "-"}</span>,
+      render: (unit) => <span>{unit.hdd || "-"}</span>,
     },
     {
-      key: "warrantyStatus",
-      header: "Warranty",
+      key: "status",
+      header: "Status",
       width: "140px",
-      render: (item) => {
-        const status = getWarrantyStatus(item);
+      render: (unit) => {
+        const status = getAvailabilityStatus(unit);
         return (
           <Badge
             variant={
-              status === "Active"
+              status === "Available"
                 ? "default"
-                : status === "Expiring Soon"
-                ? "destructive"
+                : status === "Reserved"
+                ? "secondary"
                 : "outline"
             }
+            data-testid={`badge-spare-unit-status-${unit.id}`}
           >
             {status}
           </Badge>
@@ -165,14 +147,23 @@ export default function Inventory() {
       },
     },
     {
-      key: "coverage",
-      header: "Coverage",
-      width: "120px",
-      render: (item) => (
-        <Badge variant={!item.soldOrder ? "secondary" : "outline"}>
-          {!item.soldOrder ? "In Pool" : "Sold"}
-        </Badge>
-      ),
+      key: "allocation",
+      header: "Allocation",
+      width: "140px",
+      render: (unit) => {
+        if (unit.reservedForCase) {
+          return (
+            <span className="text-sm text-muted-foreground" data-testid={`text-spare-unit-allocation-${unit.id}`}>
+              {unit.reservedForCase}
+            </span>
+          );
+        }
+        return (
+          <Badge variant="secondary" data-testid={`badge-spare-unit-allocation-${unit.id}`}>
+            In Pool
+          </Badge>
+        );
+      },
     },
   ];
 
@@ -192,9 +183,9 @@ export default function Inventory() {
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Inventory</h1>
+            <h1 className="text-2xl font-semibold">Spare Pool</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Manage and monitor all laptop inventory
+              Spare units available to cover warranty claims on deployed units
             </p>
           </div>
         </div>
@@ -207,12 +198,14 @@ export default function Inventory() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Inventory</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage and monitor all laptop inventory
+          <h1 className="text-2xl font-semibold" data-testid="heading-spare-pool">
+            Spare Pool
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1" data-testid="text-spare-pool-description">
+            Spare units available to cover warranty claims on deployed units
           </p>
         </div>
-        <Button variant="outline" data-testid="button-export">
+        <Button variant="outline" data-testid="button-export-spare-units">
           <Download className="h-4 w-4 mr-2" />
           Export
         </Button>
@@ -233,12 +226,14 @@ export default function Inventory() {
             placeholder="Search by serial number, make, model..."
             onSearch={setSearchQuery}
             className="max-w-md"
+            data-testid="input-search-spare-units"
           />
 
           <DataTable
             columns={columns}
-            data={inventoryWithWarranty || []}
-            onRowClick={(item) => console.log("View details:", item)}
+            data={spareUnits || []}
+            onRowClick={(unit) => console.log("View spare unit details:", unit)}
+            data-testid="table-spare-units"
           />
         </div>
       </div>

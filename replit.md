@@ -1,10 +1,34 @@
-# Warranty Pool Management Application
+# Coverage Pool Management Application
 
 ## Overview
 
-This is an enterprise warranty pool management system for tracking laptop inventory coverage and optimizing warranty allocation. The application enables users to monitor inventory with active warranties, manage warranty pools grouped by specifications (make, model, processor, RAM), and analyze coverage metrics to ensure adequate warranty protection across the inventory.
+This is an enterprise coverage pool management system for tracking warranty coverage on deployed laptop inventory and optimizing spare unit allocation. The application enables users to monitor:
 
-The system provides a comprehensive dashboard for viewing coverage statistics, managing inventory items, tracking warranty expiration dates, and creating dynamic pool groups with custom filter criteria.
+- **Spare Units**: Pool of spare laptops available to cover warranty claims
+- **Covered Units**: Laptops deployed in the field under active warranty coverage
+- **Coverage Pools**: Groups showing coverage ratios (spare units / covered units) by specifications
+- **Coverage Analytics**: Metrics and trends to ensure adequate spare inventory
+
+The system provides a comprehensive dashboard for viewing coverage statistics, managing spare and covered units, tracking coverage expiration dates, and creating dynamic pool groups with custom filter criteria.
+
+## Business Model
+
+### Core Concept
+This is a **warranty pool management system** where:
+- **Covered Units** = Laptops deployed in the field under warranty (with customers/locations)
+- **Spare Units** = Spare laptops in the pool available to cover warranty claims
+- **Coverage Pool** = A grouping by specifications showing the coverage ratio
+
+### Coverage Ratio
+**Coverage Ratio = (Spare Units / Covered Units) × 100%**
+
+For example: If you have 2 spare HP EliteBook 840 G8 units to cover 3 deployed HP EliteBook 840 G8 units under warranty, the coverage ratio is 66.7%.
+
+### Key Relationships
+- Both spare units and covered units have matching specification fields (make, model, processor, RAM, etc.)
+- Coverage pools use filter criteria to group units by specifications
+- The system calculates how many spare units exist for each group of covered units with matching specs
+- Coverage ratios help identify where more spares are needed
 
 ## User Preferences
 
@@ -37,28 +61,28 @@ Preferred communication style: Simple, everyday language.
 **Routing**: wouter - a lightweight client-side routing library
 
 **Key Pages**:
-- **Dashboard**: Overview with metric cards and pool coverage statistics
-- **Inventory**: Filterable data table of all inventory items with warranty status
-- **Warranties**: Searchable table of all warranty records with expiration tracking
-- **Pool Groups**: Management interface for creating/editing warranty pool groupings
-- **Analytics**: Charts and visualizations for warranty trends and coverage analysis
+- **Dashboard**: Overview with metric cards and coverage pool statistics showing coverage ratios
+- **Spare Pool**: Filterable data table of all spare units available to cover warranty claims
+- **Covered Units**: Searchable table of all units in field under warranty coverage with expiration tracking
+- **Coverage Pools**: Management interface for creating/editing warranty pool groupings and viewing coverage ratios
+- **Analytics**: Charts and visualizations for coverage trends and pool performance analysis
 
 ### Backend Architecture
 
 **Framework**: Express.js with TypeScript running on Node.js
 
 **Server Structure**:
-- RESTful API design with routes organized by domain (inventory, warranties, pool groups)
+- RESTful API design with routes organized by domain (spare units, covered units, coverage pools)
 - Middleware for JSON parsing, request logging, and error handling
 - Custom logging middleware that captures request duration and responses
 
 **API Endpoints**:
-- `/api/inventory` - CRUD operations for inventory items with filtering support
-- `/api/warranties` - CRUD operations for warranty records with search
-- `/api/pool-groups` - CRUD operations for pool group configurations
+- `/api/spare-units` - CRUD operations for spare units with filtering support
+- `/api/covered-units` - CRUD operations for covered units with search and filtering
+- `/api/coverage-pools` - CRUD operations for coverage pool configurations
+- `/api/coverage-pools-with-stats` - Coverage pools with calculated statistics (spare count, covered count, coverage ratio)
 - `/api/analytics` - Aggregated statistics and metrics
-- `/api/filters` - Dynamic filter options based on current data
-- `/api/inventory-with-warranty` - Joined data combining inventory and warranty information
+- `/api/filters` - Dynamic filter options based on current data from both spare and covered units
 
 **Data Access Layer**: 
 - Storage abstraction (`IStorage` interface) providing a clean separation between business logic and database operations
@@ -76,31 +100,35 @@ Preferred communication style: Simple, everyday language.
 
 **Schema Design**:
 
-1. **inventory** table - Core inventory tracking:
+1. **spare_unit** table - Spare units in pool available to cover warranty claims:
    - Laptop specifications (make, model, processor, RAM, HDD, display)
    - Serial numbers and item IDs
-   - Sales tracking (allocated order, sold order, customer, sold date)
+   - Pool management (reserved for case, retired order, current holder)
    - Categorization and metadata
    - Timestamps for audit trail
 
-2. **warranty** table - Warranty records:
-   - Links to inventory via serial number and item ID
-   - Start/end dates with calculated duration
-   - Active status flag
+2. **covered_unit** table - Units deployed in field under warranty coverage:
+   - Links to spare units via matching specifications
+   - Laptop specifications (make, model, processor, RAM, HDD, display) - **must match spare units for pool matching**
+   - Coverage period (start/end dates with calculated duration)
+   - Coverage status flag (isCoverageActive)
+   - Deployment information (current holder, location)
    - Descriptive information
    - Audit timestamps
 
-3. **poolGroup** table - Dynamic warranty pool definitions:
+3. **coverage_pool** table - Dynamic coverage pool definitions:
    - Pool name and description
    - Filter criteria stored as JSON string (flexible filtering by make, model, processor, RAM, category)
+   - Applies to BOTH spare units and covered units to calculate coverage ratios
    - Timestamps for tracking changes
 
 **Key Design Decisions**:
-- Serial number and item ID used for linking inventory to warranties (not foreign keys, allowing flexibility)
-- Pool groups use JSON-serialized filter criteria for dynamic, extensible filtering without schema changes
-- Boolean flags (isActive, touchscreen) for simple status tracking
+- Both spare_unit and covered_unit tables have matching specification fields (make, model, processor, RAM, etc.) for pool filtering
+- Coverage pools use JSON-serialized filter criteria for dynamic, extensible filtering without schema changes
+- Boolean flags (isCoverageActive, touchscreen) for simple status tracking
 - Timestamps (createdOn, modifiedOn) on all tables for audit trail
 - UUID primary keys generated by PostgreSQL for globally unique identifiers
+- Coverage ratio calculated as: (spare units matching filter / covered units matching filter) × 100%
 
 ### Authentication and Authorization
 
@@ -137,3 +165,39 @@ Preferred communication style: Simple, everyday language.
 - Backend bundles with esbuild to `dist/index.js` with external packages
 - Shared schema and types between client/server via `@shared` path alias
 - Development mode runs tsx with watch mode for hot reloading
+
+## Recent Changes (October 28, 2025)
+
+### Major Refactoring - Correct Business Model Implementation
+
+Updated the entire application to reflect the correct business model:
+
+**Business Model Clarification**:
+- **Spare Units** (formerly "inventory"): Units in pool available to cover warranty claims
+- **Covered Units** (formerly "warranty"): Units deployed in field under warranty coverage
+- **Coverage Pools** (formerly "pool groups"): Groups showing coverage ratios by specifications
+
+**Database Schema Updates**:
+- Renamed tables: `inventory` → `spare_unit`, `warranty` → `covered_unit`, `pool_group` → `coverage_pool`
+- Added specification fields to covered_unit table (make, model, processor, RAM, etc.) to match spare_unit fields
+- Renamed columns for clarity: `warrantyStartDate` → `coverageStartDate`, `isActive` → `isCoverageActive`, etc.
+- Updated spare_unit field names: `customer` → `currentHolder`, `allocatedOrder` → `reservedForCase`, `soldOrder` → `retiredOrder`
+
+**API Endpoint Updates**:
+- `/api/inventory` → `/api/spare-units`
+- `/api/warranties` → `/api/covered-units`
+- `/api/pool-groups` → `/api/coverage-pools`
+- Added `/api/coverage-pools-with-stats` for pools with calculated statistics
+
+**Frontend Updates**:
+- Navigation: "Inventory" → "Spare Pool", "Warranties" → "Covered Units", "Pool Groups" → "Coverage Pools"
+- All labels, titles, and terminology updated throughout UI
+- Coverage calculations now correctly show: spare units / covered units = coverage ratio
+- Updated all page components to use new API endpoints and data types
+
+**Type System Updates**:
+- `Inventory` → `SpareUnit`, `Warranty` → `CoveredUnit`, `PoolGroup` → `CoveragePool`
+- All insert schemas and types updated accordingly
+- Storage interface methods renamed to match new terminology
+
+This refactoring ensures the application correctly communicates that spare units in the pool are available to cover deployed units under warranty coverage.

@@ -10,41 +10,20 @@ export default function Dashboard() {
     queryKey: ["/api/analytics"],
   });
 
-  const { data: poolGroups, isLoading: poolGroupsLoading } = useQuery({
-    queryKey: ["/api/pool-groups"],
+  const { data: coveragePoolsWithStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["/api/coverage-pools-with-stats"],
   });
 
-  const { data: inventoryWithWarranty, isLoading: inventoryLoading } = useQuery({
-    queryKey: ["/api/inventory-with-warranty"],
-  });
-
-  // Calculate pool coverage stats
-  const poolCoverageStats = poolGroups?.map((group: any) => {
+  // Map coverage pool stats for display
+  const poolCoverageStats = coveragePoolsWithStats?.map((pool: any) => {
     try {
-      const criteria = JSON.parse(group.filterCriteria || "{}");
+      const criteria = JSON.parse(pool.filterCriteria || "{}");
       
-      // Filter inventory based on criteria
-      const matchingInventory = inventoryWithWarranty?.filter((item: any) => {
-        let matches = true;
-        if (criteria.make && item.make !== criteria.make) matches = false;
-        if (criteria.model && item.model !== criteria.model) matches = false;
-        if (criteria.processor && item.processor !== criteria.processor) matches = false;
-        if (criteria.ram && item.ram !== criteria.ram) matches = false;
-        return matches && item.warranty?.isActive;
-      }) || [];
-
-      // Count items in pool (not sold)
-      const poolItems = matchingInventory.filter((item: any) => !item.soldOrder);
-      
-      const coverage = matchingInventory.length > 0 
-        ? (poolItems.length / matchingInventory.length) * 100 
-        : 0;
-
       return {
-        ...group,
-        inventoryRequired: matchingInventory.length,
-        poolUnits: poolItems.length,
-        coverage,
+        ...pool,
+        inventoryRequired: pool.coveredCount,
+        poolUnits: pool.spareCount,
+        coverage: pool.coverageRatio,
         specifications: [
           criteria.make,
           criteria.model,
@@ -60,13 +39,13 @@ export default function Dashboard() {
   // Calculate low coverage alerts
   const lowCoverageCount = poolCoverageStats.filter((stat: any) => stat.coverage < 10).length;
 
-  if (analyticsLoading || poolGroupsLoading || inventoryLoading) {
+  if (analyticsLoading || statsLoading) {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Monitor warranty coverage and pool status across all inventory
+            Monitor coverage and pool status across all spare units
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -83,26 +62,26 @@ export default function Dashboard() {
       <div>
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Monitor warranty coverage and pool status across all inventory
+          Monitor coverage and pool status across all spare units
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Active Warranties"
-          value={analytics?.activeWarranties || 0}
+          title="Active Coverage"
+          value={analytics?.activeCoverage || 0}
           icon={Shield}
-          subtitle="Across all inventory"
+          subtitle="Units under coverage"
         />
         <MetricCard
-          title="Total Inventory"
-          value={analytics?.totalInventory || 0}
+          title="Total Spare Units"
+          value={analytics?.totalSpareUnits || 0}
           icon={Package}
-          subtitle="All units"
+          subtitle="Available in pool"
         />
         <MetricCard
-          title="Expiring Soon"
-          value={analytics?.expiringWarranties || 0}
+          title="Expiring Coverage"
+          value={analytics?.expiringCoverage || 0}
           icon={TrendingUp}
           subtitle="Next 30 days"
         />
@@ -121,9 +100,9 @@ export default function Dashboard() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center h-48 text-center p-6">
                 <Package className="h-12 w-12 text-muted-foreground mb-3" />
-                <h3 className="font-medium mb-1">No Pool Groups Yet</h3>
+                <h3 className="font-medium mb-1">No Coverage Pools Yet</h3>
                 <p className="text-sm text-muted-foreground">
-                  Create pool groups to organize and monitor warranty coverage
+                  Create coverage pools to organize and monitor spare unit allocation
                 </p>
               </CardContent>
             </Card>
@@ -152,7 +131,7 @@ export default function Dashboard() {
                 <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-blue-500" />
                 <div className="flex-1 space-y-1">
                   <p className="text-sm">
-                    {analytics?.totalInventory || 0} total inventory units in system
+                    {analytics?.totalSpareUnits || 0} total spare units in system
                   </p>
                   <p className="text-xs text-muted-foreground">Up to date</p>
                 </div>
@@ -161,7 +140,7 @@ export default function Dashboard() {
                 <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-500" />
                 <div className="flex-1 space-y-1">
                   <p className="text-sm">
-                    {analytics?.activeWarranties || 0} active warranties tracked
+                    {analytics?.activeCoverage || 0} units under active coverage
                   </p>
                   <p className="text-xs text-muted-foreground">Current status</p>
                 </div>
@@ -171,7 +150,7 @@ export default function Dashboard() {
                   <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-red-500" />
                   <div className="flex-1 space-y-1">
                     <p className="text-sm">
-                      {lowCoverageCount} pool groups below 10% coverage
+                      {lowCoverageCount} coverage pools below 10% coverage ratio
                     </p>
                     <p className="text-xs text-muted-foreground">Action needed</p>
                   </div>

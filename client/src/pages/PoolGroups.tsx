@@ -26,10 +26,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import type { CoveragePoolWithStats } from "@shared/schema";
 
 export default function PoolGroups() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [groupName, setGroupName] = useState("");
+  const [poolName, setPoolName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedMake, setSelectedMake] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
@@ -37,27 +38,24 @@ export default function PoolGroups() {
   const [selectedRam, setSelectedRam] = useState("");
   const { toast } = useToast();
 
-  const { data: poolGroups, isLoading: poolGroupsLoading } = useQuery({
-    queryKey: ["/api/pool-groups"],
+  const { data: coveragePools, isLoading: coveragePoolsLoading } = useQuery<CoveragePoolWithStats[]>({
+    queryKey: ["/api/coverage-pools-with-stats"],
   });
 
   const { data: filterOptions } = useQuery({
     queryKey: ["/api/filters"],
   });
 
-  const { data: inventoryWithWarranty } = useQuery({
-    queryKey: ["/api/inventory-with-warranty"],
-  });
-
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("POST", "/api/pool-groups", data);
+      return apiRequest("POST", "/api/coverage-pools", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pool-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coverage-pools-with-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coverage-pools"] });
       toast({
         title: "Success",
-        description: "Pool group created successfully",
+        description: "Coverage pool created successfully",
       });
       setDialogOpen(false);
       resetForm();
@@ -65,14 +63,14 @@ export default function PoolGroups() {
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to create pool group",
+        description: "Failed to create coverage pool",
         variant: "destructive",
       });
     },
   });
 
   const resetForm = () => {
-    setGroupName("");
+    setPoolName("");
     setDescription("");
     setSelectedMake("");
     setSelectedModel("");
@@ -80,7 +78,7 @@ export default function PoolGroups() {
     setSelectedRam("");
   };
 
-  const handleCreateGroup = () => {
+  const handleCreatePool = () => {
     const filterCriteria = {
       make: selectedMake || undefined,
       model: selectedModel || undefined,
@@ -89,39 +87,19 @@ export default function PoolGroups() {
     };
 
     createMutation.mutate({
-      name: groupName,
+      name: poolName,
       description: description || null,
       filterCriteria: JSON.stringify(filterCriteria),
     });
   };
 
-  // Calculate pool coverage stats
-  const poolCoverageStats = poolGroups?.map((group: any) => {
+  // Transform coverage pools data for display
+  const poolsWithDetails = coveragePools?.map((pool) => {
     try {
-      const criteria = JSON.parse(group.filterCriteria || "{}");
+      const criteria = JSON.parse(pool.filterCriteria || "{}");
       
-      // Filter inventory based on criteria
-      const matchingInventory = inventoryWithWarranty?.filter((item: any) => {
-        let matches = true;
-        if (criteria.make && item.make !== criteria.make) matches = false;
-        if (criteria.model && item.model !== criteria.model) matches = false;
-        if (criteria.processor && item.processor !== criteria.processor) matches = false;
-        if (criteria.ram && item.ram !== criteria.ram) matches = false;
-        return matches && item.warranty?.isActive;
-      }) || [];
-
-      // Count items in pool (not sold)
-      const poolItems = matchingInventory.filter((item: any) => !item.soldOrder);
-      
-      const coverage = matchingInventory.length > 0 
-        ? (poolItems.length / matchingInventory.length) * 100 
-        : 0;
-
       return {
-        ...group,
-        inventoryRequired: matchingInventory.length,
-        poolUnits: poolItems.length,
-        coverage,
+        ...pool,
         specifications: [
           criteria.make,
           criteria.model,
@@ -134,14 +112,14 @@ export default function PoolGroups() {
     }
   }).filter(Boolean) || [];
 
-  if (poolGroupsLoading) {
+  if (coveragePoolsLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Pool Groups</h1>
+            <h1 className="text-2xl font-semibold">Coverage Pools</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Organize and manage warranty pool groups by specifications
+              Track coverage ratios showing spare units available to cover deployed units with matching specifications
             </p>
           </div>
         </div>
@@ -158,41 +136,41 @@ export default function PoolGroups() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Pool Groups</h1>
+          <h1 className="text-2xl font-semibold">Coverage Pools</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Organize and manage warranty pool groups by specifications
+            Track coverage ratios showing spare units available to cover deployed units with matching specifications
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="button-create-pool-group">
+            <Button data-testid="button-create-coverage-pool">
               <Plus className="h-4 w-4 mr-2" />
-              Create Pool Group
+              Create Coverage Pool
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Pool Group</DialogTitle>
+              <DialogTitle>Create New Coverage Pool</DialogTitle>
               <DialogDescription>
-                Define a pool group based on laptop specifications
+                Define a coverage pool based on laptop specifications to track spare units and coverage ratios
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="group-name">Group Name</Label>
+                <Label htmlFor="pool-name">Pool Name</Label>
                 <Input
-                  id="group-name"
+                  id="pool-name"
                   placeholder="e.g., HP EliteBook Series"
-                  value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
-                  data-testid="input-group-name"
+                  value={poolName}
+                  onChange={(e) => setPoolName(e.target.value)}
+                  data-testid="input-pool-name"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description (Optional)</Label>
                 <Textarea
                   id="description"
-                  placeholder="Describe this pool group..."
+                  placeholder="Describe this coverage pool..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   data-testid="input-description"
@@ -271,11 +249,11 @@ export default function PoolGroups() {
                 Cancel
               </Button>
               <Button
-                onClick={handleCreateGroup}
-                disabled={!groupName || !selectedMake || createMutation.isPending}
+                onClick={handleCreatePool}
+                disabled={!poolName || !selectedMake || createMutation.isPending}
                 data-testid="button-confirm-create"
               >
-                {createMutation.isPending ? "Creating..." : "Create Group"}
+                {createMutation.isPending ? "Creating..." : "Create Pool"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -283,25 +261,25 @@ export default function PoolGroups() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="hover-elevate border-dashed cursor-pointer" data-testid="card-create-new" onClick={() => setDialogOpen(true)}>
+        <Card className="hover-elevate border-dashed cursor-pointer" data-testid="card-create-coverage-pool" onClick={() => setDialogOpen(true)}>
           <CardContent className="flex flex-col items-center justify-center h-full min-h-[200px] p-6">
             <Plus className="h-12 w-12 text-muted-foreground mb-3" />
-            <h3 className="font-medium mb-1">Create New Group</h3>
+            <h3 className="font-medium mb-1">Create New Pool</h3>
             <p className="text-sm text-muted-foreground text-center">
-              Define a custom pool group
+              Define a custom coverage pool
             </p>
           </CardContent>
         </Card>
 
-        {poolCoverageStats.map((group: any) => (
+        {poolsWithDetails.map((pool: any) => (
           <PoolCoverageCard
-            key={group.id}
-            groupName={group.name}
-            specifications={group.specifications}
-            inventoryRequired={group.inventoryRequired}
-            poolUnits={group.poolUnits}
-            coveragePercentage={group.coverage}
-            onExpand={() => console.log(`Expand pool: ${group.name}`)}
+            key={pool.id}
+            groupName={pool.name}
+            specifications={pool.specifications}
+            inventoryRequired={pool.coveredCount}
+            poolUnits={pool.spareCount}
+            coveragePercentage={pool.coverageRatio}
+            onExpand={() => console.log(`Expand pool: ${pool.name}`)}
           />
         ))}
       </div>
