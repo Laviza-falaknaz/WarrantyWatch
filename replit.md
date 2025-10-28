@@ -1,232 +1,68 @@
 # Coverage Pool Management Application
 
-## Overview
+### Overview
+This application is an enterprise coverage pool management system designed to track warranty coverage for deployed laptop inventory and optimize the allocation of spare units. It allows users to monitor spare units, covered units, coverage pools (groups showing coverage ratios by specifications), and coverage analytics. The system provides a comprehensive dashboard for statistics, managing units, tracking warranty expirations, and creating dynamic coverage groups based on custom filter criteria.
 
-This is an enterprise coverage pool management system for tracking warranty coverage on deployed laptop inventory and optimizing spare unit allocation. The application enables users to monitor:
+**Business Model**:
+The core concept revolves around a **warranty pool management system** where:
+- **Covered Units**: Laptops deployed in the field under warranty.
+- **Spare Units**: Spare laptops available to cover warranty claims.
+- **Coverage Pool**: A grouping by specifications showing the coverage ratio.
 
-- **Spare Units**: Pool of spare laptops available to cover warranty claims
-- **Covered Units**: Laptops deployed in the field under active warranty coverage
-- **Coverage Pools**: Groups showing coverage ratios (spare units / covered units) by specifications
-- **Coverage Analytics**: Metrics and trends to ensure adequate spare inventory
+The **Coverage Ratio = (Spare Units / Covered Units) × 100%**. Both spare and covered units have matching specification fields (e.g., make, model, processor) which are used by coverage pools to group units and calculate ratios, identifying areas needing more spares.
 
-The system provides a comprehensive dashboard for viewing coverage statistics, managing spare and covered units, tracking coverage expiration dates, and creating dynamic pool groups with custom filter criteria.
-
-## Business Model
-
-### Core Concept
-This is a **warranty pool management system** where:
-- **Covered Units** = Laptops deployed in the field under warranty (with customers/locations)
-- **Spare Units** = Spare laptops in the pool available to cover warranty claims
-- **Coverage Pool** = A grouping by specifications showing the coverage ratio
-
-### Coverage Ratio
-**Coverage Ratio = (Spare Units / Covered Units) × 100%**
-
-For example: If you have 2 spare HP EliteBook 840 G8 units to cover 3 deployed HP EliteBook 840 G8 units under warranty, the coverage ratio is 66.7%.
-
-### Key Relationships
-- Both spare units and covered units have matching specification fields (make, model, processor, RAM, etc.)
-- Coverage pools use filter criteria to group units by specifications
-- The system calculates how many spare units exist for each group of covered units with matching specs
-- Coverage ratios help identify where more spares are needed
-
-## User Preferences
-
+### User Preferences
 Preferred communication style: Simple, everyday language.
 
-## System Architecture
+### System Architecture
 
-### Frontend Architecture
+**Frontend Architecture**:
+- **Framework**: React 18 with TypeScript, using Vite.
+- **UI Component System**: shadcn/ui (New York style) built on Radix UI, providing accessible components, consistent design (Carbon Design System principles), dark/light theme support, and Tailwind CSS for styling.
+- **Design Principles**: Data-first presentation for enterprise dashboards, high information density, Inter and JetBrains Mono typography, consistent spacing.
+- **State Management**: TanStack Query for server state, local React state for UI, Context API for theme.
+- **Routing**: wouter.
+- **Key Pages**: Dashboard, Spare Pool, Covered Units, Coverage Pools, Analytics.
 
-**Framework**: React 18 with TypeScript, using Vite as the build tool and development server.
+**Backend Architecture**:
+- **Framework**: Express.js with TypeScript on Node.js.
+- **Server Structure**: RESTful API organized by domain, with middleware for JSON parsing, logging, and error handling.
+- **API Endpoints**: `/api/spare-units`, `/api/covered-units`, `/api/coverage-pools`, `/api/coverage-pools-with-stats`, `/api/analytics`, `/api/filters` (dynamic filter options).
+- **Data Access Layer**: Storage abstraction (`IStorage` interface) for clean separation from database operations.
 
-**UI Component System**: The application uses shadcn/ui (New York style) built on top of Radix UI primitives. This provides:
-- Accessible, composable UI components
-- Consistent design system with Carbon Design System principles
-- Dark/light theme support via CSS variables
-- Tailwind CSS for styling with custom design tokens
+**Data Storage**:
+- **Database**: PostgreSQL via Neon Serverless.
+- **ORM**: Drizzle ORM for type-safe queries, schema-first approach, and migration support.
+- **Schema Design**:
+    1.  `spare_unit` table: Stores spare laptop details, specifications, serial numbers, and pool management data.
+    2.  `covered_unit` table: Stores deployed laptop details, specifications (matching `spare_unit` for pool matching), warranty coverage periods, and deployment info.
+    3.  `coverage_pool` table: Defines dynamic coverage pools with names, descriptions, and JSON-serialized filter criteria.
+- **Key Design Decisions**: Matching specification fields in `spare_unit` and `covered_unit` tables, JSON-serialized filter criteria for flexibility, UUID primary keys, and audit timestamps.
 
-**Design Principles**:
-- Data-first presentation optimized for enterprise dashboards
-- High information density without overwhelming users
-- Typography system using Inter (primary) and JetBrains Mono (monospace for technical data)
-- Consistent spacing primitives (Tailwind units: 2, 4, 6, 8)
-- Layout: Sidebar navigation (16rem width) + main content area with max-width containers
-
-**State Management**:
-- TanStack Query (React Query) for server state management, data fetching, and caching
-- Local React state for UI interactions (filters, search, form inputs)
-- Context API for theme management
-
-**Routing**: wouter - a lightweight client-side routing library
-
-**Key Pages**:
-- **Dashboard**: Overview with metric cards and coverage pool statistics showing coverage ratios
-- **Spare Pool**: Filterable data table of all spare units available to cover warranty claims
-- **Covered Units**: Searchable table of all units in field under warranty coverage with expiration tracking
-- **Coverage Pools**: Management interface for creating/editing warranty pool groupings and viewing coverage ratios
-- **Analytics**: Charts and visualizations for coverage trends and pool performance analysis
-
-### Backend Architecture
-
-**Framework**: Express.js with TypeScript running on Node.js
-
-**Server Structure**:
-- RESTful API design with routes organized by domain (spare units, covered units, coverage pools)
-- Middleware for JSON parsing, request logging, and error handling
-- Custom logging middleware that captures request duration and responses
-
-**API Endpoints**:
-- `/api/spare-units` - CRUD operations for spare units with filtering support
-- `/api/covered-units` - CRUD operations for covered units with search and filtering
-- `/api/coverage-pools` - CRUD operations for coverage pool configurations
-- `/api/coverage-pools-with-stats` - Coverage pools with calculated statistics (spare count, covered count, coverage ratio)
-- `/api/analytics` - Aggregated statistics and metrics
-- `/api/filters` - Dynamic filter options based on current data from both spare and covered units
-
-**Data Access Layer**: 
-- Storage abstraction (`IStorage` interface) providing a clean separation between business logic and database operations
-- All database queries go through the storage layer, making it easy to swap implementations or add caching
-
-### Data Storage
-
-**Database**: PostgreSQL accessed via Neon Serverless (WebSocket-based connection pooling)
-
-**ORM**: Drizzle ORM with the following benefits:
-- Type-safe database queries
-- Schema-first approach with TypeScript
-- Lightweight with minimal runtime overhead
-- Migration support via drizzle-kit
-
-**Schema Design**:
-
-1. **spare_unit** table - Spare units in pool available to cover warranty claims:
-   - Laptop specifications (make, model, processor, RAM, HDD, display)
-   - Serial numbers and item IDs
-   - Pool management (reserved for case, retired order, current holder)
-   - Categorization and metadata
-   - Timestamps for audit trail
-
-2. **covered_unit** table - Units deployed in field under warranty coverage:
-   - Links to spare units via matching specifications
-   - Laptop specifications (make, model, processor, RAM, HDD, display) - **must match spare units for pool matching**
-   - Coverage period (start/end dates with calculated duration)
-   - Coverage status flag (isCoverageActive)
-   - Deployment information (current holder, location)
-   - Descriptive information
-   - Audit timestamps
-
-3. **coverage_pool** table - Dynamic coverage pool definitions:
-   - Pool name and description
-   - Filter criteria stored as JSON string (flexible filtering by make, model, processor, RAM, category)
-   - Applies to BOTH spare units and covered units to calculate coverage ratios
-   - Timestamps for tracking changes
-
-**Key Design Decisions**:
-- Both spare_unit and covered_unit tables have matching specification fields (make, model, processor, RAM, etc.) for pool filtering
-- Coverage pools use JSON-serialized filter criteria for dynamic, extensible filtering without schema changes
-- Boolean flags (isCoverageActive, touchscreen) for simple status tracking
-- Timestamps (createdOn, modifiedOn) on all tables for audit trail
-- UUID primary keys generated by PostgreSQL for globally unique identifiers
-- Coverage ratio calculated as: (spare units matching filter / covered units matching filter) × 100%
-
-### Authentication and Authorization
-
-**Current State**: No authentication/authorization implemented. The application assumes a trusted internal network or requires implementation of authentication layer.
-
-**Recommended Approach**: Add session-based authentication with role-based access control (RBAC) for different user types (admin, manager, viewer).
+**Authentication and Authorization**:
+- **Current State**: No authentication/authorization implemented. Assumes a trusted internal network.
+- **Recommended Approach**: Implement session-based authentication with role-based access control (RBAC).
 
 ### External Dependencies
 
 **Third-party Services**:
-- **Neon Database**: Serverless PostgreSQL with WebSocket connections for efficient connection pooling
-- **Google Fonts CDN**: Provides Inter and JetBrains Mono font families
+- **Neon Database**: Serverless PostgreSQL.
+- **Google Fonts CDN**: For Inter and JetBrains Mono fonts.
 
 **Key NPM Packages**:
-- **@tanstack/react-query**: Server state management and data synchronization
-- **@radix-ui/***: Accessible UI component primitives (dialogs, dropdowns, tooltips, etc.)
-- **drizzle-orm**: Type-safe database ORM
-- **recharts**: Charting library for analytics visualizations
-- **date-fns**: Date manipulation and formatting
-- **zod**: Runtime type validation and schema validation
-- **wouter**: Lightweight routing
-- **tailwindcss**: Utility-first CSS framework
-- **class-variance-authority**: Component variant management
-- **cmdk**: Command palette component
+- **@tanstack/react-query**: Server state management.
+- **@radix-ui/***: Accessible UI component primitives.
+- **drizzle-orm**: Type-safe database ORM.
+- **recharts**: Charting library.
+- **date-fns**: Date manipulation.
+- **zod**: Runtime type validation.
+- **wouter**: Lightweight routing.
+- **tailwindcss**: Utility-first CSS framework.
+- **class-variance-authority**: Component variant management.
+- **cmdk**: Command palette component.
 
 **Development Tools**:
-- **Vite**: Fast development server with HMR and optimized production builds
-- **TypeScript**: Static type checking across the entire stack
-- **drizzle-kit**: Database migration management
-- **esbuild**: Fast JavaScript bundler for production builds
-
-**Build Strategy**:
-- Frontend builds to `dist/public` using Vite
-- Backend bundles with esbuild to `dist/index.js` with external packages
-- Shared schema and types between client/server via `@shared` path alias
-- Development mode runs tsx with watch mode for hot reloading
-
-## Recent Changes (October 28, 2025)
-
-### Latest Update: Searchable Filter Dropdowns with Customer & Order Filters
-
-**Searchable UI Components**:
-- Created `SearchableSelect` component using cmdk (Command) for handling large datasets (100+ items)
-- Provides search functionality with keyboard navigation and accessibility
-- Fixed critical bug where cmdk normalizes values to lowercase - now preserves original casing
-- Component includes "Clear selection" option and visual checkmarks for selected values
-
-**Enhanced Filter Options**:
-- Extended `getFilterOptions()` API to include `customers` (from covered_unit.customerName) and `orderNumbers` (from covered_unit.orderNumber)
-- Filter options now return 7 arrays: makes, models, processors, rams, categories, customers, orderNumbers
-- All filter data is DB-controlled with no hardcoded values
-
-**Coverage Pools Enhancement**:
-- Updated Coverage Pools dialog to include Customer Name and Order Number as filter criteria
-- All 6 filter dropdowns (Make, Model, Processor, RAM, Customer, Order Number) now use SearchableSelect
-- Pool filter criteria expanded to support customer and order filtering alongside specifications
-- Pool cards display customer and order criteria alongside specification tags
-
-**TypeScript Improvements**:
-- Added proper type definitions for all API responses (filter options, analytics, coverage pools)
-- Fixed LSP errors across Inventory, Dashboard, and PoolGroups pages
-- All useQuery hooks now have explicit type parameters for better type safety
-
-**Testing**:
-- Validated e2e pool creation with searchable filters
-- Confirmed success toast, query invalidation, and UI updates work correctly
-- Verified new pools appear with correct coverage statistics and filter criteria tags
-
-### Earlier Update: Major Refactoring - Correct Business Model Implementation
-
-Updated the entire application to reflect the correct business model:
-
-**Business Model Clarification**:
-- **Spare Units** (formerly "inventory"): Units in pool available to cover warranty claims
-- **Covered Units** (formerly "warranty"): Units deployed in field under warranty coverage
-- **Coverage Pools** (formerly "pool groups"): Groups showing coverage ratios by specifications
-
-**Database Schema Updates**:
-- Renamed tables: `inventory` → `spare_unit`, `warranty` → `covered_unit`, `pool_group` → `coverage_pool`
-- Added specification fields to covered_unit table (make, model, processor, RAM, etc.) to match spare_unit fields
-- Renamed columns for clarity: `warrantyStartDate` → `coverageStartDate`, `isActive` → `isCoverageActive`, etc.
-- Updated spare_unit field names: `customer` → `currentHolder`, `allocatedOrder` → `reservedForCase`, `soldOrder` → `retiredOrder`
-
-**API Endpoint Updates**:
-- `/api/inventory` → `/api/spare-units`
-- `/api/warranties` → `/api/covered-units`
-- `/api/pool-groups` → `/api/coverage-pools`
-- Added `/api/coverage-pools-with-stats` for pools with calculated statistics
-
-**Frontend Updates**:
-- Navigation: "Inventory" → "Spare Pool", "Warranties" → "Covered Units", "Pool Groups" → "Coverage Pools"
-- All labels, titles, and terminology updated throughout UI
-- Coverage calculations now correctly show: spare units / covered units = coverage ratio
-- Updated all page components to use new API endpoints and data types
-
-**Type System Updates**:
-- `Inventory` → `SpareUnit`, `Warranty` → `CoveredUnit`, `PoolGroup` → `CoveragePool`
-- All insert schemas and types updated accordingly
-- Storage interface methods renamed to match new terminology
-
-This refactoring ensures the application correctly communicates that spare units in the pool are available to cover deployed units under warranty coverage.
+- **Vite**: Fast development server and build tool.
+- **TypeScript**: Static type checking.
+- **drizzle-kit**: Database migration management.
+- **esbuild**: Fast JavaScript bundler.
