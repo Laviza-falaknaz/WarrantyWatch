@@ -25,6 +25,7 @@ export interface IStorage {
   getSpareUnitById(id: string): Promise<SpareUnit | undefined>;
   createSpareUnit(data: InsertSpareUnit): Promise<SpareUnit>;
   updateSpareUnit(id: string, data: Partial<InsertSpareUnit>): Promise<SpareUnit | undefined>;
+  bulkReplaceSpareUnits(data: InsertSpareUnit[]): Promise<number>;
   
   // Covered Unit methods (units in field under warranty coverage)
   getCoveredUnits(filters?: {
@@ -39,6 +40,7 @@ export interface IStorage {
   getCoveredUnitById(id: string): Promise<CoveredUnit | undefined>;
   createCoveredUnit(data: InsertCoveredUnit): Promise<CoveredUnit>;
   updateCoveredUnit(id: string, data: Partial<InsertCoveredUnit>): Promise<CoveredUnit | undefined>;
+  bulkReplaceCoveredUnits(data: InsertCoveredUnit[]): Promise<number>;
   
   // Coverage Pool methods
   getCoveragePools(): Promise<CoveragePool[]>;
@@ -137,6 +139,27 @@ export class DatabaseStorage implements IStorage {
     return item || undefined;
   }
 
+  async bulkReplaceSpareUnits(data: InsertSpareUnit[]): Promise<number> {
+    // Start a transaction: truncate then insert
+    await db.delete(spareUnit);
+    
+    if (data.length === 0) {
+      return 0;
+    }
+    
+    // Insert in batches of 500 to avoid query size limits
+    const batchSize = 500;
+    let totalInserted = 0;
+    
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+      await db.insert(spareUnit).values(batch);
+      totalInserted += batch.length;
+    }
+    
+    return totalInserted;
+  }
+
   async getCoveredUnits(filters?: {
     make?: string[];
     model?: string[];
@@ -214,6 +237,27 @@ export class DatabaseStorage implements IStorage {
       .where(eq(coveredUnit.id, id))
       .returning();
     return item || undefined;
+  }
+
+  async bulkReplaceCoveredUnits(data: InsertCoveredUnit[]): Promise<number> {
+    // Start a transaction: truncate then insert
+    await db.delete(coveredUnit);
+    
+    if (data.length === 0) {
+      return 0;
+    }
+    
+    // Insert in batches of 500 to avoid query size limits
+    const batchSize = 500;
+    let totalInserted = 0;
+    
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+      await db.insert(coveredUnit).values(batch);
+      totalInserted += batch.length;
+    }
+    
+    return totalInserted;
   }
 
   async getCoveragePools(): Promise<CoveragePool[]> {
