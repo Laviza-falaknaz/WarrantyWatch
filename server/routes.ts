@@ -223,25 +223,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const filterCriteria = JSON.parse(pool.filterCriteria);
         
         // Build conditions for filtering
-        const spareConditions = [];
-        const coveredConditions = [];
+        const spareConditions: any[] = [];
+        const coveredConditions: any[] = [];
         
-        if (filterCriteria.make) {
-          spareConditions.push(eq(spareUnit.make, filterCriteria.make));
-          coveredConditions.push(eq(coveredUnit.make, filterCriteria.make));
-        }
-        if (filterCriteria.model) {
-          spareConditions.push(eq(spareUnit.model, filterCriteria.model));
-          coveredConditions.push(eq(coveredUnit.model, filterCriteria.model));
-        }
-        if (filterCriteria.processor) {
-          spareConditions.push(eq(spareUnit.processor, filterCriteria.processor));
-          coveredConditions.push(eq(coveredUnit.processor, filterCriteria.processor));
-        }
-        if (filterCriteria.ram) {
-          spareConditions.push(eq(spareUnit.ram, filterCriteria.ram));
-          coveredConditions.push(eq(coveredUnit.ram, filterCriteria.ram));
-        }
+        // Helper to add filter conditions - converts single values to arrays for consistency
+        const addFilterCondition = (
+          value: string | string[] | undefined,
+          spareField: any,
+          coveredField: any
+        ) => {
+          if (value) {
+            // Convert single value to array for backward compatibility
+            const values = Array.isArray(value) ? value : [value];
+            if (values.length > 0) {
+              if (spareField) {
+                spareConditions.push(inArray(spareField, values));
+              }
+              if (coveredField) {
+                coveredConditions.push(inArray(coveredField, values));
+              }
+            }
+          }
+        };
+        
+        // Apply filters for common fields
+        addFilterCondition(filterCriteria.make, spareUnit.make, coveredUnit.make);
+        addFilterCondition(filterCriteria.model, spareUnit.model, coveredUnit.model);
+        addFilterCondition(filterCriteria.processor, spareUnit.processor, coveredUnit.processor);
+        addFilterCondition(filterCriteria.ram, spareUnit.ram, coveredUnit.ram);
+        
+        // Apply filters for covered unit-only fields
+        addFilterCondition(filterCriteria.customerName, null, coveredUnit.customerName);
+        addFilterCondition(filterCriteria.orderNumber, null, coveredUnit.orderNumber);
         
         // Count spare units matching filter
         let spareQuery = db.select().from(spareUnit);

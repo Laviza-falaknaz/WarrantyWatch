@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import PoolCoverageCard from "@/components/PoolCoverageCard";
+import { PoolDetailDialog } from "@/components/PoolDetailDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,23 +16,37 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SearchableSelect } from "@/components/SearchableSelect";
+import { MultiSelectCombobox } from "@/components/MultiSelectCombobox";
 import { useToast } from "@/hooks/use-toast";
 import type { CoveragePoolWithStats } from "@shared/schema";
 
 export default function PoolGroups() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedPool, setSelectedPool] = useState<CoveragePoolWithStats | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [poolToDelete, setPoolToDelete] = useState<string | null>(null);
   const [poolName, setPoolName] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedMake, setSelectedMake] = useState("");
-  const [selectedModel, setSelectedModel] = useState("");
-  const [selectedProcessor, setSelectedProcessor] = useState("");
-  const [selectedRam, setSelectedRam] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState("");
-  const [selectedOrderNumber, setSelectedOrderNumber] = useState("");
+  const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [selectedProcessors, setSelectedProcessors] = useState<string[]>([]);
+  const [selectedRams, setSelectedRams] = useState<string[]>([]);
+  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
+  const [selectedOrderNumbers, setSelectedOrderNumbers] = useState<string[]>([]);
   const { toast } = useToast();
 
   const { data: coveragePools, isLoading: coveragePoolsLoading } = useQuery<CoveragePoolWithStats[]>({
@@ -73,25 +88,47 @@ export default function PoolGroups() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/coverage-pools/${id}`, undefined);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/coverage-pools-with-stats"] });
+      toast({ 
+        title: "Success", 
+        description: "Coverage pool deleted successfully" 
+      });
+      setDeleteDialogOpen(false);
+      setPoolToDelete(null);
+    },
+    onError: () => {
+      toast({ 
+        title: "Error", 
+        description: "Failed to delete coverage pool", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const resetForm = () => {
     setPoolName("");
     setDescription("");
-    setSelectedMake("");
-    setSelectedModel("");
-    setSelectedProcessor("");
-    setSelectedRam("");
-    setSelectedCustomer("");
-    setSelectedOrderNumber("");
+    setSelectedMakes([]);
+    setSelectedModels([]);
+    setSelectedProcessors([]);
+    setSelectedRams([]);
+    setSelectedCustomers([]);
+    setSelectedOrderNumbers([]);
   };
 
   const handleCreatePool = () => {
     const filterCriteria = {
-      make: selectedMake || undefined,
-      model: selectedModel || undefined,
-      processor: selectedProcessor || undefined,
-      ram: selectedRam || undefined,
-      customerName: selectedCustomer || undefined,
-      orderNumber: selectedOrderNumber || undefined,
+      make: selectedMakes.length > 0 ? selectedMakes : undefined,
+      model: selectedModels.length > 0 ? selectedModels : undefined,
+      processor: selectedProcessors.length > 0 ? selectedProcessors : undefined,
+      ram: selectedRams.length > 0 ? selectedRams : undefined,
+      customerName: selectedCustomers.length > 0 ? selectedCustomers : undefined,
+      orderNumber: selectedOrderNumbers.length > 0 ? selectedOrderNumbers : undefined,
     };
 
     createMutation.mutate({
@@ -106,16 +143,18 @@ export default function PoolGroups() {
     try {
       const criteria = JSON.parse(pool.filterCriteria || "{}");
       
+      const specifications = [
+        ...(Array.isArray(criteria.make) ? criteria.make : criteria.make ? [criteria.make] : []),
+        ...(Array.isArray(criteria.model) ? criteria.model : criteria.model ? [criteria.model] : []),
+        ...(Array.isArray(criteria.processor) ? criteria.processor : criteria.processor ? [criteria.processor] : []),
+        ...(Array.isArray(criteria.ram) ? criteria.ram : criteria.ram ? [criteria.ram] : []),
+        ...(Array.isArray(criteria.customerName) ? criteria.customerName : criteria.customerName ? [criteria.customerName] : []),
+        ...(Array.isArray(criteria.orderNumber) ? criteria.orderNumber : criteria.orderNumber ? [criteria.orderNumber] : []),
+      ];
+      
       return {
         ...pool,
-        specifications: [
-          criteria.make,
-          criteria.model,
-          criteria.processor,
-          criteria.ram,
-          criteria.customerName,
-          criteria.orderNumber,
-        ].filter(Boolean),
+        specifications,
       };
     } catch {
       return null;
@@ -158,14 +197,14 @@ export default function PoolGroups() {
               Create Coverage Pool
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Create New Coverage Pool</DialogTitle>
               <DialogDescription>
                 Define a coverage pool based on laptop specifications, customer, and order details to track spare units and coverage ratios
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 overflow-y-auto flex-1">
               <div className="space-y-2">
                 <Label htmlFor="pool-name">Pool Name</Label>
                 <Input
@@ -188,39 +227,39 @@ export default function PoolGroups() {
               </div>
               <div className="space-y-2">
                 <Label>Make</Label>
-                <SearchableSelect
-                  value={selectedMake}
-                  onValueChange={setSelectedMake}
+                <MultiSelectCombobox
+                  values={selectedMakes}
+                  onValuesChange={setSelectedMakes}
                   options={filterOptions?.makes || []}
-                  placeholder="Select make"
+                  placeholder="Select makes"
                   searchPlaceholder="Search makes..."
                 />
               </div>
               <div className="space-y-2">
                 <Label>Model (Optional)</Label>
-                <SearchableSelect
-                  value={selectedModel}
-                  onValueChange={setSelectedModel}
+                <MultiSelectCombobox
+                  values={selectedModels}
+                  onValuesChange={setSelectedModels}
                   options={filterOptions?.models || []}
-                  placeholder="Select model"
+                  placeholder="Select models"
                   searchPlaceholder="Search models..."
                 />
               </div>
               <div className="space-y-2">
                 <Label>Processor (Optional)</Label>
-                <SearchableSelect
-                  value={selectedProcessor}
-                  onValueChange={setSelectedProcessor}
+                <MultiSelectCombobox
+                  values={selectedProcessors}
+                  onValuesChange={setSelectedProcessors}
                   options={filterOptions?.processors || []}
-                  placeholder="Select processor"
+                  placeholder="Select processors"
                   searchPlaceholder="Search processors..."
                 />
               </div>
               <div className="space-y-2">
                 <Label>RAM (Optional)</Label>
-                <SearchableSelect
-                  value={selectedRam}
-                  onValueChange={setSelectedRam}
+                <MultiSelectCombobox
+                  values={selectedRams}
+                  onValuesChange={setSelectedRams}
                   options={filterOptions?.rams || []}
                   placeholder="Select RAM"
                   searchPlaceholder="Search RAM options..."
@@ -228,21 +267,21 @@ export default function PoolGroups() {
               </div>
               <div className="space-y-2">
                 <Label>Customer Name (Optional)</Label>
-                <SearchableSelect
-                  value={selectedCustomer}
-                  onValueChange={setSelectedCustomer}
+                <MultiSelectCombobox
+                  values={selectedCustomers}
+                  onValuesChange={setSelectedCustomers}
                   options={filterOptions?.customers || []}
-                  placeholder="Select customer"
+                  placeholder="Select customers"
                   searchPlaceholder="Search customers..."
                 />
               </div>
               <div className="space-y-2">
                 <Label>Order Number (Optional)</Label>
-                <SearchableSelect
-                  value={selectedOrderNumber}
-                  onValueChange={setSelectedOrderNumber}
+                <MultiSelectCombobox
+                  values={selectedOrderNumbers}
+                  onValuesChange={setSelectedOrderNumbers}
                   options={filterOptions?.orderNumbers || []}
-                  placeholder="Select order number"
+                  placeholder="Select order numbers"
                   searchPlaceholder="Search order numbers..."
                 />
               </div>
@@ -260,7 +299,7 @@ export default function PoolGroups() {
               </Button>
               <Button
                 onClick={handleCreatePool}
-                disabled={!poolName || !selectedMake || createMutation.isPending}
+                disabled={!poolName || selectedMakes.length === 0 || createMutation.isPending}
                 data-testid="button-confirm-create"
               >
                 {createMutation.isPending ? "Creating..." : "Create Pool"}
@@ -289,10 +328,49 @@ export default function PoolGroups() {
             inventoryRequired={pool.coveredCount}
             poolUnits={pool.spareCount}
             coveragePercentage={pool.coverageRatio}
-            onExpand={() => console.log(`Expand pool: ${pool.name}`)}
+            onExpand={() => {
+              setSelectedPool(pool);
+              setDetailDialogOpen(true);
+            }}
+            onDelete={() => {
+              setPoolToDelete(pool.id);
+              setDeleteDialogOpen(true);
+            }}
           />
         ))}
       </div>
+
+      <PoolDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        poolName={selectedPool?.name || ""}
+        filterCriteria={selectedPool?.filterCriteria || "{}"}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Coverage Pool</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this coverage pool? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (poolToDelete) {
+                  deleteMutation.mutate(poolToDelete);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
