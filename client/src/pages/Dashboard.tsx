@@ -4,13 +4,20 @@ import PoolCoverageCard from "@/components/PoolCoverageCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, AlertTriangle, TrendingUp, Package, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { CoveragePoolWithStats } from "@shared/schema";
 
 export default function Dashboard() {
-  const { data: analytics, isLoading: analyticsLoading } = useQuery({
+  const { data: analytics, isLoading: analyticsLoading } = useQuery<{
+    totalSpareUnits: number;
+    totalCoveredUnits: number;
+    activeCoverage: number;
+    expiringCoverage: number;
+    averageCoverageRatio: number;
+  }>({
     queryKey: ["/api/analytics"],
   });
 
-  const { data: coveragePoolsWithStats, isLoading: statsLoading } = useQuery({
+  const { data: coveragePoolsWithStats, isLoading: statsLoading } = useQuery<CoveragePoolWithStats[]>({
     queryKey: ["/api/coverage-pools-with-stats"],
   });
 
@@ -45,7 +52,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Monitor coverage and pool status across all spare units
+            Monitor coverage and pool status across all replacement pool units
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -62,19 +69,19 @@ export default function Dashboard() {
       <div>
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Monitor coverage and pool status across all spare units
+          Monitor coverage and pool status across all replacement pool units
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Active Coverage"
+          title="Stock under Warranty"
           value={analytics?.activeCoverage || 0}
           icon={Shield}
-          subtitle="Units under coverage"
+          subtitle="Active warranty coverage"
         />
         <MetricCard
-          title="Total Spare Units"
+          title="Total Replacement Pool"
           value={analytics?.totalSpareUnits || 0}
           icon={Package}
           subtitle="Available in pool"
@@ -102,7 +109,7 @@ export default function Dashboard() {
                 <Package className="h-12 w-12 text-muted-foreground mb-3" />
                 <h3 className="font-medium mb-1">No Coverage Pools Yet</h3>
                 <p className="text-sm text-muted-foreground">
-                  Create coverage pools to organize and monitor spare unit allocation
+                  Create coverage pools to organize and monitor replacement pool unit allocation
                 </p>
               </CardContent>
             </Card>
@@ -131,7 +138,7 @@ export default function Dashboard() {
                 <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-blue-500" />
                 <div className="flex-1 space-y-1">
                   <p className="text-sm">
-                    {analytics?.totalSpareUnits || 0} total spare units in system
+                    {analytics?.totalSpareUnits || 0} total replacement pool units in system
                   </p>
                   <p className="text-xs text-muted-foreground">Up to date</p>
                 </div>
@@ -140,7 +147,7 @@ export default function Dashboard() {
                 <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-500" />
                 <div className="flex-1 space-y-1">
                   <p className="text-sm">
-                    {analytics?.activeCoverage || 0} units under active coverage
+                    {analytics?.activeCoverage || 0} stock under active warranty
                   </p>
                   <p className="text-xs text-muted-foreground">Current status</p>
                 </div>

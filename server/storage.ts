@@ -250,6 +250,8 @@ export class DatabaseStorage implements IStorage {
     processors: string[];
     rams: string[];
     categories: string[];
+    customers: string[];
+    orderNumbers: string[];
   }> {
     // Get filter options from both spare units and covered units
     const spareItems = await db.select({
@@ -266,6 +268,8 @@ export class DatabaseStorage implements IStorage {
       processor: coveredUnit.processor,
       ram: coveredUnit.ram,
       category: coveredUnit.category,
+      customerName: coveredUnit.customerName,
+      orderNumber: coveredUnit.orderNumber,
     }).from(coveredUnit);
     
     const allItems = [...spareItems, ...coveredItems];
@@ -275,8 +279,10 @@ export class DatabaseStorage implements IStorage {
     const processors = Array.from(new Set(allItems.map(i => i.processor).filter(Boolean) as string[])).sort();
     const rams = Array.from(new Set(allItems.map(i => i.ram).filter(Boolean) as string[])).sort();
     const categories = Array.from(new Set(allItems.map(i => i.category).filter(Boolean) as string[])).sort();
+    const customers = Array.from(new Set(coveredItems.map(i => i.customerName).filter(Boolean) as string[])).sort();
+    const orderNumbers = Array.from(new Set(coveredItems.map(i => i.orderNumber).filter(Boolean) as string[])).sort();
     
-    return { makes, models, processors, rams, categories };
+    return { makes, models, processors, rams, categories, customers, orderNumbers };
   }
 
   async getAnalytics(): Promise<{

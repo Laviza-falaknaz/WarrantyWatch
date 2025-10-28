@@ -12,7 +12,7 @@ import type { CoveredUnit } from "@shared/schema";
 export default function Warranties() {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: coveredUnits, isLoading } = useQuery({
+  const { data: stockUnderWarranty, isLoading } = useQuery({
     queryKey: ["/api/covered-units", searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -21,7 +21,7 @@ export default function Warranties() {
       }
       
       const response = await fetch(`/api/covered-units?${params}`);
-      if (!response.ok) throw new Error("Failed to fetch covered units");
+      if (!response.ok) throw new Error("Failed to fetch stock under warranty");
       return response.json();
     },
   });
@@ -45,7 +45,7 @@ export default function Warranties() {
       header: "Serial Number",
       width: "160px",
       render: (item) => (
-        <span className="font-mono text-sm" data-testid={`text-serial-${item.id}`}>
+        <span className="font-mono text-sm" data-testid={`stock-under-warranty-serial-${item.id}`}>
           {item.serialNumber}
         </span>
       ),
@@ -55,7 +55,7 @@ export default function Warranties() {
       header: "Make",
       width: "100px",
       render: (item) => (
-        <span className="text-sm" data-testid={`text-make-${item.id}`}>
+        <span className="text-sm" data-testid={`stock-under-warranty-make-${item.id}`}>
           {item.make}
         </span>
       ),
@@ -65,7 +65,7 @@ export default function Warranties() {
       header: "Model",
       width: "140px",
       render: (item) => (
-        <span className="text-sm" data-testid={`text-model-${item.id}`}>
+        <span className="text-sm" data-testid={`stock-under-warranty-model-${item.id}`}>
           {item.model}
         </span>
       ),
@@ -75,7 +75,7 @@ export default function Warranties() {
       header: "Processor",
       width: "120px",
       render: (item) => (
-        <span className="text-sm" data-testid={`text-processor-${item.id}`}>
+        <span className="text-sm" data-testid={`stock-under-warranty-processor-${item.id}`}>
           {item.processor || "—"}
         </span>
       ),
@@ -85,7 +85,7 @@ export default function Warranties() {
       header: "RAM",
       width: "80px",
       render: (item) => (
-        <span className="text-sm" data-testid={`text-ram-${item.id}`}>
+        <span className="text-sm" data-testid={`stock-under-warranty-ram-${item.id}`}>
           {item.ram || "—"}
         </span>
       ),
@@ -95,7 +95,39 @@ export default function Warranties() {
       header: "Area ID",
       width: "100px",
       render: (item) => (
-        <span className="font-mono text-sm">{item.areaId}</span>
+        <span className="font-mono text-sm" data-testid={`stock-under-warranty-area-${item.id}`}>
+          {item.areaId}
+        </span>
+      ),
+    },
+    {
+      key: "customerName",
+      header: "Customer Name",
+      width: "160px",
+      render: (item) => (
+        <span className="text-sm" data-testid={`stock-under-warranty-customer-${item.id}`}>
+          {item.customerName || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "orderNumber",
+      header: "Order Number",
+      width: "140px",
+      render: (item) => (
+        <span className="font-mono text-sm" data-testid={`stock-under-warranty-order-${item.id}`}>
+          {item.orderNumber || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "orderDate",
+      header: "Order Date",
+      width: "120px",
+      render: (item) => (
+        <span className="text-sm" data-testid={`stock-under-warranty-order-date-${item.id}`}>
+          {item.orderDate ? format(new Date(item.orderDate), "MMM dd, yyyy") : "—"}
+        </span>
       ),
     },
     {
@@ -103,7 +135,9 @@ export default function Warranties() {
       header: "Coverage Start",
       width: "120px",
       render: (item) => (
-        <span className="text-sm">{format(new Date(item.coverageStartDate), "MMM dd, yyyy")}</span>
+        <span className="text-sm" data-testid={`stock-under-warranty-coverage-start-${item.id}`}>
+          {format(new Date(item.coverageStartDate), "MMM dd, yyyy")}
+        </span>
       ),
     },
     {
@@ -111,7 +145,9 @@ export default function Warranties() {
       header: "Coverage End",
       width: "120px",
       render: (item) => (
-        <span className="text-sm">{format(new Date(item.coverageEndDate), "MMM dd, yyyy")}</span>
+        <span className="text-sm" data-testid={`stock-under-warranty-coverage-end-${item.id}`}>
+          {format(new Date(item.coverageEndDate), "MMM dd, yyyy")}
+        </span>
       ),
     },
     {
@@ -119,7 +155,9 @@ export default function Warranties() {
       header: "Duration",
       width: "100px",
       render: (item) => (
-        <span className="text-sm">{item.coverageDurationDays} days</span>
+        <span className="text-sm" data-testid={`stock-under-warranty-duration-${item.id}`}>
+          {item.coverageDurationDays} days
+        </span>
       ),
     },
     {
@@ -138,7 +176,7 @@ export default function Warranties() {
                 ? "destructive"
                 : "outline"
             }
-            data-testid={`badge-status-${item.id}`}
+            data-testid={`stock-under-warranty-status-${item.id}`}
           >
             {status}
           </Badge>
@@ -160,7 +198,7 @@ export default function Warranties() {
             ? "text-yellow-600 dark:text-yellow-500"
             : "";
         return (
-          <span className={`text-sm font-medium ${color}`} data-testid={`text-days-${item.id}`}>
+          <span className={`text-sm font-medium ${color}`} data-testid={`stock-under-warranty-days-${item.id}`}>
             {daysRemaining < 0 ? "Expired" : `${daysRemaining} days`}
           </span>
         );
@@ -173,9 +211,9 @@ export default function Warranties() {
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Covered Units</h1>
+            <h1 className="text-2xl font-semibold">Stock under Warranty</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Units deployed in the field under warranty coverage
+              Units deployed under warranty coverage that may need replacement
             </p>
           </div>
         </div>
@@ -188,14 +226,14 @@ export default function Warranties() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold" data-testid="heading-covered-units">
-            Covered Units
+          <h1 className="text-2xl font-semibold" data-testid="heading-stock-under-warranty">
+            Stock under Warranty
           </h1>
-          <p className="text-sm text-muted-foreground mt-1" data-testid="text-description">
-            Units deployed in the field under warranty coverage
+          <p className="text-sm text-muted-foreground mt-1" data-testid="text-stock-under-warranty-description">
+            Units deployed under warranty coverage that may need replacement
           </p>
         </div>
-        <Button variant="outline" data-testid="button-export-covered-units">
+        <Button variant="outline" data-testid="button-export-stock-under-warranty">
           <Download className="h-4 w-4 mr-2" />
           Export
         </Button>
@@ -210,8 +248,8 @@ export default function Warranties() {
 
         <DataTable
           columns={columns}
-          data={coveredUnits || []}
-          onRowClick={(item) => console.log("View covered unit details:", item)}
+          data={stockUnderWarranty || []}
+          onRowClick={(item) => console.log("View stock under warranty details:", item)}
         />
       </div>
     </div>

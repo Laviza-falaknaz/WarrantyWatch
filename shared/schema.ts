@@ -52,6 +52,12 @@ export const coveredUnit = pgTable("covered_unit", {
   coverageDescription: text("coverage_description"),
   coverageDurationDays: integer("coverage_duration_days").notNull(),
   isCoverageActive: boolean("is_coverage_active").notNull().default(true),
+  // Customer and order details
+  customerName: varchar("customer_name", { length: 200 }),
+  customerEmail: varchar("customer_email", { length: 200 }),
+  customerPhone: varchar("customer_phone", { length: 50 }),
+  orderNumber: varchar("order_number", { length: 100 }),
+  orderDate: timestamp("order_date"),
   // Deployment information
   currentHolder: varchar("current_holder", { length: 200 }), // customer/location
   productDescription: text("product_description"),

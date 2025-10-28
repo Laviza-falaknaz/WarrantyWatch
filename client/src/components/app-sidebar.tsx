@@ -18,12 +18,12 @@ const menuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Spare Pool",
+    title: "Replacement Pool",
     url: "/spare-pool",
     icon: Package,
   },
   {
-    title: "Covered Units",
+    title: "Stock under Warranty",
     url: "/covered-units",
     icon: Shield,
   },

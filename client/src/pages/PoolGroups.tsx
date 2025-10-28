@@ -18,13 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { useToast } from "@/hooks/use-toast";
 import type { CoveragePoolWithStats } from "@shared/schema";
 
@@ -36,13 +30,23 @@ export default function PoolGroups() {
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedProcessor, setSelectedProcessor] = useState("");
   const [selectedRam, setSelectedRam] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState("");
+  const [selectedOrderNumber, setSelectedOrderNumber] = useState("");
   const { toast } = useToast();
 
   const { data: coveragePools, isLoading: coveragePoolsLoading } = useQuery<CoveragePoolWithStats[]>({
     queryKey: ["/api/coverage-pools-with-stats"],
   });
 
-  const { data: filterOptions } = useQuery({
+  const { data: filterOptions } = useQuery<{
+    makes: string[];
+    models: string[];
+    processors: string[];
+    rams: string[];
+    categories: string[];
+    customers: string[];
+    orderNumbers: string[];
+  }>({
     queryKey: ["/api/filters"],
   });
 
@@ -76,6 +80,8 @@ export default function PoolGroups() {
     setSelectedModel("");
     setSelectedProcessor("");
     setSelectedRam("");
+    setSelectedCustomer("");
+    setSelectedOrderNumber("");
   };
 
   const handleCreatePool = () => {
@@ -84,6 +90,8 @@ export default function PoolGroups() {
       model: selectedModel || undefined,
       processor: selectedProcessor || undefined,
       ram: selectedRam || undefined,
+      customerName: selectedCustomer || undefined,
+      orderNumber: selectedOrderNumber || undefined,
     };
 
     createMutation.mutate({
@@ -105,6 +113,8 @@ export default function PoolGroups() {
           criteria.model,
           criteria.processor,
           criteria.ram,
+          criteria.customerName,
+          criteria.orderNumber,
         ].filter(Boolean),
       };
     } catch {
@@ -152,7 +162,7 @@ export default function PoolGroups() {
             <DialogHeader>
               <DialogTitle>Create New Coverage Pool</DialogTitle>
               <DialogDescription>
-                Define a coverage pool based on laptop specifications to track spare units and coverage ratios
+                Define a coverage pool based on laptop specifications, customer, and order details to track spare units and coverage ratios
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -178,63 +188,63 @@ export default function PoolGroups() {
               </div>
               <div className="space-y-2">
                 <Label>Make</Label>
-                <Select value={selectedMake} onValueChange={setSelectedMake}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select make" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(filterOptions?.makes || []).map((make: string) => (
-                      <SelectItem key={make} value={make}>
-                        {make}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={selectedMake}
+                  onValueChange={setSelectedMake}
+                  options={filterOptions?.makes || []}
+                  placeholder="Select make"
+                  searchPlaceholder="Search makes..."
+                />
               </div>
               <div className="space-y-2">
                 <Label>Model (Optional)</Label>
-                <Select value={selectedModel} onValueChange={setSelectedModel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(filterOptions?.models || []).map((model: string) => (
-                      <SelectItem key={model} value={model}>
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={selectedModel}
+                  onValueChange={setSelectedModel}
+                  options={filterOptions?.models || []}
+                  placeholder="Select model"
+                  searchPlaceholder="Search models..."
+                />
               </div>
               <div className="space-y-2">
                 <Label>Processor (Optional)</Label>
-                <Select value={selectedProcessor} onValueChange={setSelectedProcessor}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select processor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(filterOptions?.processors || []).map((processor: string) => (
-                      <SelectItem key={processor} value={processor}>
-                        {processor}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={selectedProcessor}
+                  onValueChange={setSelectedProcessor}
+                  options={filterOptions?.processors || []}
+                  placeholder="Select processor"
+                  searchPlaceholder="Search processors..."
+                />
               </div>
               <div className="space-y-2">
                 <Label>RAM (Optional)</Label>
-                <Select value={selectedRam} onValueChange={setSelectedRam}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select RAM" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(filterOptions?.rams || []).map((ram: string) => (
-                      <SelectItem key={ram} value={ram}>
-                        {ram}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={selectedRam}
+                  onValueChange={setSelectedRam}
+                  options={filterOptions?.rams || []}
+                  placeholder="Select RAM"
+                  searchPlaceholder="Search RAM options..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Customer Name (Optional)</Label>
+                <SearchableSelect
+                  value={selectedCustomer}
+                  onValueChange={setSelectedCustomer}
+                  options={filterOptions?.customers || []}
+                  placeholder="Select customer"
+                  searchPlaceholder="Search customers..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Order Number (Optional)</Label>
+                <SearchableSelect
+                  value={selectedOrderNumber}
+                  onValueChange={setSelectedOrderNumber}
+                  options={filterOptions?.orderNumbers || []}
+                  placeholder="Select order number"
+                  searchPlaceholder="Search order numbers..."
+                />
               </div>
             </div>
             <DialogFooter>

@@ -13,11 +13,19 @@ export default function Inventory() {
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: filterOptions } = useQuery({
+  const { data: filterOptions } = useQuery<{
+    makes: string[];
+    models: string[];
+    processors: string[];
+    rams: string[];
+    categories: string[];
+    customers: string[];
+    orderNumbers: string[];
+  }>({
     queryKey: ["/api/filters"],
   });
 
-  const { data: spareUnits, isLoading } = useQuery({
+  const { data: replacementUnits, isLoading } = useQuery({
     queryKey: ["/api/spare-units", selectedFilters, searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -31,7 +39,7 @@ export default function Inventory() {
       }
       
       const response = await fetch(`/api/spare-units?${params}`);
-      if (!response.ok) throw new Error("Failed to fetch spare units");
+      if (!response.ok) throw new Error("Failed to fetch replacement units");
       return response.json();
     },
   });
@@ -91,7 +99,7 @@ export default function Inventory() {
       header: "Serial Number",
       width: "160px",
       render: (unit) => (
-        <span className="font-mono text-sm" data-testid={`text-spare-unit-serial-${unit.id}`}>
+        <span className="font-mono text-sm" data-testid={`text-replacement-unit-serial-${unit.id}`}>
           {unit.serialNumber}
         </span>
       ),
@@ -139,7 +147,7 @@ export default function Inventory() {
                 ? "secondary"
                 : "outline"
             }
-            data-testid={`badge-spare-unit-status-${unit.id}`}
+            data-testid={`badge-replacement-unit-status-${unit.id}`}
           >
             {status}
           </Badge>
@@ -153,13 +161,13 @@ export default function Inventory() {
       render: (unit) => {
         if (unit.reservedForCase) {
           return (
-            <span className="text-sm text-muted-foreground" data-testid={`text-spare-unit-allocation-${unit.id}`}>
+            <span className="text-sm text-muted-foreground" data-testid={`text-replacement-unit-allocation-${unit.id}`}>
               {unit.reservedForCase}
             </span>
           );
         }
         return (
-          <Badge variant="secondary" data-testid={`badge-spare-unit-allocation-${unit.id}`}>
+          <Badge variant="secondary" data-testid={`badge-replacement-unit-allocation-${unit.id}`}>
             In Pool
           </Badge>
         );
@@ -183,9 +191,9 @@ export default function Inventory() {
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Spare Pool</h1>
+            <h1 className="text-2xl font-semibold">Replacement Pool</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Spare units available to cover warranty claims on deployed units
+              Replacement units available in the pool to cover warranty claims on deployed units
             </p>
           </div>
         </div>
@@ -198,14 +206,14 @@ export default function Inventory() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold" data-testid="heading-spare-pool">
-            Spare Pool
+          <h1 className="text-2xl font-semibold" data-testid="heading-replacement-pool">
+            Replacement Pool
           </h1>
-          <p className="text-sm text-muted-foreground mt-1" data-testid="text-spare-pool-description">
-            Spare units available to cover warranty claims on deployed units
+          <p className="text-sm text-muted-foreground mt-1" data-testid="text-replacement-pool-description">
+            Replacement units available in the pool to cover warranty claims on deployed units
           </p>
         </div>
-        <Button variant="outline" data-testid="button-export-spare-units">
+        <Button variant="outline" data-testid="button-export-replacement-units">
           <Download className="h-4 w-4 mr-2" />
           Export
         </Button>
@@ -226,14 +234,14 @@ export default function Inventory() {
             placeholder="Search by serial number, make, model..."
             onSearch={setSearchQuery}
             className="max-w-md"
-            data-testid="input-search-spare-units"
+            data-testid="input-search-replacement-units"
           />
 
           <DataTable
             columns={columns}
-            data={spareUnits || []}
-            onRowClick={(unit) => console.log("View spare unit details:", unit)}
-            data-testid="table-spare-units"
+            data={replacementUnits || []}
+            onRowClick={(unit) => console.log("View replacement unit details:", unit)}
+            data-testid="table-replacement-units"
           />
         </div>
       </div>

@@ -24,17 +24,17 @@ export default function Analytics() {
     queryKey: ["/api/analytics"],
   });
 
-  const { data: coveredUnits, isLoading: coveredUnitsLoading } = useQuery({
+  const { data: stockUnderWarranty, isLoading: stockUnderWarrantyLoading } = useQuery({
     queryKey: ["/api/covered-units"],
   });
 
-  const { data: spareUnits, isLoading: spareUnitsLoading } = useQuery({
+  const { data: replacementUnits, isLoading: replacementUnitsLoading } = useQuery({
     queryKey: ["/api/spare-units"],
   });
 
   // Generate coverage expiration trend data
   const coverageExpirationData = (() => {
-    if (!coveredUnits || !Array.isArray(coveredUnits)) return [];
+    if (!stockUnderWarranty || !Array.isArray(stockUnderWarranty)) return [];
     
     const months = ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr"];
     const now = new Date();
@@ -47,7 +47,7 @@ export default function Analytics() {
       const nextMonth = new Date(targetDate);
       nextMonth.setMonth(nextMonth.getMonth() + 1);
       
-      const expiring = coveredUnits.filter((c: any) => {
+      const expiring = stockUnderWarranty.filter((c: any) => {
         const endDate = new Date(c.coverageEndDate);
         return endDate >= targetDate && endDate < nextMonth && c.isCoverageActive;
       }).length;
@@ -56,53 +56,53 @@ export default function Analytics() {
     });
   })();
 
-  // Generate coverage ratio by make data (spare units / covered units)
+  // Generate coverage ratio by make data (replacement units / stock under warranty)
   const coverageRatioByMake = (() => {
-    if (!spareUnits || !coveredUnits || !Array.isArray(spareUnits) || !Array.isArray(coveredUnits)) return [];
+    if (!replacementUnits || !stockUnderWarranty || !Array.isArray(replacementUnits) || !Array.isArray(stockUnderWarranty)) return [];
     
     const makeGroups: any = {};
     
-    // Count spare units by make
-    spareUnits.forEach((unit: any) => {
+    // Count replacement units by make
+    replacementUnits.forEach((unit: any) => {
       if (!makeGroups[unit.make]) {
-        makeGroups[unit.make] = { spareCount: 0, coveredCount: 0 };
+        makeGroups[unit.make] = { replacementCount: 0, warrantyStockCount: 0 };
       }
       if (!unit.retiredOrder && !unit.reservedForCase) {
-        makeGroups[unit.make].spareCount++;
+        makeGroups[unit.make].replacementCount++;
       }
     });
     
-    // Count covered units by make
-    coveredUnits.forEach((unit: any) => {
+    // Count stock under warranty by make
+    stockUnderWarranty.forEach((unit: any) => {
       if (!makeGroups[unit.make]) {
-        makeGroups[unit.make] = { spareCount: 0, coveredCount: 0 };
+        makeGroups[unit.make] = { replacementCount: 0, warrantyStockCount: 0 };
       }
       if (unit.isCoverageActive) {
-        makeGroups[unit.make].coveredCount++;
+        makeGroups[unit.make].warrantyStockCount++;
       }
     });
     
     return Object.entries(makeGroups).map(([make, data]: [string, any]) => ({
       make,
-      coverageRatio: data.coveredCount > 0 ? ((data.spareCount / data.coveredCount) * 100).toFixed(1) : 0,
-      spareCount: data.spareCount,
-      coveredCount: data.coveredCount,
+      coverageRatio: data.warrantyStockCount > 0 ? ((data.replacementCount / data.warrantyStockCount) * 100).toFixed(1) : 0,
+      replacementCount: data.replacementCount,
+      warrantyStockCount: data.warrantyStockCount,
     }));
   })();
 
   // Generate coverage status distribution
   const statusDistribution = (() => {
-    if (!coveredUnits || !Array.isArray(coveredUnits)) return [];
+    if (!stockUnderWarranty || !Array.isArray(stockUnderWarranty)) return [];
     
     return [
       { 
         name: "Active Coverage", 
-        value: coveredUnits.filter((c: any) => c.isCoverageActive).length, 
+        value: stockUnderWarranty.filter((c: any) => c.isCoverageActive).length, 
         color: "hsl(var(--chart-1))" 
       },
       { 
         name: "Expiring Soon", 
-        value: coveredUnits.filter((c: any) => {
+        value: stockUnderWarranty.filter((c: any) => {
           if (!c.isCoverageActive) return false;
           const daysRemaining = Math.floor((new Date(c.coverageEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
           return daysRemaining < 30;
@@ -111,21 +111,21 @@ export default function Analytics() {
       },
       { 
         name: "Inactive Coverage", 
-        value: coveredUnits.filter((c: any) => !c.isCoverageActive).length, 
+        value: stockUnderWarranty.filter((c: any) => !c.isCoverageActive).length, 
         color: "hsl(var(--chart-3))" 
       },
     ];
   })();
 
   // Calculate coverage ratio metrics
-  const totalSpareUnits = (spareUnits && Array.isArray(spareUnits)) ? spareUnits.filter((unit: any) => !unit.retiredOrder && !unit.reservedForCase).length : 0;
-  const totalCoveredUnits = (coveredUnits && Array.isArray(coveredUnits)) ? coveredUnits.filter((unit: any) => unit.isCoverageActive).length : 0;
-  const currentCoverageRatio = totalCoveredUnits > 0 ? (totalSpareUnits / totalCoveredUnits) : 0;
+  const totalReplacementUnits = (replacementUnits && Array.isArray(replacementUnits)) ? replacementUnits.filter((unit: any) => !unit.retiredOrder && !unit.reservedForCase).length : 0;
+  const totalStockUnderWarranty = (stockUnderWarranty && Array.isArray(stockUnderWarranty)) ? stockUnderWarranty.filter((unit: any) => unit.isCoverageActive).length : 0;
+  const currentCoverageRatio = totalStockUnderWarranty > 0 ? (totalReplacementUnits / totalStockUnderWarranty) : 0;
   const targetCoverageRatio = 0.15;
-  const targetSpareUnits = Math.ceil(totalCoveredUnits * targetCoverageRatio);
-  const spareUnitsNeeded = Math.max(0, targetSpareUnits - totalSpareUnits);
+  const targetReplacementUnits = Math.ceil(totalStockUnderWarranty * targetCoverageRatio);
+  const replacementUnitsNeeded = Math.max(0, targetReplacementUnits - totalReplacementUnits);
 
-  if (analyticsLoading || coveredUnitsLoading || spareUnitsLoading) {
+  if (analyticsLoading || stockUnderWarrantyLoading || replacementUnitsLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4">
@@ -165,7 +165,7 @@ export default function Analytics() {
           <CardHeader>
             <h3 className="text-base font-medium">Coverage Expiration Trend</h3>
             <p className="text-xs text-muted-foreground">
-              Covered units with expiring coverage per month
+              Stock under warranty with expiring coverage per month
             </p>
           </CardHeader>
           <CardContent>
@@ -181,7 +181,7 @@ export default function Analytics() {
                   className="text-xs"
                   tick={{ fill: "hsl(var(--muted-foreground))" }}
                   label={{
-                    value: "Covered Units",
+                    value: "Stock under Warranty",
                     angle: -90,
                     position: "insideLeft",
                     style: { fill: "hsl(var(--muted-foreground))" },
@@ -210,7 +210,7 @@ export default function Analytics() {
           <CardHeader>
             <h3 className="text-base font-medium">Coverage Ratio by Make</h3>
             <p className="text-xs text-muted-foreground">
-              Ratio of spare units to covered units by manufacturer
+              Ratio of replacement units to stock under warranty by manufacturer
             </p>
           </CardHeader>
           <CardContent>
@@ -253,7 +253,7 @@ export default function Analytics() {
           <CardHeader>
             <h3 className="text-base font-medium">Coverage Status Distribution</h3>
             <p className="text-xs text-muted-foreground">
-              Current status breakdown across all covered units in field
+              Current status breakdown across all stock under warranty in field
             </p>
           </CardHeader>
           <CardContent>
@@ -296,12 +296,12 @@ export default function Analytics() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
-              <span className="text-sm font-medium">Total Spare Units</span>
-              <span className="text-lg font-bold">{totalSpareUnits}</span>
+              <span className="text-sm font-medium">Total Replacement Units</span>
+              <span className="text-lg font-bold">{totalReplacementUnits}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
-              <span className="text-sm font-medium">Total Covered Units</span>
-              <span className="text-lg font-bold">{totalCoveredUnits}</span>
+              <span className="text-sm font-medium">Total Stock under Warranty</span>
+              <span className="text-lg font-bold">{totalStockUnderWarranty}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
               <span className="text-sm font-medium">Current Coverage Ratio</span>
@@ -311,8 +311,8 @@ export default function Analytics() {
             </div>
             <div className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
               <span className="text-sm font-medium">Target Ratio (15%)</span>
-              <span className={`text-lg font-bold ${spareUnitsNeeded > 0 ? 'text-yellow-600 dark:text-yellow-500' : 'text-green-600 dark:text-green-500'}`}>
-                {spareUnitsNeeded > 0 ? `${spareUnitsNeeded} spare units needed` : 'Target met'}
+              <span className={`text-lg font-bold ${replacementUnitsNeeded > 0 ? 'text-yellow-600 dark:text-yellow-500' : 'text-green-600 dark:text-green-500'}`}>
+                {replacementUnitsNeeded > 0 ? `${replacementUnitsNeeded} replacement units needed` : 'Target met'}
               </span>
             </div>
           </CardContent>
