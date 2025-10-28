@@ -67,6 +67,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk replace spare units - truncate and insert
+  app.post("/api/spare-units/bulk", async (req, res) => {
+    try {
+      // Validate that body is an array
+      if (!Array.isArray(req.body)) {
+        return res.status(400).json({ error: "Request body must be an array of spare units" });
+      }
+
+      // Validate each item in the array
+      const validatedData = z.array(insertSpareUnitSchema).parse(req.body);
+      
+      const count = await storage.bulkReplaceSpareUnits(validatedData);
+      
+      res.status(200).json({ 
+        message: "Spare units replaced successfully", 
+        count,
+        inserted: count 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data format", details: error.errors });
+      }
+      console.error("Error bulk replacing spare units:", error);
+      res.status(500).json({ error: "Failed to bulk replace spare units" });
+    }
+  });
+
   // Covered Unit routes (units in field under warranty coverage)
   app.get("/api/covered-units", async (req, res) => {
     try {
@@ -125,6 +152,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating covered unit:", error);
       res.status(500).json({ error: "Failed to update covered unit" });
+    }
+  });
+
+  // Bulk replace covered units - truncate and insert
+  app.post("/api/covered-units/bulk", async (req, res) => {
+    try {
+      // Validate that body is an array
+      if (!Array.isArray(req.body)) {
+        return res.status(400).json({ error: "Request body must be an array of covered units" });
+      }
+
+      // Validate each item in the array
+      const validatedData = z.array(insertCoveredUnitSchema).parse(req.body);
+      
+      const count = await storage.bulkReplaceCoveredUnits(validatedData);
+      
+      res.status(200).json({ 
+        message: "Covered units replaced successfully", 
+        count,
+        inserted: count 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data format", details: error.errors });
+      }
+      console.error("Error bulk replacing covered units:", error);
+      res.status(500).json({ error: "Failed to bulk replace covered units" });
     }
   });
 
