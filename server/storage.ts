@@ -226,7 +226,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCoveredUnit(data: InsertCoveredUnit): Promise<CoveredUnit> {
-    const [item] = await db.insert(coveredUnit).values(data).returning();
+    // Calculate coverage duration days
+    const startDate = data.coverageStartDate instanceof Date ? data.coverageStartDate : new Date(data.coverageStartDate);
+    const endDate = data.coverageEndDate instanceof Date ? data.coverageEndDate : new Date(data.coverageEndDate);
+    const coverageDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    const [item] = await db.insert(coveredUnit).values({ 
+      ...data, 
+      coverageDurationDays 
+    }).returning();
     return item;
   }
 
@@ -247,12 +255,24 @@ export class DatabaseStorage implements IStorage {
       return 0;
     }
     
+    // Calculate coverage duration days for each item
+    const dataWithDuration = data.map(item => {
+      const startDate = item.coverageStartDate instanceof Date ? item.coverageStartDate : new Date(item.coverageStartDate);
+      const endDate = item.coverageEndDate instanceof Date ? item.coverageEndDate : new Date(item.coverageEndDate);
+      const coverageDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      return {
+        ...item,
+        coverageDurationDays
+      };
+    });
+    
     // Insert in batches of 500 to avoid query size limits
     const batchSize = 500;
     let totalInserted = 0;
     
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = data.slice(i, i + batchSize);
+    for (let i = 0; i < dataWithDuration.length; i += batchSize) {
+      const batch = dataWithDuration.slice(i, i + batchSize);
       await db.insert(coveredUnit).values(batch);
       totalInserted += batch.length;
     }

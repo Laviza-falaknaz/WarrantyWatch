@@ -80,12 +80,21 @@ export const insertSpareUnitSchema = createInsertSchema(spareUnit).omit({
   id: true,
   createdOn: true,
   modifiedOn: true,
+}).extend({
+  // Allow date strings from JSON (ADF sends dates as strings)
+  retiredDate: z.union([z.date(), z.string().transform(str => new Date(str))]).optional().nullable(),
 });
 
 export const insertCoveredUnitSchema = createInsertSchema(coveredUnit).omit({
   id: true,
   createdOn: true,
   modifiedOn: true,
+  coverageDurationDays: true, // Will be auto-calculated from dates
+}).extend({
+  // Allow date strings from JSON (ADF sends dates as strings)
+  coverageStartDate: z.union([z.date(), z.string().transform(str => new Date(str))]),
+  coverageEndDate: z.union([z.date(), z.string().transform(str => new Date(str))]),
+  orderDate: z.union([z.date(), z.string().transform(str => new Date(str))]).optional().nullable(),
 });
 
 export const insertCoveragePoolSchema = createInsertSchema(coveragePool).omit({
