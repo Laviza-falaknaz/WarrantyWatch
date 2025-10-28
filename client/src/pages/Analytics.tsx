@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
 import {
   BarChart,
@@ -18,28 +20,108 @@ import {
 } from "recharts";
 
 export default function Analytics() {
-  //todo: remove mock functionality
-  const warrantyExpirationData = [
-    { month: "Nov", expiring: 12 },
-    { month: "Dec", expiring: 18 },
-    { month: "Jan", expiring: 34 },
-    { month: "Feb", expiring: 28 },
-    { month: "Mar", expiring: 22 },
-    { month: "Apr", expiring: 31 },
-  ];
+  const { data: analytics, isLoading: analyticsLoading } = useQuery({
+    queryKey: ["/api/analytics"],
+  });
 
-  const poolCoverageByMake = [
-    { make: "HP", coverage: 8.5, inventory: 342 },
-    { make: "Dell", coverage: 12.3, inventory: 289 },
-    { make: "Lenovo", coverage: 5.1, inventory: 256 },
-    { make: "Apple", coverage: 15.7, inventory: 123 },
-  ];
+  const { data: warranties, isLoading: warrantiesLoading } = useQuery({
+    queryKey: ["/api/warranties"],
+  });
 
-  const statusDistribution = [
-    { name: "Active", value: 1247, color: "hsl(var(--chart-1))" },
-    { name: "Expiring Soon", value: 34, color: "hsl(var(--chart-4))" },
-    { name: "Inactive", value: 89, color: "hsl(var(--chart-3))" },
-  ];
+  const { data: inventoryWithWarranty, isLoading: inventoryLoading } = useQuery({
+    queryKey: ["/api/inventory-with-warranty"],
+  });
+
+  // Generate warranty expiration trend data
+  const warrantyExpirationData = warranties ? (() => {
+    const months = ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr"];
+    const now = new Date();
+    
+    return months.map((month, index) => {
+      const targetDate = new Date(now);
+      targetDate.setMonth(targetDate.getMonth() + index);
+      targetDate.setDate(1);
+      
+      const nextMonth = new Date(targetDate);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      
+      const expiring = warranties.filter((w: any) => {
+        const endDate = new Date(w.warrantyEndDate);
+        return endDate >= targetDate && endDate < nextMonth && w.isActive;
+      }).length;
+      
+      return { month, expiring };
+    });
+  })() : [];
+
+  // Generate pool coverage by make data
+  const poolCoverageByMake = inventoryWithWarranty ? (() => {
+    const makeGroups = inventoryWithWarranty.reduce((acc: any, item: any) => {
+      if (!acc[item.make]) {
+        acc[item.make] = { total: 0, inPool: 0 };
+      }
+      acc[item.make].total++;
+      if (!item.soldOrder) {
+        acc[item.make].inPool++;
+      }
+      return acc;
+    }, {});
+    
+    return Object.entries(makeGroups).map(([make, data]: [string, any]) => ({
+      make,
+      coverage: data.total > 0 ? (data.inPool / data.total * 100).toFixed(1) : 0,
+      inventory: data.total,
+    }));
+  })() : [];
+
+  // Generate status distribution
+  const statusDistribution = warranties ? [
+    { 
+      name: "Active", 
+      value: warranties.filter((w: any) => w.isActive).length, 
+      color: "hsl(var(--chart-1))" 
+    },
+    { 
+      name: "Expiring Soon", 
+      value: warranties.filter((w: any) => {
+        if (!w.isActive) return false;
+        const daysRemaining = Math.floor((new Date(w.warrantyEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        return daysRemaining < 30;
+      }).length, 
+      color: "hsl(var(--chart-4))" 
+    },
+    { 
+      name: "Inactive", 
+      value: warranties.filter((w: any) => !w.isActive).length, 
+      color: "hsl(var(--chart-3))" 
+    },
+  ] : [];
+
+  // Calculate coverage target
+  const totalPoolUnits = inventoryWithWarranty?.filter((item: any) => !item.soldOrder).length || 0;
+  const targetCoverage = 0.15;
+  const targetUnits = Math.ceil((analytics?.totalInventory || 0) * targetCoverage);
+  const unitsNeeded = Math.max(0, targetUnits - totalPoolUnits);
+
+  if (analyticsLoading || warrantiesLoading || inventoryLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold">Analytics</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Visualize warranty trends and pool performance
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-96" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -183,20 +265,22 @@ export default function Analytics() {
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
               <span className="text-sm font-medium">Total Inventory Units</span>
-              <span className="text-lg font-bold">1,370</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
-              <span className="text-sm font-medium">Average Pool Coverage</span>
-              <span className="text-lg font-bold">12.8%</span>
+              <span className="text-lg font-bold">{analytics?.totalInventory || 0}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
               <span className="text-sm font-medium">Total Pool Units</span>
-              <span className="text-lg font-bold">64</span>
+              <span className="text-lg font-bold">{totalPoolUnits}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
+              <span className="text-sm font-medium">Average Pool Coverage</span>
+              <span className="text-lg font-bold">
+                {analytics?.totalInventory > 0 ? ((totalPoolUnits / analytics.totalInventory) * 100).toFixed(1) : 0}%
+              </span>
             </div>
             <div className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
               <span className="text-sm font-medium">Coverage Target (15%)</span>
-              <span className="text-lg font-bold text-yellow-600 dark:text-yellow-500">
-                206 needed
+              <span className={`text-lg font-bold ${unitsNeeded > 0 ? 'text-yellow-600 dark:text-yellow-500' : 'text-green-600 dark:text-green-500'}`}>
+                {unitsNeeded > 0 ? `${unitsNeeded} needed` : 'Target met'}
               </span>
             </div>
           </CardContent>
