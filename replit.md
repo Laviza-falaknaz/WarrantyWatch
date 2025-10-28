@@ -26,9 +26,20 @@ Preferred communication style: Simple, everyday language.
 
 **Backend Architecture**:
 - **Framework**: Express.js with TypeScript on Node.js.
-- **Server Structure**: RESTful API organized by domain, with middleware for JSON parsing, logging, and error handling.
-- **API Endpoints**: `/api/spare-units`, `/api/covered-units`, `/api/coverage-pools`, `/api/coverage-pools-with-stats`, `/api/analytics`, `/api/filters` (dynamic filter options).
+- **Server Structure**: RESTful API organized by domain, with middleware for JSON parsing (50MB limit for bulk uploads), logging, and error handling.
+- **API Endpoints**: 
+  - Standard CRUD: `/api/spare-units`, `/api/covered-units`, `/api/coverage-pools`
+  - Analytics: `/api/coverage-pools-with-stats`, `/api/analytics`, `/api/filters`
+  - **Bulk Upload (Azure Data Factory Integration)**:
+    - `POST /api/spare-units/bulk` - Truncate and replace all spare units
+    - `POST /api/covered-units/bulk` - Truncate and replace all covered units
 - **Data Access Layer**: Storage abstraction (`IStorage` interface) for clean separation from database operations.
+- **Bulk Upload Features**:
+  - Transaction-wrapped (atomic truncate + insert for data integrity)
+  - Batch processing (500 items per batch to handle large datasets)
+  - JSON date string support (converts ISO strings to Date objects)
+  - Auto-calculation of coverage duration days
+  - Validation: Invalid dates rejected, start date must be <= end date
 
 **Data Storage**:
 - **Database**: PostgreSQL via Neon Serverless.
