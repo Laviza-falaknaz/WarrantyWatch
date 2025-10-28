@@ -70,6 +70,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk replace spare units - truncate and insert
   app.post("/api/spare-units/bulk", async (req, res) => {
     try {
+      // Debug logging to see what we're receiving
+      console.log("Received bulk upload request");
+      console.log("Body type:", typeof req.body);
+      console.log("Is array?", Array.isArray(req.body));
+      console.log("Body keys:", Object.keys(req.body || {}));
+      console.log("First 200 chars of body:", JSON.stringify(req.body).substring(0, 200));
+      
       // Validate that body is an array
       if (!Array.isArray(req.body)) {
         return res.status(400).json({ error: "Request body must be an array of spare units" });
