@@ -168,7 +168,36 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (October 28, 2025)
 
-### Major Refactoring - Correct Business Model Implementation
+### Latest Update: Searchable Filter Dropdowns with Customer & Order Filters
+
+**Searchable UI Components**:
+- Created `SearchableSelect` component using cmdk (Command) for handling large datasets (100+ items)
+- Provides search functionality with keyboard navigation and accessibility
+- Fixed critical bug where cmdk normalizes values to lowercase - now preserves original casing
+- Component includes "Clear selection" option and visual checkmarks for selected values
+
+**Enhanced Filter Options**:
+- Extended `getFilterOptions()` API to include `customers` (from covered_unit.customerName) and `orderNumbers` (from covered_unit.orderNumber)
+- Filter options now return 7 arrays: makes, models, processors, rams, categories, customers, orderNumbers
+- All filter data is DB-controlled with no hardcoded values
+
+**Coverage Pools Enhancement**:
+- Updated Coverage Pools dialog to include Customer Name and Order Number as filter criteria
+- All 6 filter dropdowns (Make, Model, Processor, RAM, Customer, Order Number) now use SearchableSelect
+- Pool filter criteria expanded to support customer and order filtering alongside specifications
+- Pool cards display customer and order criteria alongside specification tags
+
+**TypeScript Improvements**:
+- Added proper type definitions for all API responses (filter options, analytics, coverage pools)
+- Fixed LSP errors across Inventory, Dashboard, and PoolGroups pages
+- All useQuery hooks now have explicit type parameters for better type safety
+
+**Testing**:
+- Validated e2e pool creation with searchable filters
+- Confirmed success toast, query invalidation, and UI updates work correctly
+- Verified new pools appear with correct coverage statistics and filter criteria tags
+
+### Earlier Update: Major Refactoring - Correct Business Model Implementation
 
 Updated the entire application to reflect the correct business model:
 
