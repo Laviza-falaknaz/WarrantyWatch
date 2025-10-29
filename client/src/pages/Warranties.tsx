@@ -69,6 +69,28 @@ export default function Warranties() {
     });
   }, [stockUnderWarranty, hideExpired, statusFilter, expiringThresholdDays]);
 
+  // Calculate stats for display
+  const stats = useMemo(() => {
+    if (!stockUnderWarranty) return { active: 0, expiring: 0, expired: 0, total: 0 };
+    
+    const active = stockUnderWarranty.filter((item: CoveredUnit) => {
+      const days = getDaysRemaining(item.coverageEndDate);
+      return getCoverageStatus(days) === "Active";
+    }).length;
+    
+    const expiring = stockUnderWarranty.filter((item: CoveredUnit) => {
+      const days = getDaysRemaining(item.coverageEndDate);
+      return getCoverageStatus(days) === "Expiring Soon";
+    }).length;
+    
+    const expired = stockUnderWarranty.filter((item: CoveredUnit) => {
+      const days = getDaysRemaining(item.coverageEndDate);
+      return getCoverageStatus(days) === "Expired";
+    }).length;
+    
+    return { active, expiring, expired, total: stockUnderWarranty.length };
+  }, [stockUnderWarranty, expiringThresholdDays]);
+
   const columns: Column<CoveredUnit>[] = [
     {
       key: "serialNumber",
@@ -256,28 +278,6 @@ export default function Warranties() {
       </div>
     );
   }
-
-  // Calculate stats for display
-  const stats = useMemo(() => {
-    if (!stockUnderWarranty) return { active: 0, expiring: 0, expired: 0, total: 0 };
-    
-    const active = stockUnderWarranty.filter((item: CoveredUnit) => {
-      const days = getDaysRemaining(item.coverageEndDate);
-      return getCoverageStatus(days) === "Active";
-    }).length;
-    
-    const expiring = stockUnderWarranty.filter((item: CoveredUnit) => {
-      const days = getDaysRemaining(item.coverageEndDate);
-      return getCoverageStatus(days) === "Expiring Soon";
-    }).length;
-    
-    const expired = stockUnderWarranty.filter((item: CoveredUnit) => {
-      const days = getDaysRemaining(item.coverageEndDate);
-      return getCoverageStatus(days) === "Expired";
-    }).length;
-    
-    return { active, expiring, expired, total: stockUnderWarranty.length };
-  }, [stockUnderWarranty, expiringThresholdDays]);
 
   return (
     <div className="space-y-6">
