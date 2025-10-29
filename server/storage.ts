@@ -468,8 +468,8 @@ export class DatabaseStorage implements IStorage {
     processors: string[];
     rams: string[];
     categories: string[];
-    customers: string[];
-    orderNumbers: string[];
+    storageSizes: string[];
+    generations: string[];
   }> {
     // Get filter options from both spare units and covered units
     const spareItems = await db.select({
@@ -478,6 +478,8 @@ export class DatabaseStorage implements IStorage {
       processor: spareUnit.processor,
       ram: spareUnit.ram,
       category: spareUnit.category,
+      hdd: spareUnit.hdd,
+      generation: spareUnit.generation,
     }).from(spareUnit);
     
     const coveredItems = await db.select({
@@ -486,8 +488,8 @@ export class DatabaseStorage implements IStorage {
       processor: coveredUnit.processor,
       ram: coveredUnit.ram,
       category: coveredUnit.category,
-      customerName: coveredUnit.customerName,
-      orderNumber: coveredUnit.orderNumber,
+      hdd: coveredUnit.hdd,
+      generation: coveredUnit.generation,
     }).from(coveredUnit);
     
     const allItems = [...spareItems, ...coveredItems];
@@ -497,10 +499,10 @@ export class DatabaseStorage implements IStorage {
     const processors = Array.from(new Set(allItems.map(i => i.processor).filter(Boolean) as string[])).sort();
     const rams = Array.from(new Set(allItems.map(i => i.ram).filter(Boolean) as string[])).sort();
     const categories = Array.from(new Set(allItems.map(i => i.category).filter(Boolean) as string[])).sort();
-    const customers = Array.from(new Set(coveredItems.map(i => i.customerName).filter(Boolean) as string[])).sort();
-    const orderNumbers = Array.from(new Set(coveredItems.map(i => i.orderNumber).filter(Boolean) as string[])).sort();
+    const storageSizes = Array.from(new Set(allItems.map(i => i.hdd).filter(Boolean) as string[])).sort();
+    const generations = Array.from(new Set(allItems.map(i => i.generation).filter(Boolean) as string[])).sort();
     
-    return { makes, models, processors, rams, categories, customers, orderNumbers };
+    return { makes, models, processors, rams, categories, storageSizes, generations };
   }
 
   async getAnalytics(): Promise<{

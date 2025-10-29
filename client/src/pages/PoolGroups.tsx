@@ -45,8 +45,9 @@ export default function PoolGroups() {
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedProcessors, setSelectedProcessors] = useState<string[]>([]);
   const [selectedRams, setSelectedRams] = useState<string[]>([]);
-  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
-  const [selectedOrderNumbers, setSelectedOrderNumbers] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedStorageSizes, setSelectedStorageSizes] = useState<string[]>([]);
+  const [selectedGenerations, setSelectedGenerations] = useState<string[]>([]);
   const { toast } = useToast();
 
   const { data: coveragePools, isLoading: coveragePoolsLoading } = useQuery<CoveragePoolWithStats[]>({
@@ -59,8 +60,8 @@ export default function PoolGroups() {
     processors: string[];
     rams: string[];
     categories: string[];
-    customers: string[];
-    orderNumbers: string[];
+    storageSizes: string[];
+    generations: string[];
   }>({
     queryKey: ["/api/filters"],
   });
@@ -117,8 +118,9 @@ export default function PoolGroups() {
     setSelectedModels([]);
     setSelectedProcessors([]);
     setSelectedRams([]);
-    setSelectedCustomers([]);
-    setSelectedOrderNumbers([]);
+    setSelectedCategories([]);
+    setSelectedStorageSizes([]);
+    setSelectedGenerations([]);
   };
 
   const handleCreatePool = () => {
@@ -127,8 +129,9 @@ export default function PoolGroups() {
       model: selectedModels.length > 0 ? selectedModels : undefined,
       processor: selectedProcessors.length > 0 ? selectedProcessors : undefined,
       ram: selectedRams.length > 0 ? selectedRams : undefined,
-      customerName: selectedCustomers.length > 0 ? selectedCustomers : undefined,
-      orderNumber: selectedOrderNumbers.length > 0 ? selectedOrderNumbers : undefined,
+      category: selectedCategories.length > 0 ? selectedCategories : undefined,
+      hdd: selectedStorageSizes.length > 0 ? selectedStorageSizes : undefined,
+      generation: selectedGenerations.length > 0 ? selectedGenerations : undefined,
     };
 
     createMutation.mutate({
@@ -148,8 +151,9 @@ export default function PoolGroups() {
         ...(Array.isArray(criteria.model) ? criteria.model : criteria.model ? [criteria.model] : []),
         ...(Array.isArray(criteria.processor) ? criteria.processor : criteria.processor ? [criteria.processor] : []),
         ...(Array.isArray(criteria.ram) ? criteria.ram : criteria.ram ? [criteria.ram] : []),
-        ...(Array.isArray(criteria.customerName) ? criteria.customerName : criteria.customerName ? [criteria.customerName] : []),
-        ...(Array.isArray(criteria.orderNumber) ? criteria.orderNumber : criteria.orderNumber ? [criteria.orderNumber] : []),
+        ...(Array.isArray(criteria.category) ? criteria.category : criteria.category ? [criteria.category] : []),
+        ...(Array.isArray(criteria.hdd) ? criteria.hdd : criteria.hdd ? [criteria.hdd] : []),
+        ...(Array.isArray(criteria.generation) ? criteria.generation : criteria.generation ? [criteria.generation] : []),
       ];
       
       return {
@@ -201,7 +205,7 @@ export default function PoolGroups() {
             <DialogHeader>
               <DialogTitle>Create New Coverage Pool</DialogTitle>
               <DialogDescription>
-                Define a coverage pool based on laptop specifications, customer, and order details to track spare units and coverage ratios
+                Define a coverage pool based on laptop specifications to track spare units and coverage ratios
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4 overflow-y-auto flex-1">
@@ -266,23 +270,33 @@ export default function PoolGroups() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Customer Name (Optional)</Label>
+                <Label>Category (Optional)</Label>
                 <MultiSelectCombobox
-                  values={selectedCustomers}
-                  onValuesChange={setSelectedCustomers}
-                  options={filterOptions?.customers || []}
-                  placeholder="Select customers"
-                  searchPlaceholder="Search customers..."
+                  values={selectedCategories}
+                  onValuesChange={setSelectedCategories}
+                  options={filterOptions?.categories || []}
+                  placeholder="Select categories"
+                  searchPlaceholder="Search categories..."
                 />
               </div>
               <div className="space-y-2">
-                <Label>Order Number (Optional)</Label>
+                <Label>Storage Size (Optional)</Label>
                 <MultiSelectCombobox
-                  values={selectedOrderNumbers}
-                  onValuesChange={setSelectedOrderNumbers}
-                  options={filterOptions?.orderNumbers || []}
-                  placeholder="Select order numbers"
-                  searchPlaceholder="Search order numbers..."
+                  values={selectedStorageSizes}
+                  onValuesChange={setSelectedStorageSizes}
+                  options={filterOptions?.storageSizes || []}
+                  placeholder="Select storage sizes"
+                  searchPlaceholder="Search storage sizes..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Generation (Optional)</Label>
+                <MultiSelectCombobox
+                  values={selectedGenerations}
+                  onValuesChange={setSelectedGenerations}
+                  options={filterOptions?.generations || []}
+                  placeholder="Select generations"
+                  searchPlaceholder="Search generations..."
                 />
               </div>
             </div>

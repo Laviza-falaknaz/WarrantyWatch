@@ -417,10 +417,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         addFilterCondition(filterCriteria.model, spareUnit.model, coveredUnit.model);
         addFilterCondition(filterCriteria.processor, spareUnit.processor, coveredUnit.processor);
         addFilterCondition(filterCriteria.ram, spareUnit.ram, coveredUnit.ram);
-        
-        // Apply filters for covered unit-only fields
-        addFilterCondition(filterCriteria.customerName, null, coveredUnit.customerName);
-        addFilterCondition(filterCriteria.orderNumber, null, coveredUnit.orderNumber);
+        addFilterCondition(filterCriteria.category, spareUnit.category, coveredUnit.category);
+        addFilterCondition(filterCriteria.hdd, spareUnit.hdd, coveredUnit.hdd);
+        addFilterCondition(filterCriteria.generation, spareUnit.generation, coveredUnit.generation);
         
         // Count spare units matching filter
         let spareQuery = db.select().from(spareUnit);
