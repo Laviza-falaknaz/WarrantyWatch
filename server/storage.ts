@@ -309,7 +309,7 @@ export class DatabaseStorage implements IStorage {
     const limit = filters?.limit ?? 10000;
     const offset = filters?.offset ?? 0;
     
-    return query.orderBy(desc(coveredUnit.createdOn)).limit(limit).offset(offset);
+    return query.orderBy(desc(coveredUnit.coverageStartDate)).limit(limit).offset(offset);
   }
 
   async getCoveredUnitById(id: string): Promise<CoveredUnit | undefined> {
