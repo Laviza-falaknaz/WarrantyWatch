@@ -156,12 +156,25 @@ export class DatabaseStorage implements IStorage {
       return 0;
     }
     
+    // Deduplicate records by composite key (serialNumber + areaId + itemId)
+    // Keep the last occurrence of each duplicate
+    const uniqueRecords = new Map<string, InsertSpareUnit>();
+    for (const record of data) {
+      const key = `${record.serialNumber}|${record.areaId}|${record.itemId}`;
+      uniqueRecords.set(key, record);
+    }
+    const deduplicatedData = Array.from(uniqueRecords.values());
+    
+    if (deduplicatedData.length < data.length) {
+      console.log(`[bulk-upload] Deduplicated ${data.length - deduplicatedData.length} duplicate spare unit records (${data.length} -> ${deduplicatedData.length})`);
+    }
+    
     // Process in batches of 500 to handle large datasets
     const batchSize = 500;
     let totalProcessed = 0;
     
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = data.slice(i, i + batchSize);
+    for (let i = 0; i < deduplicatedData.length; i += batchSize) {
+      const batch = deduplicatedData.slice(i, i + batchSize);
       
       // Execute batch in a transaction for atomicity
       await db.transaction(async (tx) => {
@@ -290,12 +303,25 @@ export class DatabaseStorage implements IStorage {
       return 0;
     }
     
+    // Deduplicate records by composite key (serialNumber + areaId + itemId)
+    // Keep the last occurrence of each duplicate
+    const uniqueRecords = new Map<string, BulkInsertCoveredUnit>();
+    for (const record of data) {
+      const key = `${record.serialNumber}|${record.areaId}|${record.itemId}`;
+      uniqueRecords.set(key, record);
+    }
+    const deduplicatedData = Array.from(uniqueRecords.values());
+    
+    if (deduplicatedData.length < data.length) {
+      console.log(`[bulk-upload] Deduplicated ${data.length - deduplicatedData.length} duplicate records (${data.length} -> ${deduplicatedData.length})`);
+    }
+    
     // Process in batches of 500 to handle large datasets
     const batchSize = 500;
     let totalProcessed = 0;
     
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = data.slice(i, i + batchSize);
+    for (let i = 0; i < deduplicatedData.length; i += batchSize) {
+      const batch = deduplicatedData.slice(i, i + batchSize);
       
       // Precompute coverage duration days and convert dates for all items in batch
       // Also validate date integrity (start <= end) to maintain data quality
