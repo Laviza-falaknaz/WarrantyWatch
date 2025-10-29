@@ -39,6 +39,8 @@ Preferred communication style: Simple, everyday language.
   - **Query Limits**: GET endpoints support optional `limit` parameter (default: 10,000 records) to prevent crashes with large datasets (100K+ records)
   - **Purpose**: Ensures responsive UI and prevents memory exhaustion when querying production databases with massive record counts
   - **Usage**: Frontend can override default via `?limit=N` query parameter; search/filter functionality helps users find specific records efficiently
+  - **Stats Endpoints**: Separate lightweight endpoints (`/api/spare-units/stats`, `/api/covered-units/stats`) query full dataset using efficient SQL COUNT queries
+  - **Two-Tier Architecture**: Summary cards use stats endpoints (full dataset counts), while data tables use limited queries (10k max) for optimal performance
 - **Bulk Upload Features**:
   - Transaction-wrapped (atomic truncate + insert for data integrity)
   - Batch processing (500 items per batch to handle large datasets)
