@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import DataTable, { Column } from "@/components/DataTable";
 import FilterPanel, { FilterCategory } from "@/components/FilterPanel";
 import SearchBar from "@/components/SearchBar";
+import TablePagination from "@/components/TablePagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +14,9 @@ import type { SpareUnit } from "@shared/schema";
 export default function Inventory() {
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  const ITEMS_PER_PAGE = 100;
 
   const { data: filterOptions } = useQuery<{
     makes: string[];
@@ -26,8 +30,9 @@ export default function Inventory() {
     queryKey: ["/api/filters"],
   });
 
-  const { data: replacementUnits, isLoading } = useQuery({
-    queryKey: ["/api/spare-units", selectedFilters, searchQuery],
+  // Fetch stats for total count (used for pagination)
+  const { data: stats } = useQuery({
+    queryKey: ["/api/spare-units/stats", selectedFilters, searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams();
       
@@ -38,6 +43,30 @@ export default function Inventory() {
       if (searchQuery) {
         params.append("search", searchQuery);
       }
+      
+      const response = await fetch(`/api/spare-units/stats?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch replacement units stats");
+      return response.json() as Promise<{ total: number }>;
+    },
+  });
+
+  // Fetch paginated data
+  const { data: replacementUnits, isLoading } = useQuery({
+    queryKey: ["/api/spare-units", selectedFilters, searchQuery, currentPage],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      
+      Object.entries(selectedFilters).forEach(([key, values]) => {
+        values.forEach(value => params.append(key, value));
+      });
+      
+      if (searchQuery) {
+        params.append("search", searchQuery);
+      }
+      
+      // Add pagination parameters
+      params.append("limit", ITEMS_PER_PAGE.toString());
+      params.append("offset", ((currentPage - 1) * ITEMS_PER_PAGE).toString());
       
       const response = await fetch(`/api/spare-units?${params}`);
       if (!response.ok) throw new Error("Failed to fetch replacement units");
@@ -181,11 +210,21 @@ export default function Inventory() {
       ...prev,
       [categoryId]: values,
     }));
+    setCurrentPage(1); // Reset to first page when filters change
   };
 
   const handleClearAll = () => {
     setSelectedFilters({});
+    setCurrentPage(1); // Reset to first page when clearing filters
   };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1); // Reset to first page when search changes
+  };
+
+  const totalItems = stats?.total || 0;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
   if (isLoading) {
     return (
@@ -220,17 +259,6 @@ export default function Inventory() {
         </Button>
       </div>
 
-      {/* Warning when query limit is reached */}
-      {replacementUnits && replacementUnits.length >= 10000 && (
-        <Alert data-testid="alert-query-limit-reached">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Showing {replacementUnits.length.toLocaleString()} records (query limit reached). 
-            Use search and filters to find specific units. Additional records may exist in the database.
-          </AlertDescription>
-        </Alert>
-      )}
-
       <div className="flex gap-6">
         <div className="w-72 flex-shrink-0">
           <FilterPanel
@@ -244,10 +272,20 @@ export default function Inventory() {
         <div className="flex-1 space-y-4">
           <SearchBar
             placeholder="Search by serial number, make, model..."
-            onSearch={setSearchQuery}
+            onSearch={handleSearchChange}
             className="max-w-md"
             data-testid="input-search-replacement-units"
           />
+
+          {totalPages > 0 && (
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={ITEMS_PER_PAGE}
+              totalItems={totalItems}
+            />
+          )}
 
           <DataTable
             columns={columns}
