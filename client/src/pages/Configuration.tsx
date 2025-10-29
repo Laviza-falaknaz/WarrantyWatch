@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,19 +35,32 @@ export default function Configuration() {
 
   const form = useForm<ConfigurationFormValues>({
     resolver: zodResolver(configurationFormSchema),
-    values: configuration ? {
-      lowCoverageThresholdPercent: Number(configuration.lowCoverageThresholdPercent),
-      expiringCoverageDays: configuration.expiringCoverageDays,
-      poolInactivityDays: configuration.poolInactivityDays,
-      enableLowCoverageAlerts: configuration.enableLowCoverageAlerts,
-      enableExpiringAlerts: configuration.enableExpiringAlerts,
-      dashboardRefreshMinutes: configuration.dashboardRefreshMinutes,
-    } : undefined,
+    defaultValues: {
+      lowCoverageThresholdPercent: 10,
+      expiringCoverageDays: 30,
+      poolInactivityDays: 90,
+      enableLowCoverageAlerts: true,
+      enableExpiringAlerts: true,
+      dashboardRefreshMinutes: 5,
+    },
   });
+
+  useEffect(() => {
+    if (configuration) {
+      form.reset({
+        lowCoverageThresholdPercent: Number(configuration.lowCoverageThresholdPercent),
+        expiringCoverageDays: configuration.expiringCoverageDays,
+        poolInactivityDays: configuration.poolInactivityDays,
+        enableLowCoverageAlerts: configuration.enableLowCoverageAlerts,
+        enableExpiringAlerts: configuration.enableExpiringAlerts,
+        dashboardRefreshMinutes: configuration.dashboardRefreshMinutes,
+      });
+    }
+  }, [configuration, form]);
 
   const updateConfigMutation = useMutation({
     mutationFn: async (data: ConfigurationFormValues) => {
-      return await apiRequest("/api/configuration", "PATCH", data);
+      return await apiRequest("PATCH", "/api/configuration", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/configuration"] });
