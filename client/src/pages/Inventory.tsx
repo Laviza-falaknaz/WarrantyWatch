@@ -223,6 +223,10 @@ export default function Inventory() {
     setCurrentPage(1); // Reset to first page when search changes
   }, []);
 
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
   const totalItems = stats?.total || 0;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
@@ -281,7 +285,7 @@ export default function Inventory() {
             <TablePagination
               currentPage={currentPage}
               totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              onPageChange={handlePageChange}
               itemsPerPage={ITEMS_PER_PAGE}
               totalItems={totalItems}
             />

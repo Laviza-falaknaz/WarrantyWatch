@@ -78,6 +78,10 @@ export default function Warranties() {
     setCurrentPage(1); // Reset to first page when search changes
   }, []);
 
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
   const totalPages = Math.ceil(stats.total / ITEMS_PER_PAGE);
 
   const columns: Column<CoveredUnit>[] = [
@@ -324,7 +328,7 @@ export default function Warranties() {
           <TablePagination
             currentPage={currentPage}
             totalPages={totalPages}
-            onPageChange={setCurrentPage}
+            onPageChange={handlePageChange}
             itemsPerPage={ITEMS_PER_PAGE}
             totalItems={stats.total}
           />

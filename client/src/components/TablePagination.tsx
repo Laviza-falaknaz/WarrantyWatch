@@ -1,12 +1,12 @@
+import { useMemo } from "react";
 import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TablePaginationProps {
   currentPage: number;
@@ -23,7 +23,7 @@ export default function TablePagination({
   itemsPerPage,
   totalItems,
 }: TablePaginationProps) {
-  const getPageNumbers = () => {
+  const getPageNumbers = useMemo(() => {
     const pages: (number | string)[] = [];
     const maxVisiblePages = 7;
 
@@ -56,7 +56,7 @@ export default function TablePagination({
     }
 
     return pages;
-  };
+  }, [currentPage, totalPages]);
 
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
@@ -74,52 +74,57 @@ export default function TablePagination({
       <Pagination>
         <PaginationContent>
           <PaginationItem>
-            <PaginationPrevious
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
+            <Button
+              type="button"
+              variant="ghost"
+              size="default"
+              onClick={() => {
                 if (currentPage > 1) onPageChange(currentPage - 1);
               }}
-              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-              aria-disabled={currentPage === 1}
+              disabled={currentPage === 1}
+              className="gap-1 pl-2.5"
               data-testid="button-pagination-previous"
-            />
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>Previous</span>
+            </Button>
           </PaginationItem>
 
-          {getPageNumbers().map((page, index) =>
+          {getPageNumbers.map((page, index) =>
             page === "ellipsis" ? (
               <PaginationItem key={`ellipsis-${index}`}>
                 <PaginationEllipsis />
               </PaginationItem>
             ) : (
               <PaginationItem key={page}>
-                <PaginationLink
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onPageChange(page as number);
-                  }}
-                  isActive={currentPage === page}
-                  className="cursor-pointer"
+                <Button
+                  type="button"
+                  variant={currentPage === page ? "outline" : "ghost"}
+                  size="icon"
+                  onClick={() => onPageChange(page as number)}
                   data-testid={`button-pagination-page-${page}`}
                 >
                   {page}
-                </PaginationLink>
+                </Button>
               </PaginationItem>
             )
           )}
 
           <PaginationItem>
-            <PaginationNext
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
+            <Button
+              type="button"
+              variant="ghost"
+              size="default"
+              onClick={() => {
                 if (currentPage < totalPages) onPageChange(currentPage + 1);
               }}
-              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-              aria-disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages}
+              className="gap-1 pr-2.5"
               data-testid="button-pagination-next"
-            />
+            >
+              <span>Next</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </PaginationItem>
         </PaginationContent>
       </Pagination>
