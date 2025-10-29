@@ -298,10 +298,22 @@ export class DatabaseStorage implements IStorage {
       const batch = data.slice(i, i + batchSize);
       
       // Precompute coverage duration days and convert dates for all items in batch
-      const enrichedBatch = batch.map(item => {
+      // Also validate date integrity (start <= end) to maintain data quality
+      const enrichedBatch = batch.map((item, idx) => {
         const startDate = item.coverageStartDate instanceof Date ? item.coverageStartDate : new Date(item.coverageStartDate);
         const endDate = item.coverageEndDate instanceof Date ? item.coverageEndDate : new Date(item.coverageEndDate);
         const orderDate = item.orderDate ? (item.orderDate instanceof Date ? item.orderDate : new Date(item.orderDate)) : null;
+        
+        // Validate date integrity - start date must be <= end date
+        if (startDate > endDate) {
+          throw new Error(`Invalid date range in batch item ${i + idx}: coverageStartDate (${startDate.toISOString()}) must be <= coverageEndDate (${endDate.toISOString()})`);
+        }
+        
+        // Validate dates are valid (not NaN)
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          throw new Error(`Invalid date format in batch item ${i + idx}: dates must be valid ISO 8601 strings or Date objects`);
+        }
+        
         const coverageDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
         
         return { 
