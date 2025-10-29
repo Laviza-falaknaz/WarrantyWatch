@@ -190,6 +190,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid data format", details: error.errors });
       }
+      
+      // Return validation errors from storage layer with 400 status
+      if (error instanceof Error && error.message.includes("Invalid date")) {
+        console.error("Validation error in covered units bulk upload:", error.message);
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.message 
+        });
+      }
+      
       console.error("Error bulk upserting covered units:", error);
       res.status(500).json({ error: "Failed to bulk upsert covered units" });
     }
