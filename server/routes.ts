@@ -42,6 +42,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit = Math.min(parsedLimit, 10000);
       }
       
+      // Validate offset parameter
+      let offset: number | undefined = undefined;
+      if (req.query.offset) {
+        const parsedOffset = parseInt(req.query.offset as string, 10);
+        if (isNaN(parsedOffset) || parsedOffset < 0) {
+          return res.status(400).json({ error: "Invalid offset parameter: must be a non-negative integer" });
+        }
+        offset = parsedOffset;
+      }
+      
       const filters = {
         make: req.query.make ? (Array.isArray(req.query.make) ? req.query.make as string[] : [req.query.make as string]) : undefined,
         model: req.query.model ? (Array.isArray(req.query.model) ? req.query.model as string[] : [req.query.model as string]) : undefined,
@@ -50,6 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category as string[] : [req.query.category as string]) : undefined,
         search: req.query.search as string | undefined,
         limit,
+        offset,
       };
       
       const units = await storage.getSpareUnits(filters);
@@ -163,6 +174,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit = Math.min(parsedLimit, 10000);
       }
       
+      // Validate offset parameter
+      let offset: number | undefined = undefined;
+      if (req.query.offset) {
+        const parsedOffset = parseInt(req.query.offset as string, 10);
+        if (isNaN(parsedOffset) || parsedOffset < 0) {
+          return res.status(400).json({ error: "Invalid offset parameter: must be a non-negative integer" });
+        }
+        offset = parsedOffset;
+      }
+      
       const filters = {
         make: req.query.make ? (Array.isArray(req.query.make) ? req.query.make as string[] : [req.query.make as string]) : undefined,
         model: req.query.model ? (Array.isArray(req.query.model) ? req.query.model as string[] : [req.query.model as string]) : undefined,
@@ -172,6 +193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: req.query.status ? (Array.isArray(req.query.status) ? req.query.status as string[] : [req.query.status as string]) : undefined,
         search: req.query.search as string | undefined,
         limit,
+        offset,
       };
       
       const units = await storage.getCoveredUnits(filters);
