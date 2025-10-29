@@ -58,11 +58,13 @@ This API provides bulk upsert endpoints for Azure Data Factory (ADF) integration
 
 ```json
 {
-  "message": "Spare units replaced successfully",
+  "message": "Spare units upserted successfully",
   "count": 150,
-  "inserted": 150
+  "processed": 150
 }
 ```
+
+Note: `processed` indicates the total number of records inserted or updated.
 
 #### Error Response
 
@@ -176,11 +178,13 @@ curl -X POST https://your-app.replit.app/api/spare-units/bulk \
 
 ```json
 {
-  "message": "Covered units replaced successfully",
+  "message": "Covered units upserted successfully",
   "count": 200,
-  "inserted": 200
+  "processed": 200
 }
 ```
+
+Note: `processed` indicates the total number of records inserted or updated.
 
 #### Error Responses
 

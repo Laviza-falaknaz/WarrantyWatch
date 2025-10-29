@@ -153,32 +153,34 @@ export class DatabaseStorage implements IStorage {
     for (let i = 0; i < data.length; i += batchSize) {
       const batch = data.slice(i, i + batchSize);
       
-      for (const item of batch) {
-        await db.insert(spareUnit)
-          .values(item)
+      // Execute batch in a transaction for atomicity
+      await db.transaction(async (tx) => {
+        await tx.insert(spareUnit)
+          .values(batch)
           .onConflictDoUpdate({
             target: [spareUnit.serialNumber, spareUnit.areaId, spareUnit.itemId],
             set: {
-              make: item.make,
-              model: item.model,
-              processor: item.processor,
-              generation: item.generation,
-              ram: item.ram,
-              hdd: item.hdd,
-              displaySize: item.displaySize,
-              touchscreen: item.touchscreen,
-              category: item.category,
-              reservedForCase: item.reservedForCase,
-              retiredOrder: item.retiredOrder,
-              currentHolder: item.currentHolder,
-              retiredDate: item.retiredDate,
-              productDescription: item.productDescription,
-              productNumber: item.productNumber,
-              modifiedOn: new Date(),
+              make: sql`excluded.make`,
+              model: sql`excluded.model`,
+              processor: sql`excluded.processor`,
+              generation: sql`excluded.generation`,
+              ram: sql`excluded.ram`,
+              hdd: sql`excluded.hdd`,
+              displaySize: sql`excluded."displaySize"`,
+              touchscreen: sql`excluded.touchscreen`,
+              category: sql`excluded.category`,
+              reservedForCase: sql`excluded."reservedForCase"`,
+              retiredOrder: sql`excluded."retiredOrder"`,
+              currentHolder: sql`excluded."currentHolder"`,
+              retiredDate: sql`excluded."retiredDate"`,
+              productDescription: sql`excluded."productDescription"`,
+              productNumber: sql`excluded."productNumber"`,
+              modifiedOn: sql`now()`,
             },
           });
-        totalProcessed++;
-      }
+      });
+      
+      totalProcessed += batch.length;
     }
     
     return totalProcessed;
@@ -285,44 +287,49 @@ export class DatabaseStorage implements IStorage {
     for (let i = 0; i < data.length; i += batchSize) {
       const batch = data.slice(i, i + batchSize);
       
-      for (const item of batch) {
-        // Calculate coverage duration days
+      // Precompute coverage duration days for all items in batch
+      const enrichedBatch = batch.map(item => {
         const startDate = item.coverageStartDate instanceof Date ? item.coverageStartDate : new Date(item.coverageStartDate);
         const endDate = item.coverageEndDate instanceof Date ? item.coverageEndDate : new Date(item.coverageEndDate);
         const coverageDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        await db.insert(coveredUnit)
-          .values({ ...item, coverageDurationDays })
+        return { ...item, coverageDurationDays };
+      });
+      
+      // Execute batch in a transaction for atomicity
+      await db.transaction(async (tx) => {
+        await tx.insert(coveredUnit)
+          .values(enrichedBatch)
           .onConflictDoUpdate({
             target: [coveredUnit.serialNumber, coveredUnit.areaId, coveredUnit.itemId],
             set: {
-              make: item.make,
-              model: item.model,
-              processor: item.processor,
-              generation: item.generation,
-              ram: item.ram,
-              hdd: item.hdd,
-              displaySize: item.displaySize,
-              touchscreen: item.touchscreen,
-              category: item.category,
-              coverageStartDate: item.coverageStartDate,
-              coverageEndDate: item.coverageEndDate,
-              coverageDescription: item.coverageDescription,
-              coverageDurationDays,
-              isCoverageActive: item.isCoverageActive,
-              customerName: item.customerName,
-              customerEmail: item.customerEmail,
-              customerPhone: item.customerPhone,
-              orderNumber: item.orderNumber,
-              orderDate: item.orderDate,
-              currentHolder: item.currentHolder,
-              productDescription: item.productDescription,
-              productNumber: item.productNumber,
-              modifiedOn: new Date(),
+              make: sql`excluded.make`,
+              model: sql`excluded.model`,
+              processor: sql`excluded.processor`,
+              generation: sql`excluded.generation`,
+              ram: sql`excluded.ram`,
+              hdd: sql`excluded.hdd`,
+              displaySize: sql`excluded."displaySize"`,
+              touchscreen: sql`excluded.touchscreen`,
+              category: sql`excluded.category`,
+              coverageStartDate: sql`excluded."coverageStartDate"`,
+              coverageEndDate: sql`excluded."coverageEndDate"`,
+              coverageDescription: sql`excluded."coverageDescription"`,
+              coverageDurationDays: sql`excluded."coverageDurationDays"`,
+              isCoverageActive: sql`excluded."isCoverageActive"`,
+              customerName: sql`excluded."customerName"`,
+              customerEmail: sql`excluded."customerEmail"`,
+              customerPhone: sql`excluded."customerPhone"`,
+              orderNumber: sql`excluded."orderNumber"`,
+              orderDate: sql`excluded."orderDate"`,
+              currentHolder: sql`excluded."currentHolder"`,
+              productDescription: sql`excluded."productDescription"`,
+              productNumber: sql`excluded."productNumber"`,
+              modifiedOn: sql`now()`,
             },
           });
-        totalProcessed++;
-      }
+      });
+      
+      totalProcessed += batch.length;
     }
     
     return totalProcessed;

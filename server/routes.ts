@@ -81,9 +81,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const count = await storage.bulkReplaceSpareUnits(validatedData);
       
       res.status(200).json({ 
-        message: "Spare units replaced successfully", 
+        message: "Spare units upserted successfully", 
         count,
-        inserted: count 
+        processed: count 
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -169,9 +169,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const count = await storage.bulkReplaceCoveredUnits(validatedData);
       
       res.status(200).json({ 
-        message: "Covered units replaced successfully", 
+        message: "Covered units upserted successfully", 
         count,
-        inserted: count 
+        processed: count 
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
