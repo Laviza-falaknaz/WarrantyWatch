@@ -140,27 +140,48 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkReplaceSpareUnits(data: InsertSpareUnit[]): Promise<number> {
-    // Wrap truncate and insert in a transaction to prevent data loss
-    return await db.transaction(async (tx) => {
-      // Truncate existing data
-      await tx.delete(spareUnit);
+    // Upsert based on composite key (serialNumber + areaId + itemId)
+    // Using ON CONFLICT to update if exists, insert if not
+    if (data.length === 0) {
+      return 0;
+    }
+    
+    // Process in batches of 500 to handle large datasets
+    const batchSize = 500;
+    let totalProcessed = 0;
+    
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
       
-      if (data.length === 0) {
-        return 0;
+      for (const item of batch) {
+        await db.insert(spareUnit)
+          .values(item)
+          .onConflictDoUpdate({
+            target: [spareUnit.serialNumber, spareUnit.areaId, spareUnit.itemId],
+            set: {
+              make: item.make,
+              model: item.model,
+              processor: item.processor,
+              generation: item.generation,
+              ram: item.ram,
+              hdd: item.hdd,
+              displaySize: item.displaySize,
+              touchscreen: item.touchscreen,
+              category: item.category,
+              reservedForCase: item.reservedForCase,
+              retiredOrder: item.retiredOrder,
+              currentHolder: item.currentHolder,
+              retiredDate: item.retiredDate,
+              productDescription: item.productDescription,
+              productNumber: item.productNumber,
+              modifiedOn: new Date(),
+            },
+          });
+        totalProcessed++;
       }
-      
-      // Insert in batches of 500 to avoid query size limits
-      const batchSize = 500;
-      let totalInserted = 0;
-      
-      for (let i = 0; i < data.length; i += batchSize) {
-        const batch = data.slice(i, i + batchSize);
-        await tx.insert(spareUnit).values(batch);
-        totalInserted += batch.length;
-      }
-      
-      return totalInserted;
-    });
+    }
+    
+    return totalProcessed;
   }
 
   async getCoveredUnits(filters?: {
@@ -251,39 +272,60 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkReplaceCoveredUnits(data: InsertCoveredUnit[]): Promise<number> {
-    // Wrap truncate and insert in a transaction to prevent data loss
-    return await db.transaction(async (tx) => {
-      // Truncate existing data
-      await tx.delete(coveredUnit);
+    // Upsert based on composite key (serialNumber + areaId + itemId)
+    // Using ON CONFLICT to update if exists, insert if not
+    if (data.length === 0) {
+      return 0;
+    }
+    
+    // Process in batches of 500 to handle large datasets
+    const batchSize = 500;
+    let totalProcessed = 0;
+    
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
       
-      if (data.length === 0) {
-        return 0;
-      }
-      
-      // Calculate coverage duration days for each item
-      const dataWithDuration = data.map(item => {
+      for (const item of batch) {
+        // Calculate coverage duration days
         const startDate = item.coverageStartDate instanceof Date ? item.coverageStartDate : new Date(item.coverageStartDate);
         const endDate = item.coverageEndDate instanceof Date ? item.coverageEndDate : new Date(item.coverageEndDate);
         const coverageDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
         
-        return {
-          ...item,
-          coverageDurationDays
-        };
-      });
-      
-      // Insert in batches of 500 to avoid query size limits
-      const batchSize = 500;
-      let totalInserted = 0;
-      
-      for (let i = 0; i < dataWithDuration.length; i += batchSize) {
-        const batch = dataWithDuration.slice(i, i + batchSize);
-        await tx.insert(coveredUnit).values(batch);
-        totalInserted += batch.length;
+        await db.insert(coveredUnit)
+          .values({ ...item, coverageDurationDays })
+          .onConflictDoUpdate({
+            target: [coveredUnit.serialNumber, coveredUnit.areaId, coveredUnit.itemId],
+            set: {
+              make: item.make,
+              model: item.model,
+              processor: item.processor,
+              generation: item.generation,
+              ram: item.ram,
+              hdd: item.hdd,
+              displaySize: item.displaySize,
+              touchscreen: item.touchscreen,
+              category: item.category,
+              coverageStartDate: item.coverageStartDate,
+              coverageEndDate: item.coverageEndDate,
+              coverageDescription: item.coverageDescription,
+              coverageDurationDays,
+              isCoverageActive: item.isCoverageActive,
+              customerName: item.customerName,
+              customerEmail: item.customerEmail,
+              customerPhone: item.customerPhone,
+              orderNumber: item.orderNumber,
+              orderDate: item.orderDate,
+              currentHolder: item.currentHolder,
+              productDescription: item.productDescription,
+              productNumber: item.productNumber,
+              modifiedOn: new Date(),
+            },
+          });
+        totalProcessed++;
       }
-      
-      return totalInserted;
-    });
+    }
+    
+    return totalProcessed;
   }
 
   async getCoveragePools(): Promise<CoveragePool[]> {

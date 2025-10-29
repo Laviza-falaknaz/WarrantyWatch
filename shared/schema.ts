@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, boolean, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, boolean, decimal, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -28,7 +28,9 @@ export const spareUnit = pgTable("spare_unit", {
   productNumber: varchar("product_number", { length: 100 }),
   createdOn: timestamp("created_on").notNull().defaultNow(),
   modifiedOn: timestamp("modified_on").notNull().defaultNow(),
-});
+}, (table) => ({
+  uniqueKey: uniqueIndex("spare_unit_unique_key").on(table.serialNumber, table.areaId, table.itemId),
+}));
 
 // Units deployed in the field under warranty coverage (need potential replacement)
 export const coveredUnit = pgTable("covered_unit", {
@@ -64,7 +66,9 @@ export const coveredUnit = pgTable("covered_unit", {
   productNumber: varchar("product_number", { length: 100 }),
   createdOn: timestamp("created_on").notNull().defaultNow(),
   modifiedOn: timestamp("modified_on").notNull().defaultNow(),
-});
+}, (table) => ({
+  uniqueKey: uniqueIndex("covered_unit_unique_key").on(table.serialNumber, table.areaId, table.itemId),
+}));
 
 // Coverage pool groups showing spare/covered ratios by specifications
 export const coveragePool = pgTable("coverage_pool", {
