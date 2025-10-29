@@ -75,6 +75,7 @@ export default function TablePagination({
         <PaginationContent>
           <PaginationItem>
             <PaginationPrevious
+              href="#"
               onClick={(e) => {
                 e.preventDefault();
                 if (currentPage > 1) onPageChange(currentPage - 1);
@@ -93,6 +94,7 @@ export default function TablePagination({
             ) : (
               <PaginationItem key={page}>
                 <PaginationLink
+                  href="#"
                   onClick={(e) => {
                     e.preventDefault();
                     onPageChange(page as number);
@@ -109,6 +111,7 @@ export default function TablePagination({
 
           <PaginationItem>
             <PaginationNext
+              href="#"
               onClick={(e) => {
                 e.preventDefault();
                 if (currentPage < totalPages) onPageChange(currentPage + 1);
