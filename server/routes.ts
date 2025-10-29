@@ -10,6 +10,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Spare Unit routes (units in pool available to cover warranties)
   app.get("/api/spare-units", async (req, res) => {
     try {
+      // Validate and clamp limit parameter to prevent memory exhaustion
+      let limit: number | undefined = undefined;
+      if (req.query.limit) {
+        const parsedLimit = parseInt(req.query.limit as string, 10);
+        if (isNaN(parsedLimit) || parsedLimit < 1) {
+          return res.status(400).json({ error: "Invalid limit parameter: must be a positive integer" });
+        }
+        // Enforce maximum limit of 10,000 to prevent crashes with large datasets
+        limit = Math.min(parsedLimit, 10000);
+      }
+      
       const filters = {
         make: req.query.make ? (Array.isArray(req.query.make) ? req.query.make as string[] : [req.query.make as string]) : undefined,
         model: req.query.model ? (Array.isArray(req.query.model) ? req.query.model as string[] : [req.query.model as string]) : undefined,
@@ -17,6 +28,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ram: req.query.ram ? (Array.isArray(req.query.ram) ? req.query.ram as string[] : [req.query.ram as string]) : undefined,
         category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category as string[] : [req.query.category as string]) : undefined,
         search: req.query.search as string | undefined,
+        limit,
       };
       
       const units = await storage.getSpareUnits(filters);
@@ -97,6 +109,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Covered Unit routes (units in field under warranty coverage)
   app.get("/api/covered-units", async (req, res) => {
     try {
+      // Validate and clamp limit parameter to prevent memory exhaustion
+      let limit: number | undefined = undefined;
+      if (req.query.limit) {
+        const parsedLimit = parseInt(req.query.limit as string, 10);
+        if (isNaN(parsedLimit) || parsedLimit < 1) {
+          return res.status(400).json({ error: "Invalid limit parameter: must be a positive integer" });
+        }
+        // Enforce maximum limit of 10,000 to prevent crashes with large datasets
+        limit = Math.min(parsedLimit, 10000);
+      }
+      
       const filters = {
         make: req.query.make ? (Array.isArray(req.query.make) ? req.query.make as string[] : [req.query.make as string]) : undefined,
         model: req.query.model ? (Array.isArray(req.query.model) ? req.query.model as string[] : [req.query.model as string]) : undefined,
@@ -105,6 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category as string[] : [req.query.category as string]) : undefined,
         status: req.query.status ? (Array.isArray(req.query.status) ? req.query.status as string[] : [req.query.status as string]) : undefined,
         search: req.query.search as string | undefined,
+        limit,
       };
       
       const units = await storage.getCoveredUnits(filters);

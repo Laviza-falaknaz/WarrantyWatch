@@ -25,6 +25,7 @@ export interface IStorage {
     ram?: string[];
     category?: string[];
     search?: string;
+    limit?: number;
   }): Promise<SpareUnit[]>;
   getSpareUnitById(id: string): Promise<SpareUnit | undefined>;
   createSpareUnit(data: InsertSpareUnit): Promise<SpareUnit>;
@@ -40,6 +41,7 @@ export interface IStorage {
     category?: string[];
     status?: string[];
     search?: string;
+    limit?: number;
   }): Promise<CoveredUnit[]>;
   getCoveredUnitById(id: string): Promise<CoveredUnit | undefined>;
   createCoveredUnit(data: InsertCoveredUnit): Promise<CoveredUnit>;
@@ -86,6 +88,7 @@ export class DatabaseStorage implements IStorage {
     ram?: string[];
     category?: string[];
     search?: string;
+    limit?: number;
   }): Promise<SpareUnit[]> {
     let query = db.select().from(spareUnit);
     
@@ -127,7 +130,9 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions)) as any;
     }
     
-    return query.orderBy(desc(spareUnit.createdOn));
+    // Apply limit with default of 10,000 to prevent crashes with large datasets
+    const limit = filters?.limit ?? 10000;
+    return query.orderBy(desc(spareUnit.createdOn)).limit(limit);
   }
 
   async getSpareUnitById(id: string): Promise<SpareUnit | undefined> {
@@ -217,6 +222,7 @@ export class DatabaseStorage implements IStorage {
     category?: string[];
     status?: string[];
     search?: string;
+    limit?: number;
   }): Promise<CoveredUnit[]> {
     let query = db.select().from(coveredUnit);
     
@@ -266,7 +272,9 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions)) as any;
     }
     
-    return query.orderBy(desc(coveredUnit.createdOn));
+    // Apply limit with default of 10,000 to prevent crashes with large datasets
+    const limit = filters?.limit ?? 10000;
+    return query.orderBy(desc(coveredUnit.createdOn)).limit(limit);
   }
 
   async getCoveredUnitById(id: string): Promise<CoveredUnit | undefined> {

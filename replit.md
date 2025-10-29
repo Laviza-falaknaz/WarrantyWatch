@@ -35,6 +35,10 @@ Preferred communication style: Simple, everyday language.
     - `POST /api/spare-units/bulk` - Upsert spare units (composite key: serialNumber + areaId + itemId)
     - `POST /api/covered-units/bulk` - Upsert covered units (composite key: serialNumber + areaId + itemId + orderNumber)
 - **Data Access Layer**: Storage abstraction (`IStorage` interface) for clean separation from database operations.
+- **Performance & Scalability**:
+  - **Query Limits**: GET endpoints support optional `limit` parameter (default: 10,000 records) to prevent crashes with large datasets (100K+ records)
+  - **Purpose**: Ensures responsive UI and prevents memory exhaustion when querying production databases with massive record counts
+  - **Usage**: Frontend can override default via `?limit=N` query parameter; search/filter functionality helps users find specific records efficiently
 - **Bulk Upload Features**:
   - Transaction-wrapped (atomic truncate + insert for data integrity)
   - Batch processing (500 items per batch to handle large datasets)

@@ -9,7 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Filter } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Download, Filter, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import type { CoveredUnit, AppConfiguration } from "@shared/schema";
 
@@ -323,6 +324,17 @@ export default function Warranties() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Warning when query limit is reached */}
+      {stockUnderWarranty && stockUnderWarranty.length >= 10000 && (
+        <Alert data-testid="alert-query-limit-reached">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Showing {stockUnderWarranty.length.toLocaleString()} records (query limit reached). 
+            Use search and filters to find specific units. Additional records may exist in the database.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="space-y-4">
         <SearchBar

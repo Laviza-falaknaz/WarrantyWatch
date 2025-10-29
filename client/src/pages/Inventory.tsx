@@ -6,7 +6,8 @@ import SearchBar from "@/components/SearchBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Download, AlertCircle } from "lucide-react";
 import type { SpareUnit } from "@shared/schema";
 
 export default function Inventory() {
@@ -218,6 +219,17 @@ export default function Inventory() {
           Export
         </Button>
       </div>
+
+      {/* Warning when query limit is reached */}
+      {replacementUnits && replacementUnits.length >= 10000 && (
+        <Alert data-testid="alert-query-limit-reached">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Showing {replacementUnits.length.toLocaleString()} records (query limit reached). 
+            Use search and filters to find specific units. Additional records may exist in the database.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex gap-6">
         <div className="w-72 flex-shrink-0">
