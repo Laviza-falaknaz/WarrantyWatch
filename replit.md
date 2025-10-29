@@ -36,11 +36,17 @@ Preferred communication style: Simple, everyday language.
     - `POST /api/covered-units/bulk` - Upsert covered units (composite key: serialNumber + areaId + itemId + orderNumber)
 - **Data Access Layer**: Storage abstraction (`IStorage` interface) for clean separation from database operations.
 - **Performance & Scalability**:
+  - **Pagination System**: Table views implement server-side pagination with 100 items per page to handle large datasets efficiently
+    - Pagination controls positioned above tables for accessibility
+    - Reusable `TablePagination` component using shadcn UI primitives
+    - Backend support via `offset` parameter in GET endpoints
+    - Search query resets pagination to page 1 automatically
+    - Proper `useCallback` memoization prevents pagination state resets on re-renders
   - **Query Limits**: GET endpoints support optional `limit` parameter (default: 10,000 records) to prevent crashes with large datasets (100K+ records)
   - **Purpose**: Ensures responsive UI and prevents memory exhaustion when querying production databases with massive record counts
   - **Usage**: Frontend can override default via `?limit=N` query parameter; search/filter functionality helps users find specific records efficiently
   - **Stats Endpoints**: Separate lightweight endpoints (`/api/spare-units/stats`, `/api/covered-units/stats`) query full dataset using efficient SQL COUNT queries
-  - **Two-Tier Architecture**: Summary cards use stats endpoints (full dataset counts), while data tables use limited queries (10k max) for optimal performance
+  - **Two-Tier Architecture**: Summary cards use stats endpoints (full dataset counts), while data tables use paginated queries (100 items per page) for optimal performance
 - **Bulk Upload Features**:
   - Transaction-wrapped (atomic truncate + insert for data integrity)
   - Batch processing (500 items per batch to handle large datasets)
