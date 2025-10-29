@@ -26,7 +26,23 @@ export default function Warranties() {
 
   const expiringThresholdDays = configuration?.expiringCoverageDays || 30;
 
-  const { data: stockUnderWarranty, isLoading } = useQuery({
+  // Fetch stats for entire dataset (for summary cards)
+  const { data: fullStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["/api/covered-units/stats", searchQuery],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchQuery) {
+        params.append("search", searchQuery);
+      }
+      
+      const response = await fetch(`/api/covered-units/stats?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch covered units stats");
+      return response.json() as Promise<{ total: number; active: number; expiring: number; expired: number; }>;
+    },
+  });
+
+  // Fetch table data (limited to 10k for performance)
+  const { data: stockUnderWarranty, isLoading: tableLoading } = useQuery({
     queryKey: ["/api/covered-units", searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -70,27 +86,8 @@ export default function Warranties() {
     });
   }, [stockUnderWarranty, hideExpired, statusFilter, expiringThresholdDays]);
 
-  // Calculate stats for display
-  const stats = useMemo(() => {
-    if (!stockUnderWarranty) return { active: 0, expiring: 0, expired: 0, total: 0 };
-    
-    const active = stockUnderWarranty.filter((item: CoveredUnit) => {
-      const days = getDaysRemaining(item.coverageEndDate);
-      return getCoverageStatus(days) === "Active";
-    }).length;
-    
-    const expiring = stockUnderWarranty.filter((item: CoveredUnit) => {
-      const days = getDaysRemaining(item.coverageEndDate);
-      return getCoverageStatus(days) === "Expiring Soon";
-    }).length;
-    
-    const expired = stockUnderWarranty.filter((item: CoveredUnit) => {
-      const days = getDaysRemaining(item.coverageEndDate);
-      return getCoverageStatus(days) === "Expired";
-    }).length;
-    
-    return { active, expiring, expired, total: stockUnderWarranty.length };
-  }, [stockUnderWarranty, expiringThresholdDays]);
+  // Use full dataset stats for summary cards (not limited to 10k)
+  const stats = fullStats || { active: 0, expiring: 0, expired: 0, total: 0 };
 
   const columns: Column<CoveredUnit>[] = [
     {
@@ -264,7 +261,7 @@ export default function Warranties() {
     },
   ];
 
-  if (isLoading) {
+  if (statsLoading || tableLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4">
