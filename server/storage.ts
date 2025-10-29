@@ -75,6 +75,33 @@ export interface IStorage {
     expiringCoverageDays: number;
   }>;
   
+  // Statistics endpoints (query full dataset for summary cards)
+  getCoveredUnitsStats(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    status?: string[];
+    search?: string;
+  }): Promise<{
+    total: number;
+    active: number;
+    expiring: number;
+    expired: number;
+  }>;
+  
+  getSpareUnitsStats(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    search?: string;
+  }): Promise<{
+    total: number;
+  }>;
+  
   // Configuration
   getConfiguration(): Promise<AppConfiguration>;
   updateConfiguration(data: Partial<InsertAppConfiguration>): Promise<AppConfiguration>;
@@ -514,6 +541,161 @@ export class DatabaseStorage implements IStorage {
       lowCoverageThresholdPercent: lowCoverageThreshold,
       expiringCoverageDays: expiringDays,
     };
+  }
+
+  async getCoveredUnitsStats(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    status?: string[];
+    search?: string;
+  }): Promise<{
+    total: number;
+    active: number;
+    expiring: number;
+    expired: number;
+  }> {
+    // Get configuration for dynamic thresholds
+    const config = await this.getConfiguration();
+    const expiringDays = config.expiringCoverageDays;
+    
+    // Build filter conditions (same as getCoveredUnits but for COUNT queries)
+    const conditions = [];
+    
+    if (filters?.make && filters.make.length > 0) {
+      conditions.push(inArray(coveredUnit.make, filters.make));
+    }
+    
+    if (filters?.model && filters.model.length > 0) {
+      conditions.push(inArray(coveredUnit.model, filters.model));
+    }
+    
+    if (filters?.processor && filters.processor.length > 0) {
+      conditions.push(inArray(coveredUnit.processor, filters.processor));
+    }
+    
+    if (filters?.ram && filters.ram.length > 0) {
+      conditions.push(inArray(coveredUnit.ram, filters.ram));
+    }
+    
+    if (filters?.category && filters.category.length > 0) {
+      conditions.push(inArray(coveredUnit.category, filters.category));
+    }
+    
+    if (filters?.status && filters.status.length > 0) {
+      if (filters.status.includes("Active")) {
+        conditions.push(eq(coveredUnit.isCoverageActive, true));
+      } else if (filters.status.includes("Inactive")) {
+        conditions.push(eq(coveredUnit.isCoverageActive, false));
+      }
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(coveredUnit.serialNumber, searchTerm),
+          like(coveredUnit.make, searchTerm),
+          like(coveredUnit.model, searchTerm),
+          like(coveredUnit.coverageDescription, searchTerm)
+        )
+      );
+    }
+    
+    // Base query for total count
+    let totalQuery = db.select({ count: sql<number>`count(*)` }).from(coveredUnit);
+    if (conditions.length > 0) {
+      totalQuery = totalQuery.where(and(...conditions)) as any;
+    }
+    const [totalResult] = await totalQuery;
+    const total = Number(totalResult?.count || 0);
+    
+    // Active coverage count (with filters)
+    const activeConditions = [...conditions, eq(coveredUnit.isCoverageActive, true)];
+    const [activeResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(coveredUnit)
+      .where(and(...activeConditions));
+    const active = Number(activeResult?.count || 0);
+    
+    // Expiring coverage count (active + expiring within configured days)
+    const expiringDate = new Date();
+    expiringDate.setDate(expiringDate.getDate() + expiringDays);
+    const expiringConditions = [
+      ...conditions,
+      eq(coveredUnit.isCoverageActive, true),
+      sql`${coveredUnit.coverageEndDate} <= ${expiringDate}`
+    ];
+    const [expiringResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(coveredUnit)
+      .where(and(...expiringConditions));
+    const expiring = Number(expiringResult?.count || 0);
+    
+    // Expired count (inactive coverage)
+    const expiredConditions = [...conditions, eq(coveredUnit.isCoverageActive, false)];
+    const [expiredResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(coveredUnit)
+      .where(and(...expiredConditions));
+    const expired = Number(expiredResult?.count || 0);
+    
+    return { total, active, expiring, expired };
+  }
+
+  async getSpareUnitsStats(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    search?: string;
+  }): Promise<{
+    total: number;
+  }> {
+    // Build filter conditions (same as getSpareUnits but for COUNT query)
+    const conditions = [];
+    
+    if (filters?.make && filters.make.length > 0) {
+      conditions.push(inArray(spareUnit.make, filters.make));
+    }
+    
+    if (filters?.model && filters.model.length > 0) {
+      conditions.push(inArray(spareUnit.model, filters.model));
+    }
+    
+    if (filters?.processor && filters.processor.length > 0) {
+      conditions.push(inArray(spareUnit.processor, filters.processor));
+    }
+    
+    if (filters?.ram && filters.ram.length > 0) {
+      conditions.push(inArray(spareUnit.ram, filters.ram));
+    }
+    
+    if (filters?.category && filters.category.length > 0) {
+      conditions.push(inArray(spareUnit.category, filters.category));
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(spareUnit.serialNumber, searchTerm),
+          like(spareUnit.make, searchTerm),
+          like(spareUnit.model, searchTerm),
+          like(spareUnit.productDescription, searchTerm)
+        )
+      );
+    }
+    
+    // Total count query
+    let totalQuery = db.select({ count: sql<number>`count(*)` }).from(spareUnit);
+    if (conditions.length > 0) {
+      totalQuery = totalQuery.where(and(...conditions)) as any;
+    }
+    const [totalResult] = await totalQuery;
+    const total = Number(totalResult?.count || 0);
+    
+    return { total };
   }
 
   async getConfiguration(): Promise<AppConfiguration> {

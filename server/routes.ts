@@ -229,6 +229,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Statistics endpoints (query full dataset for summary cards)
+  app.get("/api/spare-units/stats", async (req, res) => {
+    try {
+      const filters = {
+        make: req.query.make ? (Array.isArray(req.query.make) ? req.query.make as string[] : [req.query.make as string]) : undefined,
+        model: req.query.model ? (Array.isArray(req.query.model) ? req.query.model as string[] : [req.query.model as string]) : undefined,
+        processor: req.query.processor ? (Array.isArray(req.query.processor) ? req.query.processor as string[] : [req.query.processor as string]) : undefined,
+        ram: req.query.ram ? (Array.isArray(req.query.ram) ? req.query.ram as string[] : [req.query.ram as string]) : undefined,
+        category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category as string[] : [req.query.category as string]) : undefined,
+        search: req.query.search as string | undefined,
+      };
+      
+      const stats = await storage.getSpareUnitsStats(filters);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching spare units stats:", error);
+      res.status(500).json({ error: "Failed to fetch spare units stats" });
+    }
+  });
+
+  app.get("/api/covered-units/stats", async (req, res) => {
+    try {
+      const filters = {
+        make: req.query.make ? (Array.isArray(req.query.make) ? req.query.make as string[] : [req.query.make as string]) : undefined,
+        model: req.query.model ? (Array.isArray(req.query.model) ? req.query.model as string[] : [req.query.model as string]) : undefined,
+        processor: req.query.processor ? (Array.isArray(req.query.processor) ? req.query.processor as string[] : [req.query.processor as string]) : undefined,
+        ram: req.query.ram ? (Array.isArray(req.query.ram) ? req.query.ram as string[] : [req.query.ram as string]) : undefined,
+        category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category as string[] : [req.query.category as string]) : undefined,
+        status: req.query.status ? (Array.isArray(req.query.status) ? req.query.status as string[] : [req.query.status as string]) : undefined,
+        search: req.query.search as string | undefined,
+      };
+      
+      const stats = await storage.getCoveredUnitsStats(filters);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching covered units stats:", error);
+      res.status(500).json({ error: "Failed to fetch covered units stats" });
+    }
+  });
+
   // Coverage Pool routes
   app.get("/api/coverage-pools", async (req, res) => {
     try {
