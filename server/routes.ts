@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertSpareUnitSchema, insertCoveredUnitSchema, insertCoveragePoolSchema, spareUnit, coveredUnit } from "@shared/schema";
+import { insertSpareUnitSchema, insertCoveredUnitSchema, bulkInsertCoveredUnitSchema, insertCoveragePoolSchema, spareUnit, coveredUnit } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, and, inArray } from "drizzle-orm";
@@ -158,20 +158,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk upsert covered units (insert or update based on composite key)
   app.post("/api/covered-units/bulk", async (req, res) => {
     try {
+      console.log(`[bulk-upload] Starting covered units bulk upload. Received ${req.body?.length || 0} records`);
+      const startTime = Date.now();
+      
       // Validate that body is an array
       if (!Array.isArray(req.body)) {
         return res.status(400).json({ error: "Request body must be an array of covered units" });
       }
 
-      // Validate each item in the array
-      const validatedData = z.array(insertCoveredUnitSchema).parse(req.body);
+      // Use optimized schema for bulk operations (skips expensive refine validation)
+      console.log(`[bulk-upload] Validating ${req.body.length} covered units...`);
+      const validationStart = Date.now();
+      const validatedData = z.array(bulkInsertCoveredUnitSchema).parse(req.body);
+      console.log(`[bulk-upload] Validation completed in ${Date.now() - validationStart}ms`);
       
+      console.log(`[bulk-upload] Processing ${validatedData.length} covered units...`);
+      const processingStart = Date.now();
       const count = await storage.bulkReplaceCoveredUnits(validatedData);
+      console.log(`[bulk-upload] Processing completed in ${Date.now() - processingStart}ms`);
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`[bulk-upload] Covered units bulk upload completed. Total time: ${totalTime}ms, Records: ${count}`);
       
       res.status(200).json({ 
         message: "Covered units upserted successfully", 
         count,
-        processed: count 
+        processed: count,
+        timeMs: totalTime 
       });
     } catch (error) {
       if (error instanceof z.ZodError) {

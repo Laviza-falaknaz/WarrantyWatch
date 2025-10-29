@@ -145,6 +145,20 @@ export const insertCoveredUnitSchema = createInsertSchema(coveredUnit).omit({
   }
 );
 
+// Optimized schema for bulk operations - skips expensive refine validation
+// Use this for bulk uploads where data is pre-validated by the source system
+export const bulkInsertCoveredUnitSchema = createInsertSchema(coveredUnit).omit({
+  id: true,
+  createdOn: true,
+  modifiedOn: true,
+  coverageDurationDays: true,
+}).extend({
+  // Simpler date handling for bulk operations - accept strings or dates
+  coverageStartDate: z.union([z.date(), z.string()]),
+  coverageEndDate: z.union([z.date(), z.string()]),
+  orderDate: z.union([z.date(), z.string()]).optional().nullable(),
+});
+
 export const insertCoveragePoolSchema = createInsertSchema(coveragePool).omit({
   id: true,
   createdOn: true,
@@ -165,6 +179,7 @@ export type InsertSpareUnit = z.infer<typeof insertSpareUnitSchema>;
 export type SpareUnit = typeof spareUnit.$inferSelect;
 
 export type InsertCoveredUnit = z.infer<typeof insertCoveredUnitSchema>;
+export type BulkInsertCoveredUnit = z.infer<typeof bulkInsertCoveredUnitSchema>;
 export type CoveredUnit = typeof coveredUnit.$inferSelect;
 
 export type InsertCoveragePool = z.infer<typeof insertCoveragePoolSchema>;
