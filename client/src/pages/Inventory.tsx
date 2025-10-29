@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DataTable, { Column } from "@/components/DataTable";
 import FilterPanel, { FilterCategory } from "@/components/FilterPanel";
@@ -218,10 +218,10 @@ export default function Inventory() {
     setCurrentPage(1); // Reset to first page when clearing filters
   };
 
-  const handleSearchChange = (query: string) => {
+  const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
     setCurrentPage(1); // Reset to first page when search changes
-  };
+  }, []);
 
   const totalItems = stats?.total || 0;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);

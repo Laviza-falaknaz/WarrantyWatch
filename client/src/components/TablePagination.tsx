@@ -58,21 +58,29 @@ export default function TablePagination({
     return pages;
   };
 
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
     <div className="flex items-center justify-between gap-4" data-testid="table-pagination">
       <div className="text-sm text-muted-foreground" data-testid="text-pagination-info">
-        Showing {startItem.toLocaleString()} to {endItem.toLocaleString()} of {totalItems.toLocaleString()} items
+        {totalItems === 0 ? (
+          "Showing 0 items"
+        ) : (
+          `Showing ${startItem.toLocaleString()} to ${endItem.toLocaleString()} of ${totalItems.toLocaleString()} items`
+        )}
       </div>
 
       <Pagination>
         <PaginationContent>
           <PaginationItem>
             <PaginationPrevious
-              onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
+              onClick={(e) => {
+                e.preventDefault();
+                if (currentPage > 1) onPageChange(currentPage - 1);
+              }}
               className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              aria-disabled={currentPage === 1}
               data-testid="button-pagination-previous"
             />
           </PaginationItem>
@@ -85,7 +93,10 @@ export default function TablePagination({
             ) : (
               <PaginationItem key={page}>
                 <PaginationLink
-                  onClick={() => onPageChange(page as number)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onPageChange(page as number);
+                  }}
                   isActive={currentPage === page}
                   className="cursor-pointer"
                   data-testid={`button-pagination-page-${page}`}
@@ -98,8 +109,12 @@ export default function TablePagination({
 
           <PaginationItem>
             <PaginationNext
-              onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
+              onClick={(e) => {
+                e.preventDefault();
+                if (currentPage < totalPages) onPageChange(currentPage + 1);
+              }}
               className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              aria-disabled={currentPage === totalPages}
               data-testid="button-pagination-next"
             />
           </PaginationItem>

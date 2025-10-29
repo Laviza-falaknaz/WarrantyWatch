@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DataTable, { Column } from "@/components/DataTable";
 import SearchBar from "@/components/SearchBar";
@@ -7,18 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Download, Filter, AlertCircle } from "lucide-react";
+import { Download } from "lucide-react";
 import { format } from "date-fns";
 import type { CoveredUnit, AppConfiguration } from "@shared/schema";
 
 export default function Warranties() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [hideExpired, setHideExpired] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   
   const ITEMS_PER_PAGE = 100;
@@ -76,31 +70,13 @@ export default function Warranties() {
     return "Active";
   };
 
-  // Filter data based on user selections
-  const filteredData = useMemo(() => {
-    if (!stockUnderWarranty) return [];
-    
-    return stockUnderWarranty.filter((item: CoveredUnit) => {
-      const daysRemaining = getDaysRemaining(item.coverageEndDate);
-      const status = getCoverageStatus(daysRemaining);
-      
-      // Filter by expired checkbox
-      if (hideExpired && status === "Expired") return false;
-      
-      // Filter by status
-      if (statusFilter !== "all" && status.toLowerCase() !== statusFilter) return false;
-      
-      return true;
-    });
-  }, [stockUnderWarranty, hideExpired, statusFilter, expiringThresholdDays]);
-
   // Use full dataset stats for summary cards (not limited to 10k)
   const stats = fullStats || { active: 0, expiring: 0, expired: 0, total: 0 };
 
-  const handleSearchChange = (query: string) => {
+  const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
     setCurrentPage(1); // Reset to first page when search changes
-  };
+  }, []);
 
   const totalPages = Math.ceil(stats.total / ITEMS_PER_PAGE);
 
@@ -344,49 +320,6 @@ export default function Warranties() {
           className="max-w-md"
         />
 
-        {/* Filter Controls */}
-        <Card data-testid="card-filter-controls">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Filters:</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="hide-expired"
-                  checked={hideExpired}
-                  onCheckedChange={(checked) => setHideExpired(checked as boolean)}
-                  data-testid="checkbox-hide-expired"
-                />
-                <Label htmlFor="hide-expired" className="text-sm font-normal cursor-pointer">
-                  Hide Expired
-                </Label>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Label htmlFor="status-filter" className="text-sm">Status:</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger id="status-filter" className="w-40" data-testid="select-status-filter">
-                    <SelectValue placeholder="All statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="expiring soon">Expiring Soon</SelectItem>
-                    <SelectItem value="expired">Expired</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="text-sm text-muted-foreground ml-auto">
-                Showing {filteredData.length} of {stats.total} units
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {totalPages > 0 && (
           <TablePagination
             currentPage={currentPage}
@@ -399,7 +332,7 @@ export default function Warranties() {
 
         <DataTable
           columns={columns}
-          data={filteredData}
+          data={stockUnderWarranty || []}
           onRowClick={(item) => console.log("View stock under warranty details:", item)}
         />
       </div>
