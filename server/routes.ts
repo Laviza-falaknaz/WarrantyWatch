@@ -89,8 +89,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid data format", details: error.errors });
       }
-      console.error("Error bulk replacing spare units:", error);
-      res.status(500).json({ error: "Failed to bulk replace spare units" });
+      console.error("Error bulk upserting spare units:", error);
+      res.status(500).json({ error: "Failed to bulk upsert spare units" });
     }
   });
 
@@ -177,8 +177,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid data format", details: error.errors });
       }
-      console.error("Error bulk replacing covered units:", error);
-      res.status(500).json({ error: "Failed to bulk replace covered units" });
+      console.error("Error bulk upserting covered units:", error);
+      res.status(500).json({ error: "Failed to bulk upsert covered units" });
     }
   });
 
