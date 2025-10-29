@@ -1,19 +1,23 @@
 # Bulk Upload API Documentation
 
 ## Overview
-This API provides bulk upload endpoints for Azure Data Factory (ADF) integration, allowing you to replace all spare units and covered units data in a single atomic operation.
+This API provides bulk upsert endpoints for Azure Data Factory (ADF) integration, allowing you to insert new records or update existing records based on a composite key (serialNumber + areaId + itemId). This enables **incremental data synchronization** without replacing all data.
 
 **Base URL**: `https://your-app-domain.replit.app` (or your custom domain)
+
+**Upsert Key**: Composite key of `serialNumber` + `areaId` + `itemId`
+- If a record with the same composite key exists, it will be updated
+- If no matching record exists, a new record will be inserted
 
 ---
 
 ## Endpoints
 
-### 1. Bulk Upload Spare Units
+### 1. Bulk Upsert Spare Units
 
 **Endpoint**: `POST /api/spare-units/bulk`
 
-**Description**: Truncates the spare_unit table and replaces all data with the provided array. Operation is atomic (wrapped in a transaction) - if any record fails validation or insertion, the entire operation rolls back and existing data is preserved.
+**Description**: Inserts new spare units or updates existing ones based on the composite key (serialNumber + areaId + itemId). This allows for incremental updates without losing existing data.
 
 **Content-Type**: `application/json`
 
@@ -114,11 +118,11 @@ curl -X POST https://your-app.replit.app/api/spare-units/bulk \
 
 ---
 
-### 2. Bulk Upload Covered Units
+### 2. Bulk Upsert Covered Units
 
 **Endpoint**: `POST /api/covered-units/bulk`
 
-**Description**: Truncates the covered_unit table and replaces all data with the provided array. Operation is atomic (wrapped in a transaction) - if any record fails validation or insertion, the entire operation rolls back and existing data is preserved.
+**Description**: Inserts new covered units or updates existing ones based on the composite key (serialNumber + areaId + itemId). This allows for incremental updates without losing existing data.
 
 **Content-Type**: `application/json`
 
