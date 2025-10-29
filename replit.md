@@ -11,6 +11,15 @@ The core concept revolves around a **warranty pool management system** where:
 
 The **Coverage Ratio = (Spare Units / Covered Units) × 100%**. Both spare and covered units have matching specification fields (e.g., make, model, processor) which are used by coverage pools to group units and calculate ratios, identifying areas needing more spares.
 
+### Recent Changes
+**October 29, 2025**:
+1. **Stock Under Warranty Sorting**: Changed default sort order to `coverageStartDate DESC` to show newest warranties first (previously sorted by `createdOn`)
+2. **Coverage Pool Filters Updated**: 
+   - **Added**: Category, Storage Size (HDD), and Generation filters for more precise pool grouping
+   - **Removed**: Customer Name and Order Number filters (pools now focus purely on technical specifications)
+   - Backend coverage stats matching logic updated to honor all seven specification fields: make, model, processor, RAM, category, storage size, generation
+3. **Coverage Pool Drill-Down**: Verified existing PoolDetailDialog provides drill-down capability to view matching spare and covered units in separate tabs when clicking on pool cards
+
 ### User Preferences
 Preferred communication style: Simple, everyday language.
 
