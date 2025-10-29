@@ -67,7 +67,7 @@ export const coveredUnit = pgTable("covered_unit", {
   createdOn: timestamp("created_on").notNull().defaultNow(),
   modifiedOn: timestamp("modified_on").notNull().defaultNow(),
 }, (table) => ({
-  uniqueKey: uniqueIndex("covered_unit_unique_key").on(table.serialNumber, table.areaId, table.itemId),
+  uniqueKey: uniqueIndex("covered_unit_unique_key").on(table.serialNumber, table.areaId, table.itemId, table.orderNumber),
 }));
 
 // Coverage pool groups showing spare/covered ratios by specifications

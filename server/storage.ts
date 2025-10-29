@@ -303,11 +303,11 @@ export class DatabaseStorage implements IStorage {
       return 0;
     }
     
-    // Deduplicate records by composite key (serialNumber + areaId + itemId)
+    // Deduplicate records by composite key (serialNumber + areaId + itemId + orderNumber)
     // Keep the last occurrence of each duplicate
     const uniqueRecords = new Map<string, BulkInsertCoveredUnit>();
     for (const record of data) {
-      const key = `${record.serialNumber}|${record.areaId}|${record.itemId}`;
+      const key = `${record.serialNumber}|${record.areaId}|${record.itemId}|${record.orderNumber || ''}`;
       uniqueRecords.set(key, record);
     }
     const deduplicatedData = Array.from(uniqueRecords.values());
@@ -356,7 +356,7 @@ export class DatabaseStorage implements IStorage {
         await tx.insert(coveredUnit)
           .values(enrichedBatch)
           .onConflictDoUpdate({
-            target: [coveredUnit.serialNumber, coveredUnit.areaId, coveredUnit.itemId],
+            target: [coveredUnit.serialNumber, coveredUnit.areaId, coveredUnit.itemId, coveredUnit.orderNumber],
             set: {
               make: sql`excluded.make`,
               model: sql`excluded.model`,
