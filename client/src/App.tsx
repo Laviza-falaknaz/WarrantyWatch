@@ -12,6 +12,7 @@ import Inventory from "@/pages/Inventory";
 import Warranties from "@/pages/Warranties";
 import PoolGroups from "@/pages/PoolGroups";
 import Analytics from "@/pages/Analytics";
+import Configuration from "@/pages/Configuration";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/covered-units" component={Warranties} />
       <Route path="/coverage-pools" component={PoolGroups} />
       <Route path="/analytics" component={Analytics} />
+      <Route path="/configuration" component={Configuration} />
       {/* Legacy routes for compatibility */}
       <Route path="/inventory" component={Inventory} />
       <Route path="/warranties" component={Warranties} />

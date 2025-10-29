@@ -80,6 +80,24 @@ export const coveragePool = pgTable("coverage_pool", {
   modifiedOn: timestamp("modified_on").notNull().defaultNow(),
 });
 
+// Application configuration settings (single row table for system-wide settings)
+export const appConfiguration = pgTable("app_configuration", {
+  id: varchar("id").primaryKey().default(sql`'system'`), // Always 'system' - single row
+  // Coverage threshold settings
+  lowCoverageThresholdPercent: decimal("low_coverage_threshold_percent", { precision: 5, scale: 2 }).notNull().default('10.00'), // e.g., 6.00 for 6%
+  // Expiry settings
+  expiringCoverageDays: integer("expiring_coverage_days").notNull().default(30), // Days before coverage end to show "expiring soon"
+  poolInactivityDays: integer("pool_inactivity_days").notNull().default(90), // Days of no activity before pool is considered inactive
+  // Alert settings
+  enableLowCoverageAlerts: boolean("enable_low_coverage_alerts").notNull().default(true),
+  enableExpiringAlerts: boolean("enable_expiring_alerts").notNull().default(true),
+  // Display settings
+  dashboardRefreshMinutes: integer("dashboard_refresh_minutes").notNull().default(5),
+  // Audit
+  modifiedOn: timestamp("modified_on").notNull().defaultNow(),
+  modifiedBy: varchar("modified_by", { length: 200 }).default('system'),
+});
+
 // Helper for date validation - handles both Date objects and ISO strings
 const dateSchema = z.union([
   z.date(),
@@ -133,6 +151,16 @@ export const insertCoveragePoolSchema = createInsertSchema(coveragePool).omit({
   modifiedOn: true,
 });
 
+export const insertAppConfigurationSchema = createInsertSchema(appConfiguration).omit({
+  id: true,
+  modifiedOn: true,
+}).extend({
+  lowCoverageThresholdPercent: z.coerce.number().min(0).max(100),
+  expiringCoverageDays: z.coerce.number().int().min(1).max(365),
+  poolInactivityDays: z.coerce.number().int().min(1).max(365),
+  dashboardRefreshMinutes: z.coerce.number().int().min(1).max(60),
+});
+
 export type InsertSpareUnit = z.infer<typeof insertSpareUnitSchema>;
 export type SpareUnit = typeof spareUnit.$inferSelect;
 
@@ -141,6 +169,9 @@ export type CoveredUnit = typeof coveredUnit.$inferSelect;
 
 export type InsertCoveragePool = z.infer<typeof insertCoveragePoolSchema>;
 export type CoveragePool = typeof coveragePool.$inferSelect;
+
+export type InsertAppConfiguration = z.infer<typeof insertAppConfigurationSchema>;
+export type AppConfiguration = typeof appConfiguration.$inferSelect;
 
 // Combined types for joins
 export type SpareUnitWithCoverage = SpareUnit & {

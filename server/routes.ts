@@ -343,6 +343,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Configuration routes
+  app.get("/api/configuration", async (req, res) => {
+    try {
+      const config = await storage.getConfiguration();
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching configuration:", error);
+      res.status(500).json({ error: "Failed to fetch configuration" });
+    }
+  });
+
+  app.patch("/api/configuration", async (req, res) => {
+    try {
+      const config = await storage.updateConfiguration(req.body);
+      res.json(config);
+    } catch (error) {
+      console.error("Error updating configuration:", error);
+      res.status(500).json({ error: "Failed to update configuration" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

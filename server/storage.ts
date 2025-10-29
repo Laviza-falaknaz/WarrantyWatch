@@ -5,9 +5,12 @@ import {
   type InsertCoveredUnit, 
   type CoveragePool, 
   type InsertCoveragePool,
+  type AppConfiguration,
+  type InsertAppConfiguration,
   spareUnit,
   coveredUnit,
-  coveragePool
+  coveragePool,
+  appConfiguration
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, like, or, sql, desc, inArray } from "drizzle-orm";
@@ -66,6 +69,10 @@ export interface IStorage {
     expiringCoverage: number;
     averageCoverageRatio: number;
   }>;
+  
+  // Configuration
+  getConfiguration(): Promise<AppConfiguration>;
+  updateConfiguration(data: Partial<InsertAppConfiguration>): Promise<AppConfiguration>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -441,6 +448,41 @@ export class DatabaseStorage implements IStorage {
       expiringCoverage: Number(expiringCount?.count || 0),
       averageCoverageRatio,
     };
+  }
+
+  async getConfiguration(): Promise<AppConfiguration> {
+    // Get or create configuration (single row with id='system')
+    const [config] = await db.select().from(appConfiguration).where(eq(appConfiguration.id, 'system'));
+    
+    if (!config) {
+      // Create default configuration if it doesn't exist
+      const [newConfig] = await db.insert(appConfiguration).values({
+        id: 'system',
+      }).returning();
+      return newConfig;
+    }
+    
+    return config;
+  }
+
+  async updateConfiguration(data: Partial<InsertAppConfiguration>): Promise<AppConfiguration> {
+    // Ensure configuration exists first
+    await this.getConfiguration();
+    
+    // Convert number to string for decimal field if present
+    const updateData: any = { ...data, modifiedOn: new Date() };
+    if (updateData.lowCoverageThresholdPercent !== undefined) {
+      updateData.lowCoverageThresholdPercent = String(updateData.lowCoverageThresholdPercent);
+    }
+    
+    // Update configuration
+    const [updated] = await db
+      .update(appConfiguration)
+      .set(updateData)
+      .where(eq(appConfiguration.id, 'system'))
+      .returning();
+    
+    return updated;
   }
 }
 
