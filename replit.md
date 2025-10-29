@@ -32,8 +32,8 @@ Preferred communication style: Simple, everyday language.
   - Analytics: `/api/coverage-pools-with-stats`, `/api/analytics`, `/api/filters`
   - Configuration: `/api/configuration` (GET, PATCH)
   - **Bulk Upload (Azure Data Factory Integration)**:
-    - `POST /api/spare-units/bulk` - Truncate and replace all spare units
-    - `POST /api/covered-units/bulk` - Truncate and replace all covered units
+    - `POST /api/spare-units/bulk` - Upsert spare units (composite key: serialNumber + areaId + itemId)
+    - `POST /api/covered-units/bulk` - Upsert covered units (composite key: serialNumber + areaId + itemId + orderNumber)
 - **Data Access Layer**: Storage abstraction (`IStorage` interface) for clean separation from database operations.
 - **Bulk Upload Features**:
   - Transaction-wrapped (atomic truncate + insert for data integrity)

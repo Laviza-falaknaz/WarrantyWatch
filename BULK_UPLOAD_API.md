@@ -1,13 +1,15 @@
 # Bulk Upload API Documentation
 
 ## Overview
-This API provides bulk upsert endpoints for Azure Data Factory (ADF) integration, allowing you to insert new records or update existing records based on a composite key (serialNumber + areaId + itemId). This enables **incremental data synchronization** without replacing all data.
+This API provides bulk upsert endpoints for Azure Data Factory (ADF) integration, allowing you to insert new records or update existing records based on a composite key. This enables **incremental data synchronization** without replacing all data.
 
 **Base URL**: `https://your-app-domain.replit.app` (or your custom domain)
 
-**Upsert Key**: Composite key of `serialNumber` + `areaId` + `itemId`
-- If a record with the same composite key exists, it will be updated
-- If no matching record exists, a new record will be inserted
+**Upsert Keys**:
+- **Spare Units**: Composite key of `serialNumber` + `areaId` + `itemId`
+- **Covered Units**: Composite key of `serialNumber` + `areaId` + `itemId` + `orderNumber`
+
+If a record with the same composite key exists, it will be updated. If no matching record exists, a new record will be inserted.
 
 ### Performance Optimization
 
@@ -141,7 +143,7 @@ curl -X POST https://your-app.replit.app/api/spare-units/bulk \
 
 **Endpoint**: `POST /api/covered-units/bulk`
 
-**Description**: Inserts new covered units or updates existing ones based on the composite key (serialNumber + areaId + itemId). This allows for incremental updates without losing existing data.
+**Description**: Inserts new covered units or updates existing ones based on the composite key (serialNumber + areaId + itemId + orderNumber). This allows for incremental updates without losing existing data.
 
 **Content-Type**: `application/json`
 
