@@ -2,7 +2,8 @@ import {
   type SpareUnit, 
   type InsertSpareUnit, 
   type CoveredUnit, 
-  type InsertCoveredUnit, 
+  type InsertCoveredUnit,
+  type BulkInsertCoveredUnit, 
   type CoveragePool, 
   type InsertCoveragePool,
   type AppConfiguration,
@@ -43,7 +44,7 @@ export interface IStorage {
   getCoveredUnitById(id: string): Promise<CoveredUnit | undefined>;
   createCoveredUnit(data: InsertCoveredUnit): Promise<CoveredUnit>;
   updateCoveredUnit(id: string, data: Partial<InsertCoveredUnit>): Promise<CoveredUnit | undefined>;
-  bulkReplaceCoveredUnits(data: InsertCoveredUnit[]): Promise<number>;
+  bulkReplaceCoveredUnits(data: BulkInsertCoveredUnit[]): Promise<number>;
   
   // Coverage Pool methods
   getCoveragePools(): Promise<CoveragePool[]>;
@@ -282,7 +283,7 @@ export class DatabaseStorage implements IStorage {
     return item || undefined;
   }
 
-  async bulkReplaceCoveredUnits(data: InsertCoveredUnit[]): Promise<number> {
+  async bulkReplaceCoveredUnits(data: BulkInsertCoveredUnit[]): Promise<number> {
     // Upsert based on composite key (serialNumber + areaId + itemId)
     // Using ON CONFLICT to update if exists, insert if not
     if (data.length === 0) {
@@ -296,12 +297,20 @@ export class DatabaseStorage implements IStorage {
     for (let i = 0; i < data.length; i += batchSize) {
       const batch = data.slice(i, i + batchSize);
       
-      // Precompute coverage duration days for all items in batch
+      // Precompute coverage duration days and convert dates for all items in batch
       const enrichedBatch = batch.map(item => {
         const startDate = item.coverageStartDate instanceof Date ? item.coverageStartDate : new Date(item.coverageStartDate);
         const endDate = item.coverageEndDate instanceof Date ? item.coverageEndDate : new Date(item.coverageEndDate);
+        const orderDate = item.orderDate ? (item.orderDate instanceof Date ? item.orderDate : new Date(item.orderDate)) : null;
         const coverageDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        return { ...item, coverageDurationDays };
+        
+        return { 
+          ...item, 
+          coverageStartDate: startDate,
+          coverageEndDate: endDate,
+          orderDate,
+          coverageDurationDays 
+        };
       });
       
       // Execute batch in a transaction for atomicity
