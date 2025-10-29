@@ -68,6 +68,8 @@ export interface IStorage {
     activeCoverage: number;
     expiringCoverage: number;
     averageCoverageRatio: number;
+    lowCoverageThresholdPercent: number;
+    expiringCoverageDays: number;
   }>;
   
   // Configuration
@@ -417,14 +419,21 @@ export class DatabaseStorage implements IStorage {
     activeCoverage: number;
     expiringCoverage: number;
     averageCoverageRatio: number;
+    lowCoverageThresholdPercent: number;
+    expiringCoverageDays: number;
   }> {
+    // Get configuration for dynamic thresholds
+    const config = await this.getConfiguration();
+    const expiringDays = config.expiringCoverageDays;
+    const lowCoverageThreshold = Number(config.lowCoverageThresholdPercent);
+    
     const [spareCount] = await db.select({ count: sql<number>`count(*)` }).from(spareUnit);
     const [coveredCount] = await db.select({ count: sql<number>`count(*)` }).from(coveredUnit);
     const [activeCoverageCount] = await db.select({ count: sql<number>`count(*)` }).from(coveredUnit).where(eq(coveredUnit.isCoverageActive, true));
     
-    // Count coverage expiring in next 30 days
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    // Count coverage expiring in configured days
+    const expiringDate = new Date();
+    expiringDate.setDate(expiringDate.getDate() + expiringDays);
     
     const [expiringCount] = await db
       .select({ count: sql<number>`count(*)` })
@@ -432,7 +441,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(coveredUnit.isCoverageActive, true),
-          sql`${coveredUnit.coverageEndDate} <= ${thirtyDaysFromNow}`
+          sql`${coveredUnit.coverageEndDate} <= ${expiringDate}`
         )
       );
     
@@ -447,6 +456,8 @@ export class DatabaseStorage implements IStorage {
       activeCoverage: Number(activeCoverageCount?.count || 0),
       expiringCoverage: Number(expiringCount?.count || 0),
       averageCoverageRatio,
+      lowCoverageThresholdPercent: lowCoverageThreshold,
+      expiringCoverageDays: expiringDays,
     };
   }
 

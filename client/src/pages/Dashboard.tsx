@@ -13,6 +13,8 @@ export default function Dashboard() {
     activeCoverage: number;
     expiringCoverage: number;
     averageCoverageRatio: number;
+    lowCoverageThresholdPercent: number;
+    expiringCoverageDays: number;
   }>({
     queryKey: ["/api/analytics"],
   });
@@ -43,8 +45,9 @@ export default function Dashboard() {
     }
   }).filter(Boolean) || [];
 
-  // Calculate low coverage alerts
-  const lowCoverageCount = poolCoverageStats.filter((stat: any) => stat.coverage < 10).length;
+  // Calculate low coverage alerts using configured threshold
+  const threshold = analytics?.lowCoverageThresholdPercent || 10;
+  const lowCoverageCount = poolCoverageStats.filter((stat: any) => stat.coverage < threshold).length;
 
   if (analyticsLoading || statsLoading) {
     return (
@@ -90,13 +93,13 @@ export default function Dashboard() {
           title="Expiring Coverage"
           value={analytics?.expiringCoverage || 0}
           icon={TrendingUp}
-          subtitle="Next 30 days"
+          subtitle={`Next ${analytics?.expiringCoverageDays || 30} days`}
         />
         <MetricCard
           title="Low Coverage Alerts"
           value={lowCoverageCount}
           icon={AlertTriangle}
-          subtitle="Below 10% threshold"
+          subtitle={`Below ${threshold}% threshold`}
         />
       </div>
 
@@ -157,7 +160,7 @@ export default function Dashboard() {
                   <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-red-500" />
                   <div className="flex-1 space-y-1">
                     <p className="text-sm">
-                      {lowCoverageCount} coverage pools below 10% coverage ratio
+                      {lowCoverageCount} coverage pools below {threshold}% coverage ratio
                     </p>
                     <p className="text-xs text-muted-foreground">Action needed</p>
                   </div>
