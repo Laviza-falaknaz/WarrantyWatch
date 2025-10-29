@@ -226,7 +226,7 @@ export default function PoolGroups() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Make</Label>
+                <Label>Make (Optional)</Label>
                 <MultiSelectCombobox
                   values={selectedMakes}
                   onValuesChange={setSelectedMakes}
@@ -299,7 +299,7 @@ export default function PoolGroups() {
               </Button>
               <Button
                 onClick={handleCreatePool}
-                disabled={!poolName || selectedMakes.length === 0 || createMutation.isPending}
+                disabled={!poolName || createMutation.isPending}
                 data-testid="button-confirm-create"
               >
                 {createMutation.isPending ? "Creating..." : "Create Pool"}
