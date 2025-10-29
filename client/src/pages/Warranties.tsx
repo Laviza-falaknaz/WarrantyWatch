@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DataTable, { Column } from "@/components/DataTable";
 import SearchBar from "@/components/SearchBar";
+import TablePagination from "@/components/TablePagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +19,9 @@ export default function Warranties() {
   const [searchQuery, setSearchQuery] = useState("");
   const [hideExpired, setHideExpired] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  const ITEMS_PER_PAGE = 100;
 
   // Get configuration for expiring days threshold
   const { data: configuration } = useQuery<AppConfiguration>({
@@ -41,14 +45,18 @@ export default function Warranties() {
     },
   });
 
-  // Fetch table data (limited to 10k for performance)
+  // Fetch table data (paginated - 100 items per page)
   const { data: stockUnderWarranty, isLoading: tableLoading } = useQuery({
-    queryKey: ["/api/covered-units", searchQuery],
+    queryKey: ["/api/covered-units", searchQuery, currentPage],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchQuery) {
         params.append("search", searchQuery);
       }
+      
+      // Add pagination parameters
+      params.append("limit", ITEMS_PER_PAGE.toString());
+      params.append("offset", ((currentPage - 1) * ITEMS_PER_PAGE).toString());
       
       const response = await fetch(`/api/covered-units?${params}`);
       if (!response.ok) throw new Error("Failed to fetch stock under warranty");
@@ -88,6 +96,13 @@ export default function Warranties() {
 
   // Use full dataset stats for summary cards (not limited to 10k)
   const stats = fullStats || { active: 0, expiring: 0, expired: 0, total: 0 };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1); // Reset to first page when search changes
+  };
+
+  const totalPages = Math.ceil(stats.total / ITEMS_PER_PAGE);
 
   const columns: Column<CoveredUnit>[] = [
     {
@@ -322,21 +337,10 @@ export default function Warranties() {
         </Card>
       </div>
 
-      {/* Warning when query limit is reached */}
-      {stockUnderWarranty && stockUnderWarranty.length >= 10000 && (
-        <Alert data-testid="alert-query-limit-reached">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Showing {stockUnderWarranty.length.toLocaleString()} records (query limit reached). 
-            Use search and filters to find specific units. Additional records may exist in the database.
-          </AlertDescription>
-        </Alert>
-      )}
-
       <div className="space-y-4">
         <SearchBar
           placeholder="Search by serial number, make, or model..."
-          onSearch={setSearchQuery}
+          onSearch={handleSearchChange}
           className="max-w-md"
         />
 
@@ -382,6 +386,16 @@ export default function Warranties() {
             </div>
           </CardContent>
         </Card>
+
+        {totalPages > 0 && (
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            itemsPerPage={ITEMS_PER_PAGE}
+            totalItems={stats.total}
+          />
+        )}
 
         <DataTable
           columns={columns}
