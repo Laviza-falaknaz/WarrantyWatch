@@ -22,7 +22,7 @@ Preferred communication style: Simple, everyday language.
 - **Design Principles**: Data-first presentation for enterprise dashboards, high information density, Inter and JetBrains Mono typography, consistent spacing.
 - **State Management**: TanStack Query for server state, local React state for UI, Context API for theme.
 - **Routing**: wouter.
-- **Key Pages**: Dashboard, Spare Pool, Covered Units, Coverage Pools, Analytics.
+- **Key Pages**: Dashboard, Spare Pool, Covered Units, Coverage Pools, Analytics, Configuration.
 
 **Backend Architecture**:
 - **Framework**: Express.js with TypeScript on Node.js.
@@ -30,6 +30,7 @@ Preferred communication style: Simple, everyday language.
 - **API Endpoints**: 
   - Standard CRUD: `/api/spare-units`, `/api/covered-units`, `/api/coverage-pools`
   - Analytics: `/api/coverage-pools-with-stats`, `/api/analytics`, `/api/filters`
+  - Configuration: `/api/configuration` (GET, PATCH)
   - **Bulk Upload (Azure Data Factory Integration)**:
     - `POST /api/spare-units/bulk` - Truncate and replace all spare units
     - `POST /api/covered-units/bulk` - Truncate and replace all covered units
@@ -48,7 +49,21 @@ Preferred communication style: Simple, everyday language.
     1.  `spare_unit` table: Stores spare laptop details, specifications, serial numbers, and pool management data.
     2.  `covered_unit` table: Stores deployed laptop details, specifications (matching `spare_unit` for pool matching), warranty coverage periods, and deployment info.
     3.  `coverage_pool` table: Defines dynamic coverage pools with names, descriptions, and JSON-serialized filter criteria.
-- **Key Design Decisions**: Matching specification fields in `spare_unit` and `covered_unit` tables, JSON-serialized filter criteria for flexibility, UUID primary keys, and audit timestamps.
+    4.  `app_configuration` table: Single-row configuration table (id='system') storing runtime settings for thresholds and preferences.
+- **Key Design Decisions**: Matching specification fields in `spare_unit` and `covered_unit` tables, JSON-serialized filter criteria for flexibility, UUID primary keys, audit timestamps, and singleton configuration pattern.
+
+**Runtime Configuration System**:
+- **Purpose**: Allows administrators to configure system thresholds and preferences without code changes.
+- **Implementation**: Single-row `app_configuration` table with strongly-typed fields.
+- **Configuration Settings**:
+  - `lowCoverageThresholdPercent`: Percentage threshold for low coverage alerts (default: 10%)
+  - `expiringCoverageDays`: Days ahead to show expiring coverage alerts (default: 30)
+  - `poolInactivityDays`: Days before marking pools as inactive (default: 90)
+  - `enableLowCoverageAlerts`: Toggle for low coverage alerts (default: true)
+  - `enableExpiringAlerts`: Toggle for expiring coverage alerts (default: true)
+  - `dashboardRefreshMinutes`: Dashboard auto-refresh interval (default: 5 minutes)
+- **Dashboard Integration**: Analytics endpoint dynamically uses configured thresholds; dashboard displays reflect current configuration values in real-time.
+- **UI**: Configuration page provides form-based interface for updating all settings with validation and success/error feedback.
 
 **Authentication and Authorization**:
 - **Current State**: No authentication/authorization implemented. Assumes a trusted internal network.
