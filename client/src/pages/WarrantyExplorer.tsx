@@ -15,9 +15,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, RefreshCw, Laptop, Tags, Box, Shield, ChevronDown } from "lucide-react";
+import { Search, RefreshCw, Laptop, Tags, Box, Shield, ChevronDown, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -122,14 +136,18 @@ export default function WarrantyExplorer() {
       setData(apiData);
       setFilteredData(apiData);
       
-      // Initialize filters with all values selected
+      // Initialize filters - all makes, all models, but only Reman and Circular categories
       const makes = Array.from(new Set(apiData.map((item: WarrantySummaryData) => item.Make))) as string[];
       const models = Array.from(new Set(apiData.map((item: WarrantySummaryData) => item.CleanedModelNum))) as string[];
       const categories = Array.from(new Set(apiData.map((item: WarrantySummaryData) => item.Category))) as string[];
       
       setSelectedMakes(makes);
       setSelectedModels(models);
-      setSelectedCategories(categories);
+      // Default to only Reman and Circular
+      const defaultCategories = categories.filter(cat => 
+        cat.toLowerCase() === 'reman' || cat.toLowerCase() === 'circular'
+      );
+      setSelectedCategories(defaultCategories.length > 0 ? defaultCategories : categories);
       
       setLastUpdated(new Date().toLocaleTimeString());
       
@@ -242,9 +260,9 @@ export default function WarrantyExplorer() {
       datasets: [{
         label: 'Warranty Count',
         data: sorted.map(item => item[1]),
-        backgroundColor: 'hsl(var(--primary) / 0.7)',
-        borderColor: 'hsl(var(--primary))',
-        borderWidth: 1,
+        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+        borderColor: 'rgba(59, 130, 246, 1)',
+        borderWidth: 2,
       }]
     };
   }, [filteredData]);
@@ -264,11 +282,11 @@ export default function WarrantyExplorer() {
       datasets: [{
         data: sorted.map(item => item[1]),
         backgroundColor: [
-          'hsl(var(--primary) / 0.8)',
-          'hsl(var(--chart-1) / 0.8)',
-          'hsl(var(--chart-2) / 0.8)',
-          'hsl(var(--chart-3) / 0.8)',
-          'hsl(var(--chart-4) / 0.8)',
+          'rgba(59, 130, 246, 0.85)',
+          'rgba(16, 185, 129, 0.85)',
+          'rgba(251, 146, 60, 0.85)',
+          'rgba(147, 51, 234, 0.85)',
+          'rgba(236, 72, 153, 0.85)',
         ],
         borderWidth: 0,
       }]
@@ -290,9 +308,9 @@ export default function WarrantyExplorer() {
       datasets: [{
         label: 'Warranty Count',
         data: sorted.map(item => item[1]),
-        backgroundColor: 'hsl(var(--chart-1) / 0.7)',
-        borderColor: 'hsl(var(--chart-1))',
-        borderWidth: 1,
+        backgroundColor: 'rgba(16, 185, 129, 0.7)',
+        borderColor: 'rgba(16, 185, 129, 1)',
+        borderWidth: 2,
       }]
     };
   }, [filteredData]);
@@ -373,12 +391,12 @@ export default function WarrantyExplorer() {
       datasets: [{
         label: 'Warranty Starts',
         data: sorted.map(([, count]) => count),
-        backgroundColor: 'hsl(var(--primary) / 0.1)',
-        borderColor: 'hsl(var(--primary))',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: 'rgba(59, 130, 246, 1)',
         borderWidth: 3,
         tension: 0.4,
         fill: true,
-        pointBackgroundColor: 'hsl(var(--primary))',
+        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
         pointRadius: 5,
@@ -404,11 +422,11 @@ export default function WarrantyExplorer() {
         data: sorted.map(item => item[1]),
         backgroundColor: sorted.map((_, index) => {
           const colors = [
-            'hsl(var(--primary) / 0.7)',
-            'hsl(var(--chart-1) / 0.7)',
-            'hsl(var(--chart-2) / 0.7)',
-            'hsl(var(--chart-3) / 0.7)',
-            'hsl(var(--chart-4) / 0.7)',
+            'rgba(59, 130, 246, 0.7)',
+            'rgba(16, 185, 129, 0.7)',
+            'rgba(251, 146, 60, 0.7)',
+            'rgba(147, 51, 234, 0.7)',
+            'rgba(236, 72, 153, 0.7)',
           ];
           return colors[index % colors.length];
         }),
@@ -456,26 +474,30 @@ export default function WarrantyExplorer() {
   // Get unique filter options
   const filterOptions = useMemo(() => {
     const makes = Array.from(new Set(data.map(item => item.Make))).sort();
-    const models = Array.from(new Set(data.map(item => item.CleanedModelNum))).sort();
+    const allModels = Array.from(new Set(data.map(item => item.CleanedModelNum))).sort();
     const categories = Array.from(new Set(data.map(item => item.Category))).sort();
     
+    // Filter models based on selected makes (Make-Model hierarchy)
+    const models = selectedMakes.length === 0 || selectedMakes.length === makes.length
+      ? allModels
+      : Array.from(new Set(
+          data
+            .filter(item => selectedMakes.includes(item.Make))
+            .map(item => item.CleanedModelNum)
+        )).sort();
+    
     return { makes, models, categories };
-  }, [data]);
+  }, [data, selectedMakes]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
-            <Shield className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Warranty Insights</h1>
-            <p className="text-sm text-muted-foreground">
-              Last updated: {lastUpdated || 'Loading...'}
-            </p>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Warranty Explorer</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Comprehensive warranty analytics and device tracking
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-80">
@@ -499,8 +521,7 @@ export default function WarrantyExplorer() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        <div className="p-6 space-y-6">
+      <div className="space-y-6">
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card data-testid="card-total-warranties">
@@ -805,10 +826,9 @@ export default function WarrantyExplorer() {
             </CardContent>
           </Card>
         </div>
-      </div>
 
-      {/* Drill-Down Modal */}
-      <Dialog open={drillModalOpen} onOpenChange={setDrillModalOpen}>
+        {/* Drill-Down Modal */}
+        <Dialog open={drillModalOpen} onOpenChange={setDrillModalOpen}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle data-testid="drill-modal-title">{drillModalTitle}</DialogTitle>
