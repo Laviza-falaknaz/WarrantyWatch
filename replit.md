@@ -28,6 +28,14 @@ The **Coverage Ratio = (Spare Units / Covered Units) × 100%**. Both spare and c
    - Success/error toast notifications for export operations
    - Uses xlsx library for Excel generation
 
+3. **Warranty Explorer Page**: Added new standalone warranty analytics page from external HTML resource:
+   - Provides comprehensive warranty insights dashboard with external Power Automate API integration
+   - Features: Summary cards (total warranties, unique makes/models/categories), interactive charts (react-chartjs-2), filterable/sortable table, drill-down modal
+   - Route: `/warranty-explorer` with sidebar navigation link
+   - Maintains original functionality from provided HTML resource while adapting styling to match app theme
+   - **Note**: API URL is client-side (matching original HTML implementation) - suitable for internal/trusted network use
+   - Handles loading states, empty states, and API errors with toast notifications
+
 **October 29, 2025**:
 1. **Stock Under Warranty Sorting**: Changed default sort order to `coverageStartDate DESC` to show newest warranties first (previously sorted by `createdOn`)
 2. **Coverage Pool Filters Updated**: 
@@ -47,7 +55,7 @@ Preferred communication style: Simple, everyday language.
 - **Design Principles**: Data-first presentation for enterprise dashboards, high information density, Inter and JetBrains Mono typography, consistent spacing.
 - **State Management**: TanStack Query for server state, local React state for UI, Context API for theme.
 - **Routing**: wouter.
-- **Key Pages**: Dashboard, Spare Pool, Covered Units, Coverage Pools, Analytics, Configuration.
+- **Key Pages**: Dashboard, Spare Pool, Covered Units, Coverage Pools, Analytics, Warranty Explorer, Configuration.
 
 **Backend Architecture**:
 - **Framework**: Express.js with TypeScript on Node.js.
@@ -125,6 +133,7 @@ Preferred communication style: Simple, everyday language.
 - **class-variance-authority**: Component variant management.
 - **cmdk**: Command palette component.
 - **xlsx**: Excel file generation for data export.
+- **react-chartjs-2 & chart.js**: Interactive charting library for warranty analytics visualizations.
 
 **Development Tools**:
 - **Vite**: Fast development server and build tool.

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Shield, Layers, BarChart3, Settings } from "lucide-react";
+import { LayoutDashboard, Package, Shield, Layers, BarChart3, Search, Settings } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -36,6 +36,11 @@ const menuItems = [
     title: "Analytics",
     url: "/analytics",
     icon: BarChart3,
+  },
+  {
+    title: "Warranty Explorer",
+    url: "/warranty-explorer",
+    icon: Search,
   },
   {
     title: "Configuration",
