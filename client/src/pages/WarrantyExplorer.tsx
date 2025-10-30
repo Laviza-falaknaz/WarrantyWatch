@@ -466,7 +466,11 @@ export default function WarrantyExplorer() {
     
     setSelectedMakes(makes);
     setSelectedModels(models);
-    setSelectedCategories(categories);
+    // Reset to default: only Reman and Circular
+    const defaultCategories = categories.filter(cat => 
+      cat.toLowerCase() === 'reman' || cat.toLowerCase() === 'circular'
+    );
+    setSelectedCategories(defaultCategories.length > 0 ? defaultCategories : categories);
     setWarrantyFilter('');
     setSearchQuery('');
   }, [data]);
@@ -657,59 +661,134 @@ export default function WarrantyExplorer() {
               <div className="flex flex-wrap gap-4 p-4 mb-4 bg-muted/50 rounded-lg border">
                 <div className="flex-1 min-w-[200px]">
                   <label className="text-xs font-semibold uppercase mb-2 block">Make</label>
-                  <Select
-                    value={selectedMakes.length === filterOptions.makes.length ? "all" : "custom"}
-                    onValueChange={(value) => {
-                      if (value === "all") {
-                        setSelectedMakes(filterOptions.makes);
-                      }
-                    }}
-                  >
-                    <SelectTrigger data-testid="select-make-filter">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All ({filterOptions.makes.length})</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between" data-testid="select-make-filter">
+                        <span className="truncate">
+                          {selectedMakes.length === 0
+                            ? "None selected"
+                            : selectedMakes.length === filterOptions.makes.length
+                            ? `All Makes (${filterOptions.makes.length})`
+                            : `${selectedMakes.length} selected`}
+                        </span>
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[250px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search makes..." />
+                        <CommandEmpty>No make found.</CommandEmpty>
+                        <CommandGroup className="max-h-[300px] overflow-auto">
+                          {filterOptions.makes.map((make) => (
+                            <CommandItem
+                              key={make}
+                              onSelect={() => {
+                                setSelectedMakes(prev =>
+                                  prev.includes(make)
+                                    ? prev.filter(m => m !== make)
+                                    : [...prev, make]
+                                );
+                              }}
+                            >
+                              <Checkbox
+                                checked={selectedMakes.includes(make)}
+                                className="mr-2"
+                              />
+                              {make}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="flex-1 min-w-[200px]">
                   <label className="text-xs font-semibold uppercase mb-2 block">Model</label>
-                  <Select
-                    value={selectedModels.length === filterOptions.models.length ? "all" : "custom"}
-                    onValueChange={(value) => {
-                      if (value === "all") {
-                        setSelectedModels(filterOptions.models);
-                      }
-                    }}
-                  >
-                    <SelectTrigger data-testid="select-model-filter">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All ({filterOptions.models.length})</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between" data-testid="select-model-filter">
+                        <span className="truncate">
+                          {selectedModels.length === 0
+                            ? "None selected"
+                            : selectedModels.length === filterOptions.models.length
+                            ? `All Models (${filterOptions.models.length})`
+                            : `${selectedModels.length} selected`}
+                        </span>
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[250px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search models..." />
+                        <CommandEmpty>No model found.</CommandEmpty>
+                        <CommandGroup className="max-h-[300px] overflow-auto">
+                          {filterOptions.models.map((model) => (
+                            <CommandItem
+                              key={model}
+                              onSelect={() => {
+                                setSelectedModels(prev =>
+                                  prev.includes(model)
+                                    ? prev.filter(m => m !== model)
+                                    : [...prev, model]
+                                );
+                              }}
+                            >
+                              <Checkbox
+                                checked={selectedModels.includes(model)}
+                                className="mr-2"
+                              />
+                              {model}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="flex-1 min-w-[200px]">
                   <label className="text-xs font-semibold uppercase mb-2 block">Category</label>
-                  <Select
-                    value={selectedCategories.length === filterOptions.categories.length ? "all" : "custom"}
-                    onValueChange={(value) => {
-                      if (value === "all") {
-                        setSelectedCategories(filterOptions.categories);
-                      }
-                    }}
-                  >
-                    <SelectTrigger data-testid="select-category-filter">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All ({filterOptions.categories.length})</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between" data-testid="select-category-filter">
+                        <span className="truncate">
+                          {selectedCategories.length === 0
+                            ? "None selected"
+                            : selectedCategories.length === filterOptions.categories.length
+                            ? `All Categories (${filterOptions.categories.length})`
+                            : `${selectedCategories.length} selected`}
+                        </span>
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[250px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search categories..." />
+                        <CommandEmpty>No category found.</CommandEmpty>
+                        <CommandGroup className="max-h-[300px] overflow-auto">
+                          {filterOptions.categories.map((category) => (
+                            <CommandItem
+                              key={category}
+                              onSelect={() => {
+                                setSelectedCategories(prev =>
+                                  prev.includes(category)
+                                    ? prev.filter(c => c !== category)
+                                    : [...prev, category]
+                                );
+                              }}
+                            >
+                              <Checkbox
+                                checked={selectedCategories.includes(category)}
+                                className="mr-2"
+                              />
+                              {category}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="flex-1 min-w-[200px]">
