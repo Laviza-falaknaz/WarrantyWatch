@@ -41,19 +41,19 @@ export function PoolDetailDialog({
     }
   }, [filterCriteria]);
 
-  // Fetch spare units
+  // Fetch spare units (with high limit to get all records)
   const { data: spareUnits, isLoading: spareLoading } = useQuery<SpareUnit[]>({
-    queryKey: ["/api/spare-units"],
+    queryKey: ["/api/spare-units", { limit: 999999 }],
     enabled: open,
   });
 
-  // Fetch covered units
+  // Fetch covered units (with high limit to get all records)
   const { data: coveredUnits, isLoading: coveredLoading } = useQuery<CoveredUnit[]>({
-    queryKey: ["/api/covered-units"],
+    queryKey: ["/api/covered-units", { limit: 999999 }],
     enabled: open,
   });
 
-  // Filter units based on criteria
+  // Filter units based on criteria (case-insensitive and trimmed for robustness)
   const filterUnits = <T extends Record<string, any>>(units: T[] | undefined): T[] => {
     if (!units) return [];
     
@@ -65,8 +65,14 @@ export function PoolDetailDialog({
         const values = Array.isArray(value) ? value : [value];
         const unitValue = unit[key];
         
+        // If unit doesn't have the field, exclude it
         if (!unitValue) return false;
-        if (!values.includes(unitValue)) return false;
+        
+        // Case-insensitive and trimmed comparison
+        const normalizedUnitValue = String(unitValue).trim().toLowerCase();
+        const normalizedValues = values.map(v => String(v).trim().toLowerCase());
+        
+        if (!normalizedValues.includes(normalizedUnitValue)) return false;
       }
       return true;
     });
@@ -253,7 +259,7 @@ export function PoolDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-7xl max-h-[90vh]">
         <DialogHeader>
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -323,7 +329,7 @@ export function PoolDetailDialog({
                   </CardContent>
                 </Card>
               ) : (
-                <div className="border rounded-md">
+                <div className="border rounded-md overflow-x-auto max-h-[50vh] overflow-y-auto">
                   <DataTable
                     columns={spareColumns}
                     data={filteredSpareUnits}
@@ -348,7 +354,7 @@ export function PoolDetailDialog({
                   </CardContent>
                 </Card>
               ) : (
-                <div className="border rounded-md">
+                <div className="border rounded-md overflow-x-auto max-h-[50vh] overflow-y-auto">
                   <DataTable
                     columns={coveredColumns}
                     data={filteredCoveredUnits}
