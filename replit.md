@@ -12,6 +12,22 @@ The core concept revolves around a **warranty pool management system** where:
 The **Coverage Ratio = (Spare Units / Covered Units) × 100%**. Both spare and covered units have matching specification fields (e.g., make, model, processor) which are used by coverage pools to group units and calculate ratios, identifying areas needing more spares.
 
 ### Recent Changes
+**October 30, 2025**:
+1. **Pagination Component Stability**: Fixed pagination reset issues by:
+   - Replacing PaginationLink anchor tags with Button components (type="button") to prevent navigation/form submission behavior
+   - Added memoized callbacks (useCallback) for handlePageChange in Warranties.tsx and Inventory.tsx
+   - Memoized getPageNumbers calculation (useMemo) to prevent unnecessary button re-renders
+   - Ensures stable pagination state when clicking page numbers or Next/Previous buttons
+
+2. **Pool Detail Excel Export**: Enhanced PoolDetailDialog with tabular display and Excel export:
+   - Converted card-based unit display to DataTable component for better data presentation
+   - Added "Export to Excel" button in dialog header
+   - Excel file contains 2 sheets: "Spare Units" and "Covered Units"
+   - Filename format: `{PoolName}_{YYYY-MM-DD}.xlsx`
+   - Displays all filtered units matching the pool's criteria
+   - Success/error toast notifications for export operations
+   - Uses xlsx library for Excel generation
+
 **October 29, 2025**:
 1. **Stock Under Warranty Sorting**: Changed default sort order to `coverageStartDate DESC` to show newest warranties first (previously sorted by `createdOn`)
 2. **Coverage Pool Filters Updated**: 
@@ -108,6 +124,7 @@ Preferred communication style: Simple, everyday language.
 - **tailwindcss**: Utility-first CSS framework.
 - **class-variance-authority**: Component variant management.
 - **cmdk**: Command palette component.
+- **xlsx**: Excel file generation for data export.
 
 **Development Tools**:
 - **Vite**: Fast development server and build tool.

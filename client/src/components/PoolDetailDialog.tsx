@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import * as XLSX from "xlsx";
 import {
   Dialog,
   DialogContent,
@@ -8,10 +9,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Download } from "lucide-react";
+import DataTable, { Column } from "@/components/DataTable";
 import type { SpareUnit, CoveredUnit } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 interface PoolDetailDialogProps {
   open: boolean;
@@ -26,6 +31,8 @@ export function PoolDetailDialog({
   poolName,
   filterCriteria,
 }: PoolDetailDialogProps) {
+  const { toast } = useToast();
+  
   const criteria = useMemo(() => {
     try {
       return JSON.parse(filterCriteria);
@@ -68,14 +75,204 @@ export function PoolDetailDialog({
   const filteredSpareUnits = filterUnits(spareUnits);
   const filteredCoveredUnits = filterUnits(coveredUnits);
 
+  // Column definitions for spare units
+  const spareColumns: Column<SpareUnit>[] = useMemo(() => [
+    {
+      key: "serialNumber",
+      header: "Serial Number",
+      render: (unit) => (
+        <span className="font-mono text-sm">{unit.serialNumber}</span>
+      ),
+    },
+    {
+      key: "itemId",
+      header: "Item ID",
+      render: (unit) => (
+        <span className="font-mono text-sm">{unit.itemId || "—"}</span>
+      ),
+    },
+    {
+      key: "make",
+      header: "Make",
+    },
+    {
+      key: "model",
+      header: "Model",
+    },
+    {
+      key: "processor",
+      header: "Processor",
+    },
+    {
+      key: "ram",
+      header: "RAM",
+    },
+    {
+      key: "category",
+      header: "Category",
+    },
+    {
+      key: "hdd",
+      header: "Storage",
+    },
+    {
+      key: "generation",
+      header: "Generation",
+    },
+    {
+      key: "areaId",
+      header: "Area ID",
+    },
+    {
+      key: "currentHolder",
+      header: "Current Holder",
+      render: (unit) => unit.currentHolder || "Available",
+    },
+  ], []);
+
+  // Column definitions for covered units
+  const coveredColumns: Column<CoveredUnit>[] = useMemo(() => [
+    {
+      key: "serialNumber",
+      header: "Serial Number",
+      render: (unit) => (
+        <span className="font-mono text-sm">{unit.serialNumber}</span>
+      ),
+    },
+    {
+      key: "customerName",
+      header: "Customer Name",
+    },
+    {
+      key: "make",
+      header: "Make",
+    },
+    {
+      key: "model",
+      header: "Model",
+    },
+    {
+      key: "processor",
+      header: "Processor",
+    },
+    {
+      key: "ram",
+      header: "RAM",
+    },
+    {
+      key: "category",
+      header: "Category",
+    },
+    {
+      key: "hdd",
+      header: "Storage",
+    },
+    {
+      key: "generation",
+      header: "Generation",
+    },
+    {
+      key: "areaId",
+      header: "Area ID",
+    },
+    {
+      key: "orderNumber",
+      header: "Order Number",
+      render: (unit) => (
+        <span className="font-mono text-sm">{unit.orderNumber || "—"}</span>
+      ),
+    },
+  ], []);
+
+  // Export to Excel function
+  const handleExportToExcel = () => {
+    try {
+      // Create a new workbook
+      const workbook = XLSX.utils.book_new();
+
+      // Prepare spare units data
+      const spareData = filteredSpareUnits.map(unit => ({
+        "Serial Number": unit.serialNumber,
+        "Item ID": unit.itemId || "",
+        "Make": unit.make,
+        "Model": unit.model,
+        "Processor": unit.processor,
+        "RAM": unit.ram,
+        "Category": unit.category || "",
+        "Storage Size": unit.hdd || "",
+        "Generation": unit.generation || "",
+        "Area ID": unit.areaId,
+        "Current Holder": unit.currentHolder || "Available",
+        "Reserved For Case": unit.reservedForCase || "",
+      }));
+
+      // Prepare covered units data
+      const coveredData = filteredCoveredUnits.map(unit => ({
+        "Serial Number": unit.serialNumber,
+        "Customer Name": unit.customerName || "",
+        "Make": unit.make,
+        "Model": unit.model,
+        "Processor": unit.processor,
+        "RAM": unit.ram,
+        "Category": unit.category || "",
+        "Storage Size": unit.hdd || "",
+        "Generation": unit.generation || "",
+        "Area ID": unit.areaId,
+        "Order Number": unit.orderNumber || "",
+        "Coverage Start": unit.coverageStartDate ? new Date(unit.coverageStartDate).toLocaleDateString() : "",
+        "Coverage End": unit.coverageEndDate ? new Date(unit.coverageEndDate).toLocaleDateString() : "",
+      }));
+
+      // Create worksheets
+      const spareSheet = XLSX.utils.json_to_sheet(spareData);
+      const coveredSheet = XLSX.utils.json_to_sheet(coveredData);
+
+      // Add worksheets to workbook
+      XLSX.utils.book_append_sheet(workbook, spareSheet, "Spare Units");
+      XLSX.utils.book_append_sheet(workbook, coveredSheet, "Covered Units");
+
+      // Generate filename with pool name and timestamp
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `${poolName.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.xlsx`;
+
+      // Write the file
+      XLSX.writeFile(workbook, filename);
+
+      toast({
+        title: "Export Successful",
+        description: `Downloaded ${filteredSpareUnits.length} spare units and ${filteredCoveredUnits.length} covered units to Excel`,
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "There was an error exporting to Excel. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{poolName} - Pool Details</DialogTitle>
-          <DialogDescription>
-            View all spare units and covered units in this coverage pool
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <DialogTitle>{poolName} - Pool Details</DialogTitle>
+              <DialogDescription>
+                View all spare units and covered units in this coverage pool
+              </DialogDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportToExcel}
+              disabled={filteredSpareUnits.length === 0 && filteredCoveredUnits.length === 0}
+              data-testid="button-export-excel"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export to Excel
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -126,38 +323,12 @@ export function PoolDetailDialog({
                   </CardContent>
                 </Card>
               ) : (
-                filteredSpareUnits.map((unit) => (
-                  <Card key={unit.id} className="hover-elevate" data-testid={`spare-unit-${unit.serialNumber}`}>
-                    <CardContent className="pt-4">
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Serial: </span>
-                          <span className="font-mono">{unit.serialNumber}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Item ID: </span>
-                          <span className="font-mono">{unit.itemId || "N/A"}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Make/Model: </span>
-                          <span>{unit.make} {unit.model}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Processor: </span>
-                          <span>{unit.processor}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">RAM: </span>
-                          <span>{unit.ram}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Current Holder: </span>
-                          <span>{unit.currentHolder || "Available"}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                <div className="border rounded-md">
+                  <DataTable
+                    columns={spareColumns}
+                    data={filteredSpareUnits}
+                  />
+                </div>
               )}
             </TabsContent>
 
@@ -177,38 +348,12 @@ export function PoolDetailDialog({
                   </CardContent>
                 </Card>
               ) : (
-                filteredCoveredUnits.map((unit) => (
-                  <Card key={unit.id} className="hover-elevate" data-testid={`covered-unit-${unit.serialNumber}`}>
-                    <CardContent className="pt-4">
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Serial: </span>
-                          <span className="font-mono">{unit.serialNumber}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Customer: </span>
-                          <span>{unit.customerName || "N/A"}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Make/Model: </span>
-                          <span>{unit.make} {unit.model}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Processor: </span>
-                          <span>{unit.processor}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">RAM: </span>
-                          <span>{unit.ram}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Order: </span>
-                          <span className="font-mono">{unit.orderNumber || "N/A"}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                <div className="border rounded-md">
+                  <DataTable
+                    columns={coveredColumns}
+                    data={filteredCoveredUnits}
+                  />
+                </div>
               )}
             </TabsContent>
           </Tabs>
