@@ -13,7 +13,14 @@ The **Coverage Ratio = (Spare Units / Covered Units) × 100%**. Both spare and c
 
 ### Recent Changes
 **October 30, 2025**:
-1. **Pagination Component Stability**: Fixed pagination reset issues by:
+1. **Coverage Pool Expansion Fixes**: Resolved three critical issues with pool detail dialog:
+   - **Dashboard Expansion**: Fixed "Expand Pool" buttons on Dashboard - now properly opens PoolDetailDialog with pool data (previously only logged to console)
+   - **Data Fetching**: Added `limit=999999` to spare/covered units queries in dialog to fetch all records (resolves data mismatch where backend stats showed 345 covered but dialog only showed 2)
+   - **Filter Logic**: Updated filterUnits to use case-insensitive and trimmed string comparison for robust matching between backend SQL queries and frontend JavaScript filtering
+   - **Dialog Sizing**: Increased dialog width to `max-w-7xl` and added `max-h-[50vh]` scrollable containers for tables to prevent overflow with large datasets
+   - Result: Pool expansion works from both Dashboard and Coverage Pools page, with accurate counts matching backend stats
+
+2. **Pagination Component Stability**: Fixed pagination reset issues by:
    - Replacing PaginationLink anchor tags with Button components (type="button") to prevent navigation/form submission behavior
    - Added memoized callbacks (useCallback) for handlePageChange in Warranties.tsx and Inventory.tsx
    - Memoized getPageNumbers calculation (useMemo) to prevent unnecessary button re-renders
