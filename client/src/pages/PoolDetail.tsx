@@ -19,7 +19,7 @@ export default function PoolDetail() {
 
   // Fetch pool details
   const { data: pool, isLoading: poolLoading } = useQuery<CoveragePool>({
-    queryKey: ["/api/coverage-pools", poolId],
+    queryKey: [`/api/coverage-pools/${poolId}`],
     enabled: !!poolId,
   });
 
