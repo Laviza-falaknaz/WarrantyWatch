@@ -80,6 +80,90 @@ export const coveragePool = pgTable("coverage_pool", {
   modifiedOn: timestamp("modified_on").notNull().defaultNow(),
 });
 
+// All available stock units (outside the pool, can supplement if needed)
+export const availableStock = pgTable("available_stock", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serialNumber: varchar("serial_number", { length: 100 }).notNull(),
+  areaId: varchar("area_id", { length: 50 }).notNull(),
+  itemId: varchar("item_id", { length: 50 }).notNull(),
+  // Specification fields (matching spare/covered units for pool analysis)
+  make: varchar("make", { length: 100 }).notNull(),
+  model: varchar("model", { length: 100 }).notNull(),
+  processor: varchar("processor", { length: 100 }),
+  generation: varchar("generation", { length: 50 }),
+  ram: varchar("ram", { length: 50 }),
+  hdd: varchar("hdd", { length: 50 }),
+  displaySize: varchar("display_size", { length: 50 }),
+  touchscreen: boolean("touchscreen").default(false),
+  category: varchar("category", { length: 50 }),
+  // Reservation fields
+  reservedSegregationGroup: varchar("reserved_segregation_group", { length: 100 }),
+  reservedForCase: varchar("reserved_for_case", { length: 100 }),
+  // Product details
+  productDescription: text("product_description"),
+  productNumber: varchar("product_number", { length: 100 }),
+  createdOn: timestamp("created_on").notNull().defaultNow(),
+  modifiedOn: timestamp("modified_on").notNull().defaultNow(),
+}, (table) => ({
+  uniqueKey: uniqueIndex("available_stock_unique_key").on(table.serialNumber, table.areaId, table.itemId),
+}));
+
+// Claimed units (warranty returns)
+export const claim = pgTable("claim", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serialNumber: varchar("serial_number", { length: 100 }).notNull(),
+  areaId: varchar("area_id", { length: 50 }).notNull(),
+  itemId: varchar("item_id", { length: 50 }).notNull(),
+  rma: varchar("rma", { length: 100 }).notNull(),
+  // Specification fields
+  make: varchar("make", { length: 100 }).notNull(),
+  model: varchar("model", { length: 100 }).notNull(),
+  processor: varchar("processor", { length: 100 }),
+  generation: varchar("generation", { length: 50 }),
+  ram: varchar("ram", { length: 50 }),
+  hdd: varchar("hdd", { length: 50 }),
+  displaySize: varchar("display_size", { length: 50 }),
+  touchscreen: boolean("touchscreen").default(false),
+  category: varchar("category", { length: 50 }),
+  // Product details
+  productDescription: text("product_description"),
+  productNumber: varchar("product_number", { length: 100 }),
+  // Claim specific
+  claimDate: timestamp("claim_date").notNull(),
+  createdOn: timestamp("created_on").notNull().defaultNow(),
+  modifiedOn: timestamp("modified_on").notNull().defaultNow(),
+}, (table) => ({
+  uniqueKey: uniqueIndex("claim_unique_key").on(table.serialNumber, table.areaId, table.itemId, table.rma),
+}));
+
+// Replacement units (sent as replacements)
+export const replacement = pgTable("replacement", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serialNumber: varchar("serial_number", { length: 100 }).notNull(),
+  areaId: varchar("area_id", { length: 50 }).notNull(),
+  itemId: varchar("item_id", { length: 50 }).notNull(),
+  rma: varchar("rma", { length: 100 }).notNull(),
+  // Specification fields
+  make: varchar("make", { length: 100 }).notNull(),
+  model: varchar("model", { length: 100 }).notNull(),
+  processor: varchar("processor", { length: 100 }),
+  generation: varchar("generation", { length: 50 }),
+  ram: varchar("ram", { length: 50 }),
+  hdd: varchar("hdd", { length: 50 }),
+  displaySize: varchar("display_size", { length: 50 }),
+  touchscreen: boolean("touchscreen").default(false),
+  category: varchar("category", { length: 50 }),
+  // Product details
+  productDescription: text("product_description"),
+  productNumber: varchar("product_number", { length: 100 }),
+  // Replacement specific
+  replacedDate: timestamp("replaced_date").notNull(),
+  createdOn: timestamp("created_on").notNull().defaultNow(),
+  modifiedOn: timestamp("modified_on").notNull().defaultNow(),
+}, (table) => ({
+  uniqueKey: uniqueIndex("replacement_unique_key").on(table.serialNumber, table.areaId, table.itemId, table.rma),
+}));
+
 // Application configuration settings (single row table for system-wide settings)
 export const appConfiguration = pgTable("app_configuration", {
   id: varchar("id").primaryKey().default(sql`'system'`), // Always 'system' - single row
@@ -88,6 +172,8 @@ export const appConfiguration = pgTable("app_configuration", {
   // Expiry settings
   expiringCoverageDays: integer("expiring_coverage_days").notNull().default(30), // Days before coverage end to show "expiring soon"
   poolInactivityDays: integer("pool_inactivity_days").notNull().default(90), // Days of no activity before pool is considered inactive
+  // Run rate calculation settings
+  runRatePeriodMonths: integer("run_rate_period_months").notNull().default(6), // Period in months for calculating run rate
   // Alert settings
   enableLowCoverageAlerts: boolean("enable_low_coverage_alerts").notNull().default(true),
   enableExpiringAlerts: boolean("enable_expiring_alerts").notNull().default(true),
@@ -165,6 +251,28 @@ export const insertCoveragePoolSchema = createInsertSchema(coveragePool).omit({
   modifiedOn: true,
 });
 
+export const insertAvailableStockSchema = createInsertSchema(availableStock).omit({
+  id: true,
+  createdOn: true,
+  modifiedOn: true,
+});
+
+export const insertClaimSchema = createInsertSchema(claim).omit({
+  id: true,
+  createdOn: true,
+  modifiedOn: true,
+}).extend({
+  claimDate: dateSchema,
+});
+
+export const insertReplacementSchema = createInsertSchema(replacement).omit({
+  id: true,
+  createdOn: true,
+  modifiedOn: true,
+}).extend({
+  replacedDate: dateSchema,
+});
+
 export const insertAppConfigurationSchema = createInsertSchema(appConfiguration).omit({
   id: true,
   modifiedOn: true,
@@ -172,6 +280,7 @@ export const insertAppConfigurationSchema = createInsertSchema(appConfiguration)
   lowCoverageThresholdPercent: z.coerce.number().min(0).max(100),
   expiringCoverageDays: z.coerce.number().int().min(1).max(365),
   poolInactivityDays: z.coerce.number().int().min(1).max(365),
+  runRatePeriodMonths: z.coerce.number().int().min(1).max(24),
   dashboardRefreshMinutes: z.coerce.number().int().min(1).max(60),
 });
 
@@ -185,6 +294,15 @@ export type CoveredUnit = typeof coveredUnit.$inferSelect;
 export type InsertCoveragePool = z.infer<typeof insertCoveragePoolSchema>;
 export type CoveragePool = typeof coveragePool.$inferSelect;
 
+export type InsertAvailableStock = z.infer<typeof insertAvailableStockSchema>;
+export type AvailableStock = typeof availableStock.$inferSelect;
+
+export type InsertClaim = z.infer<typeof insertClaimSchema>;
+export type Claim = typeof claim.$inferSelect;
+
+export type InsertReplacement = z.infer<typeof insertReplacementSchema>;
+export type Replacement = typeof replacement.$inferSelect;
+
 export type InsertAppConfiguration = z.infer<typeof insertAppConfigurationSchema>;
 export type AppConfiguration = typeof appConfiguration.$inferSelect;
 
@@ -197,4 +315,7 @@ export type CoveragePoolWithStats = CoveragePool & {
   spareCount: number; // spare units available in pool
   coveredCount: number; // units in field under coverage
   coverageRatio: number; // spareCount / coveredCount
+  availableStockCount?: number; // available stock matching pool criteria
+  claimsLast6Months?: number; // claims in last 6 months matching pool criteria
+  runRate?: number; // claims per month
 };

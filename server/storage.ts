@@ -6,11 +6,20 @@ import {
   type BulkInsertCoveredUnit, 
   type CoveragePool, 
   type InsertCoveragePool,
+  type AvailableStock,
+  type InsertAvailableStock,
+  type Claim,
+  type InsertClaim,
+  type Replacement,
+  type InsertReplacement,
   type AppConfiguration,
   type InsertAppConfiguration,
   spareUnit,
   coveredUnit,
   coveragePool,
+  availableStock,
+  claim,
+  replacement,
   appConfiguration
 } from "@shared/schema";
 import { db } from "./db";
@@ -103,6 +112,45 @@ export interface IStorage {
   }): Promise<{
     total: number;
   }>;
+  
+  // Available Stock methods
+  getAvailableStock(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<AvailableStock[]>;
+  bulkReplaceAvailableStock(data: InsertAvailableStock[]): Promise<number>;
+  
+  // Claim methods
+  getClaims(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Claim[]>;
+  bulkUpsertClaims(data: InsertClaim[]): Promise<number>;
+  
+  // Replacement methods
+  getReplacements(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Replacement[]>;
+  bulkUpsertReplacements(data: InsertReplacement[]): Promise<number>;
   
   // Configuration
   getConfiguration(): Promise<AppConfiguration>;
