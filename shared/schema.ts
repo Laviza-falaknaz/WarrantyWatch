@@ -174,6 +174,9 @@ export const appConfiguration = pgTable("app_configuration", {
   poolInactivityDays: integer("pool_inactivity_days").notNull().default(90), // Days of no activity before pool is considered inactive
   // Run rate calculation settings
   runRatePeriodMonths: integer("run_rate_period_months").notNull().default(6), // Period in months for calculating run rate
+  // Analytics settings
+  analyticsTimeRangeMonths: integer("analytics_time_range_months").notNull().default(12), // Default time range for trend analysis
+  targetCoveragePercent: decimal("target_coverage_percent", { precision: 5, scale: 2 }).notNull().default('20.00'), // Target coverage ratio (e.g., 20% spare units to covered units)
   // Alert settings
   enableLowCoverageAlerts: boolean("enable_low_coverage_alerts").notNull().default(true),
   enableExpiringAlerts: boolean("enable_expiring_alerts").notNull().default(true),
@@ -281,6 +284,8 @@ export const insertAppConfigurationSchema = createInsertSchema(appConfiguration)
   expiringCoverageDays: z.coerce.number().int().min(1).max(365),
   poolInactivityDays: z.coerce.number().int().min(1).max(365),
   runRatePeriodMonths: z.coerce.number().int().min(1).max(24),
+  analyticsTimeRangeMonths: z.coerce.number().int().min(1).max(36),
+  targetCoveragePercent: z.coerce.number().min(0).max(100),
   dashboardRefreshMinutes: z.coerce.number().int().min(1).max(60),
 });
 
@@ -319,3 +324,66 @@ export type CoveragePoolWithStats = CoveragePool & {
   claimsLast6Months?: number; // claims in last 6 months matching pool criteria
   runRate?: number; // claims per month
 };
+
+// Monthly analytics data point
+export interface MonthlyAnalytics {
+  month: string; // YYYY-MM format
+  monthLabel: string; // Human-readable (e.g., "Jan 2025")
+  claims: number;
+  replacements: number;
+  netBacklog: number; // claims - replacements
+  spareCount: number; // spare units available at end of month
+  coveredCount: number; // covered units at end of month
+  availableStockCount: number; // available stock at end of month
+  coverageRatio: number; // (spareCount / coveredCount) * 100
+  fulfillmentRate: number; // (replacements / claims) * 100, or 0 if no claims
+  claimsGrowthMoM?: number; // Month-over-month growth percentage
+  claimsGrowthYoY?: number; // Year-over-year growth percentage
+}
+
+// Forecast data point
+export interface ForecastPoint {
+  month: string; // YYYY-MM format
+  monthLabel: string; // Human-readable (e.g., "Jan 2025")
+  forecastClaims: number; // Predicted claims
+  confidenceLower: number; // Lower bound of forecast range
+  confidenceUpper: number; // Upper bound of forecast range
+}
+
+// Coverage pool analytics response
+export interface CoveragePoolAnalytics {
+  poolId: string;
+  poolName: string;
+  analysisStartDate: string; // ISO date
+  analysisEndDate: string; // ISO date
+  timeRangeMonths: number;
+  
+  // Current state KPIs
+  currentSpareCount: number;
+  currentCoveredCount: number;
+  currentAvailableStockCount: number;
+  currentCoverageRatio: number; // percentage
+  targetCoverageRatio: number; // percentage (from configuration)
+  
+  // Aggregate metrics for the period
+  totalClaims: number;
+  totalReplacements: number;
+  totalNetBacklog: number; // total claims - total replacements
+  averageFulfillmentRate: number; // percentage
+  averageMonthlyClaimRate: number; // average claims per month
+  
+  // Growth metrics
+  claimsGrowthMoM: number; // Latest month vs previous month
+  claimsGrowthYoY?: number; // Latest month vs same month last year (if 12+ months data)
+  
+  // Inventory recommendations
+  unitsNeededForTarget: number; // How many more spare units needed to reach target coverage
+  inventoryRunwayMonths: number; // Months of spare inventory at current claim rate
+  recommendedAction: string; // Human-readable recommendation
+  
+  // Time series data
+  monthlyData: MonthlyAnalytics[];
+  
+  // Forecast (next 3 months by default)
+  forecast: ForecastPoint[];
+}

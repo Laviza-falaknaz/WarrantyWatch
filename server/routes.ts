@@ -371,6 +371,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Coverage pool analytics endpoint
+  app.get("/api/coverage-pools/:id/analytics", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate and parse query parameters
+      let timeRangeMonths: number | undefined;
+      let forecastMonths: number | undefined;
+      
+      if (req.query.timeRangeMonths) {
+        const parsed = parseInt(req.query.timeRangeMonths as string);
+        if (isNaN(parsed) || parsed < 1 || parsed > 36) {
+          return res.status(400).json({ error: "timeRangeMonths must be a number between 1 and 36" });
+        }
+        timeRangeMonths = parsed;
+      }
+      
+      if (req.query.forecastMonths) {
+        const parsed = parseInt(req.query.forecastMonths as string);
+        if (isNaN(parsed) || parsed < 1 || parsed > 12) {
+          return res.status(400).json({ error: "forecastMonths must be a number between 1 and 12" });
+        }
+        forecastMonths = parsed;
+      }
+      
+      const analytics = await storage.getCoveragePoolAnalytics(id, {
+        timeRangeMonths,
+        forecastMonths,
+      });
+      
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching pool analytics:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to fetch pool analytics" });
+    }
+  });
+
   // Filter options endpoint
   app.get("/api/filters", async (req, res) => {
     try {

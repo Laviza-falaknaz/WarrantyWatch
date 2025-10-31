@@ -14,6 +14,9 @@ import {
   type InsertReplacement,
   type AppConfiguration,
   type InsertAppConfiguration,
+  type CoveragePoolAnalytics,
+  type MonthlyAnalytics,
+  type ForecastPoint,
   spareUnit,
   coveredUnit,
   coveragePool,
@@ -151,6 +154,12 @@ export interface IStorage {
     offset?: number;
   }): Promise<Replacement[]>;
   bulkReplaceReplacements(data: InsertReplacement[]): Promise<{ inserted: number; duplicatesRemoved: number }>;
+  
+  // Analytics
+  getCoveragePoolAnalytics(poolId: string, options?: {
+    timeRangeMonths?: number;
+    forecastMonths?: number;
+  }): Promise<CoveragePoolAnalytics>;
   
   // Configuration
   getConfiguration(): Promise<AppConfiguration>;
@@ -1046,6 +1055,255 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  async getCoveragePoolAnalytics(poolId: string, options?: {
+    timeRangeMonths?: number;
+    forecastMonths?: number;
+  }): Promise<CoveragePoolAnalytics> {
+    console.log(`[analytics] Generating analytics for pool ${poolId}`);
+    
+    // Get the pool and configuration
+    const pool = await this.getCoveragePoolById(poolId);
+    if (!pool) {
+      throw new Error(`Pool not found: ${poolId}`);
+    }
+    
+    const config = await this.getConfiguration();
+    
+    // Defensively clamp values to safe ranges
+    const timeRangeMonths = Math.max(1, Math.min(36, options?.timeRangeMonths ?? config.analyticsTimeRangeMonths));
+    const forecastMonths = Math.max(1, Math.min(12, options?.forecastMonths ?? 3));
+    const targetCoveragePercent = Number(config.targetCoveragePercent);
+    
+    // Parse filter criteria
+    const filterCriteria = JSON.parse(pool.filterCriteria);
+    
+    // Calculate date range
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - timeRangeMonths);
+    
+    // Build filter conditions for pool matching
+    const buildFilterConditions = (table: typeof claim | typeof replacement | typeof spareUnit | typeof coveredUnit | typeof availableStock) => {
+      const conditions = [];
+      if (filterCriteria.make?.length) conditions.push(inArray(table.make, filterCriteria.make));
+      if (filterCriteria.model?.length) conditions.push(inArray(table.model, filterCriteria.model));
+      if (filterCriteria.processor?.length) conditions.push(inArray(table.processor, filterCriteria.processor));
+      if (filterCriteria.ram?.length) conditions.push(inArray(table.ram, filterCriteria.ram));
+      if (filterCriteria.category?.length) conditions.push(inArray(table.category, filterCriteria.category));
+      return conditions;
+    };
+    
+    // Get monthly aggregated claims
+    const claimConditions = buildFilterConditions(claim);
+    claimConditions.push(sql`${claim.claimDate} >= ${startDate}`);
+    claimConditions.push(sql`${claim.claimDate} <= ${endDate}`);
+    
+    const monthlyClaims = await db
+      .select({
+        month: sql<string>`to_char(date_trunc('month', ${claim.claimDate}), 'YYYY-MM')`,
+        count: sql<number>`cast(count(*) as int)`,
+      })
+      .from(claim)
+      .where(and(...claimConditions))
+      .groupBy(sql`date_trunc('month', ${claim.claimDate})`)
+      .orderBy(sql`date_trunc('month', ${claim.claimDate})`);
+    
+    // Get monthly aggregated replacements
+    const replacementConditions = buildFilterConditions(replacement);
+    replacementConditions.push(sql`${replacement.replacedDate} >= ${startDate}`);
+    replacementConditions.push(sql`${replacement.replacedDate} <= ${endDate}`);
+    
+    const monthlyReplacements = await db
+      .select({
+        month: sql<string>`to_char(date_trunc('month', ${replacement.replacedDate}), 'YYYY-MM')`,
+        count: sql<number>`cast(count(*) as int)`,
+      })
+      .from(replacement)
+      .where(and(...replacementConditions))
+      .groupBy(sql`date_trunc('month', ${replacement.replacedDate})`)
+      .orderBy(sql`date_trunc('month', ${replacement.replacedDate})`);
+    
+    // Get current counts
+    const spareConditions = buildFilterConditions(spareUnit);
+    const [currentSpareResult] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(spareUnit)
+      .where(spareConditions.length > 0 ? and(...spareConditions) : undefined);
+    
+    const coveredConditions = buildFilterConditions(coveredUnit);
+    const [currentCoveredResult] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(coveredUnit)
+      .where(coveredConditions.length > 0 ? and(...coveredConditions) : undefined);
+    
+    const availableConditions = buildFilterConditions(availableStock);
+    const [currentAvailableResult] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(availableStock)
+      .where(availableConditions.length > 0 ? and(...availableConditions) : undefined);
+    
+    const currentSpareCount = currentSpareResult?.count || 0;
+    const currentCoveredCount = currentCoveredResult?.count || 0;
+    const currentAvailableStockCount = currentAvailableResult?.count || 0;
+    const currentCoverageRatio = currentCoveredCount > 0 ? (currentSpareCount / currentCoveredCount) * 100 : 0;
+    
+    // Generate monthly data array with all months in range
+    const monthlyDataMap = new Map<string, MonthlyAnalytics>();
+    
+    // Initialize all months in range
+    const currentMonth = new Date(startDate);
+    while (currentMonth <= endDate) {
+      const monthKey = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = currentMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      
+      monthlyDataMap.set(monthKey, {
+        month: monthKey,
+        monthLabel,
+        claims: 0,
+        replacements: 0,
+        netBacklog: 0,
+        spareCount: currentSpareCount, // Simplified: use current count for all months
+        coveredCount: currentCoveredCount,
+        availableStockCount: currentAvailableStockCount,
+        coverageRatio: currentCoverageRatio,
+        fulfillmentRate: 0,
+      });
+      
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+    }
+    
+    // Fill in actual claims data
+    for (const row of monthlyClaims) {
+      const monthData = monthlyDataMap.get(row.month);
+      if (monthData) {
+        monthData.claims = row.count;
+      }
+    }
+    
+    // Fill in actual replacements data
+    for (const row of monthlyReplacements) {
+      const monthData = monthlyDataMap.get(row.month);
+      if (monthData) {
+        monthData.replacements = row.count;
+      }
+    }
+    
+    // Calculate derived metrics for each month
+    const monthlyData = Array.from(monthlyDataMap.values());
+    for (let i = 0; i < monthlyData.length; i++) {
+      const month = monthlyData[i];
+      month.netBacklog = month.claims - month.replacements;
+      month.fulfillmentRate = month.claims > 0 ? (month.replacements / month.claims) * 100 : 0;
+      
+      // Calculate MoM growth
+      if (i > 0) {
+        const prevMonth = monthlyData[i - 1];
+        if (prevMonth.claims > 0) {
+          month.claimsGrowthMoM = ((month.claims - prevMonth.claims) / prevMonth.claims) * 100;
+        }
+      }
+      
+      // Calculate YoY growth (if we have 12+ months of data)
+      if (i >= 12) {
+        const sameMonthLastYear = monthlyData[i - 12];
+        if (sameMonthLastYear.claims > 0) {
+          month.claimsGrowthYoY = ((month.claims - sameMonthLastYear.claims) / sameMonthLastYear.claims) * 100;
+        }
+      }
+    }
+    
+    // Calculate aggregate metrics
+    const totalClaims = monthlyData.reduce((sum, m) => sum + m.claims, 0);
+    const totalReplacements = monthlyData.reduce((sum, m) => sum + m.replacements, 0);
+    const totalNetBacklog = totalClaims - totalReplacements;
+    const averageFulfillmentRate = totalClaims > 0 ? (totalReplacements / totalClaims) * 100 : 0;
+    const averageMonthlyClaimRate = monthlyData.length > 0 ? totalClaims / monthlyData.length : 0;
+    
+    // Get latest month's growth metrics
+    const latestMonth = monthlyData[monthlyData.length - 1];
+    const claimsGrowthMoM = latestMonth?.claimsGrowthMoM || 0;
+    const claimsGrowthYoY = latestMonth?.claimsGrowthYoY;
+    
+    // Generate forecast using 3-month moving average
+    const forecast: ForecastPoint[] = [];
+    const lastThreeMonths = monthlyData.slice(-3);
+    const avgClaims = lastThreeMonths.length > 0
+      ? lastThreeMonths.reduce((sum, m) => sum + m.claims, 0) / lastThreeMonths.length
+      : 0;
+    
+    // Calculate standard deviation for confidence interval
+    const variance = lastThreeMonths.length > 1
+      ? lastThreeMonths.reduce((sum, m) => sum + Math.pow(m.claims - avgClaims, 2), 0) / lastThreeMonths.length
+      : 0;
+    const stdDev = Math.sqrt(variance);
+    
+    for (let i = 1; i <= forecastMonths; i++) {
+      const forecastDate = new Date(endDate);
+      forecastDate.setMonth(forecastDate.getMonth() + i);
+      const monthKey = `${forecastDate.getFullYear()}-${String(forecastDate.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = forecastDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      
+      forecast.push({
+        month: monthKey,
+        monthLabel,
+        forecastClaims: Math.round(avgClaims),
+        confidenceLower: Math.max(0, Math.round(avgClaims - 1.96 * stdDev)), // 95% confidence interval
+        confidenceUpper: Math.round(avgClaims + 1.96 * stdDev),
+      });
+    }
+    
+    // Calculate inventory recommendations
+    const targetSpareCount = Math.ceil(currentCoveredCount * (targetCoveragePercent / 100));
+    const unitsNeededForTarget = Math.max(0, targetSpareCount - currentSpareCount);
+    const inventoryRunwayMonths = averageMonthlyClaimRate > 0 ? currentSpareCount / averageMonthlyClaimRate : 999;
+    
+    let recommendedAction = '';
+    if (currentCoverageRatio < targetCoveragePercent) {
+      recommendedAction = `Add ${unitsNeededForTarget} spare units to reach target coverage of ${targetCoveragePercent}%`;
+    } else if (inventoryRunwayMonths < 3) {
+      recommendedAction = `Low inventory runway (${inventoryRunwayMonths.toFixed(1)} months). Consider adding more spare units.`;
+    } else {
+      recommendedAction = `Coverage is adequate. Monitor claim trends for changes.`;
+    }
+    
+    console.log(`[analytics] Completed analytics for pool ${poolId}: ${monthlyData.length} months, ${totalClaims} total claims`);
+    
+    return {
+      poolId: pool.id,
+      poolName: pool.name,
+      analysisStartDate: startDate.toISOString(),
+      analysisEndDate: endDate.toISOString(),
+      timeRangeMonths,
+      
+      // Current state
+      currentSpareCount,
+      currentCoveredCount,
+      currentAvailableStockCount,
+      currentCoverageRatio,
+      targetCoverageRatio: targetCoveragePercent,
+      
+      // Aggregate metrics
+      totalClaims,
+      totalReplacements,
+      totalNetBacklog,
+      averageFulfillmentRate,
+      averageMonthlyClaimRate,
+      
+      // Growth metrics
+      claimsGrowthMoM,
+      claimsGrowthYoY,
+      
+      // Recommendations
+      unitsNeededForTarget,
+      inventoryRunwayMonths,
+      recommendedAction,
+      
+      // Time series data
+      monthlyData,
+      forecast,
+    };
+  }
+
   async getConfiguration(): Promise<AppConfiguration> {
     // Get or create configuration (single row with id='system')
     const [config] = await db.select().from(appConfiguration).where(eq(appConfiguration.id, 'system'));
@@ -1065,10 +1323,13 @@ export class DatabaseStorage implements IStorage {
     // Ensure configuration exists first
     await this.getConfiguration();
     
-    // Convert number to string for decimal field if present
+    // Convert number to string for decimal fields if present
     const updateData: any = { ...data, modifiedOn: new Date() };
     if (updateData.lowCoverageThresholdPercent !== undefined) {
       updateData.lowCoverageThresholdPercent = String(updateData.lowCoverageThresholdPercent);
+    }
+    if (updateData.targetCoveragePercent !== undefined) {
+      updateData.targetCoveragePercent = String(updateData.targetCoveragePercent);
     }
     
     // Update configuration
