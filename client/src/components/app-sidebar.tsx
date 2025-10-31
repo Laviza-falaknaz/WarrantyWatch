@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Shield, Layers, BarChart3, Search, Settings } from "lucide-react";
+import { LayoutDashboard, Package, Shield, Layers, BarChart3, Search, Settings, ClipboardList, RefreshCw, Warehouse } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -31,6 +31,21 @@ const menuItems = [
     title: "Coverage Pools",
     url: "/coverage-pools",
     icon: Layers,
+  },
+  {
+    title: "Available Stock",
+    url: "/available-stock",
+    icon: Warehouse,
+  },
+  {
+    title: "Claims History",
+    url: "/claims",
+    icon: ClipboardList,
+  },
+  {
+    title: "Replacements",
+    url: "/replacements",
+    icon: RefreshCw,
   },
   {
     title: "Analytics",

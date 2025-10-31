@@ -14,6 +14,9 @@ import PoolGroups from "@/pages/PoolGroups";
 import Analytics from "@/pages/Analytics";
 import Configuration from "@/pages/Configuration";
 import WarrantyExplorer from "@/pages/WarrantyExplorer";
+import Claims from "@/pages/Claims";
+import Replacements from "@/pages/Replacements";
+import AvailableStockPage from "@/pages/AvailableStock";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +26,9 @@ function Router() {
       <Route path="/spare-pool" component={Inventory} />
       <Route path="/covered-units" component={Warranties} />
       <Route path="/coverage-pools" component={PoolGroups} />
+      <Route path="/claims" component={Claims} />
+      <Route path="/replacements" component={Replacements} />
+      <Route path="/available-stock" component={AvailableStockPage} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/configuration" component={Configuration} />
       <Route path="/warranty-explorer" component={WarrantyExplorer} />
