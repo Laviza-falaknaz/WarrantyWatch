@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Package, Target, Calendar, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Package, Target, Calendar, ArrowUpRight, ArrowDownRight, Minus, HelpCircle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 import DataTable, { Column } from "@/components/DataTable";
 import type { CoveragePoolAnalytics, MonthlyAnalytics } from "@shared/schema";
@@ -167,7 +168,17 @@ export default function PoolDetail() {
         {/* Coverage Ratio */}
         <Card data-testid="card-coverage-ratio">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Coverage Ratio</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-medium">Coverage Ratio</CardTitle>
+              <UITooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">Percentage of covered units protected by spare units. Formula: (Spare Units / Covered Units) × 100%</p>
+                </TooltipContent>
+              </UITooltip>
+            </div>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -191,7 +202,17 @@ export default function PoolDetail() {
         {/* Fulfillment Rate */}
         <Card data-testid="card-fulfillment-rate">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Fulfillment</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-medium">Avg Fulfillment</CardTitle>
+              <UITooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">Average rate of warranty claims fulfilled with replacement units. Higher percentages indicate better service.</p>
+                </TooltipContent>
+              </UITooltip>
+            </div>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -210,7 +231,17 @@ export default function PoolDetail() {
         {/* Claims Growth */}
         <Card data-testid="card-claims-growth">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Claims Growth</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-medium">Claims Growth</CardTitle>
+              <UITooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">Month-over-month percentage change in warranty claims. Positive (red) means increasing claims, negative (green) means decreasing.</p>
+                </TooltipContent>
+              </UITooltip>
+            </div>
             {analytics.claimsGrowthMoM > 0 ? (
               <TrendingUp className="h-4 w-4 text-destructive" />
             ) : analytics.claimsGrowthMoM < 0 ? (
@@ -237,7 +268,17 @@ export default function PoolDetail() {
         {/* Inventory Runway */}
         <Card data-testid="card-inventory-runway">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inventory Runway</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-medium">Inventory Runway</CardTitle>
+              <UITooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">Months of spare unit coverage at current claim rate. Indicates how long inventory will last before restocking needed.</p>
+                </TooltipContent>
+              </UITooltip>
+            </div>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>

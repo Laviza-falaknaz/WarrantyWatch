@@ -12,14 +12,17 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Percent, Calendar, Bell, RefreshCw } from "lucide-react";
+import { Settings, Percent, Calendar, Bell, RefreshCw, TrendingUp } from "lucide-react";
 import type { AppConfiguration } from "@shared/schema";
 
 const configurationFormSchema = z.object({
   lowCoverageThresholdPercent: z.coerce.number().min(0).max(100),
+  targetCoveragePercent: z.coerce.number().min(0).max(100),
   expiringCoverageDays: z.coerce.number().int().min(1).max(365),
   poolInactivityDays: z.coerce.number().int().min(1).max(365),
   runRatePeriodMonths: z.coerce.number().int().min(1).max(24),
+  analyticsTimeRangeMonths: z.coerce.number().int().min(1).max(36),
+  analyticsForecastMonths: z.coerce.number().int().min(1).max(12),
   enableLowCoverageAlerts: z.boolean(),
   enableExpiringAlerts: z.boolean(),
   dashboardRefreshMinutes: z.coerce.number().int().min(1).max(60),
@@ -38,9 +41,12 @@ export default function Configuration() {
     resolver: zodResolver(configurationFormSchema),
     defaultValues: {
       lowCoverageThresholdPercent: 10,
+      targetCoveragePercent: 20,
       expiringCoverageDays: 30,
       poolInactivityDays: 90,
       runRatePeriodMonths: 6,
+      analyticsTimeRangeMonths: 12,
+      analyticsForecastMonths: 3,
       enableLowCoverageAlerts: true,
       enableExpiringAlerts: true,
       dashboardRefreshMinutes: 5,
@@ -51,9 +57,12 @@ export default function Configuration() {
     if (configuration) {
       form.reset({
         lowCoverageThresholdPercent: Number(configuration.lowCoverageThresholdPercent),
+        targetCoveragePercent: Number(configuration.targetCoveragePercent),
         expiringCoverageDays: configuration.expiringCoverageDays,
         poolInactivityDays: configuration.poolInactivityDays,
         runRatePeriodMonths: configuration.runRatePeriodMonths,
+        analyticsTimeRangeMonths: configuration.analyticsTimeRangeMonths,
+        analyticsForecastMonths: configuration.analyticsForecastMonths,
         enableLowCoverageAlerts: configuration.enableLowCoverageAlerts,
         enableExpiringAlerts: configuration.enableExpiringAlerts,
         dashboardRefreshMinutes: configuration.dashboardRefreshMinutes,
@@ -135,6 +144,7 @@ export default function Configuration() {
                     <FormControl>
                       <Input
                         type="number"
+                        step="0.01"
                         placeholder="10.00"
                         {...field}
                         data-testid="input-low-coverage-threshold"
@@ -142,6 +152,29 @@ export default function Configuration() {
                     </FormControl>
                     <FormDescription>
                       Coverage pools below this percentage will be marked as low coverage (e.g., 6 for 6%)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="targetCoveragePercent"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Target Coverage Percentage (%)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="20.00"
+                        {...field}
+                        data-testid="input-target-coverage-percent"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Target spare-to-covered ratio for optimal inventory coverage (e.g., 5 for 5% or 20 for 20%)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -280,6 +313,63 @@ export default function Configuration() {
                         data-testid="switch-enable-expiring-alerts"
                       />
                     </FormControl>
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-analytics-settings">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Analytics Settings
+              </CardTitle>
+              <CardDescription>
+                Configure parameters for trend analysis and forecasting
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="analyticsTimeRangeMonths"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Analytics Time Range (Months)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="12"
+                        {...field}
+                        data-testid="input-analytics-time-range"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Historical data period for trend analysis in coverage pool analytics (1-36 months)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="analyticsForecastMonths"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Forecast Period (Months)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="3"
+                        {...field}
+                        data-testid="input-analytics-forecast-months"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Number of months to project future demand in forecasting models (1-12 months)
+                    </FormDescription>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

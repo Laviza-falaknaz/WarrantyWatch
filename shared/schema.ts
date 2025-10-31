@@ -176,6 +176,7 @@ export const appConfiguration = pgTable("app_configuration", {
   runRatePeriodMonths: integer("run_rate_period_months").notNull().default(6), // Period in months for calculating run rate
   // Analytics settings
   analyticsTimeRangeMonths: integer("analytics_time_range_months").notNull().default(12), // Default time range for trend analysis
+  analyticsForecastMonths: integer("analytics_forecast_months").notNull().default(3), // Default forecast period for demand prediction
   targetCoveragePercent: decimal("target_coverage_percent", { precision: 5, scale: 2 }).notNull().default('20.00'), // Target coverage ratio (e.g., 20% spare units to covered units)
   // Alert settings
   enableLowCoverageAlerts: boolean("enable_low_coverage_alerts").notNull().default(true),
@@ -285,6 +286,7 @@ export const insertAppConfigurationSchema = createInsertSchema(appConfiguration)
   poolInactivityDays: z.coerce.number().int().min(1).max(365),
   runRatePeriodMonths: z.coerce.number().int().min(1).max(24),
   analyticsTimeRangeMonths: z.coerce.number().int().min(1).max(36),
+  analyticsForecastMonths: z.coerce.number().int().min(1).max(12),
   targetCoveragePercent: z.coerce.number().min(0).max(100),
   dashboardRefreshMinutes: z.coerce.number().int().min(1).max(60),
 });
