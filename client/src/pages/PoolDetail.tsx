@@ -1,15 +1,22 @@
-import { useMemo } from "react";
-import { useRoute, Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useRoute, Link, useLocation } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Package, Target, Calendar, ArrowUpRight, ArrowDownRight, Minus, HelpCircle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Package, Target, Calendar, ArrowUpRight, ArrowDownRight, Minus, HelpCircle, Download, Edit2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 import DataTable, { Column } from "@/components/DataTable";
+import * as XLSX from "xlsx";
 import type { CoveragePoolAnalytics, MonthlyAnalytics } from "@shared/schema";
 
 export default function PoolDetail() {
@@ -120,22 +127,97 @@ export default function PoolDetail() {
   const isOnTarget = analytics.currentCoverageRatio >= analytics.targetCoverageRatio;
   const hasGoodRunway = analytics.inventoryRunwayMonths >= 3;
 
+  // Export functions
+  const handleExport = async (type: 'spare' | 'covered' | 'claims' | 'replacements') => {
+    try {
+      const pool = await fetch(`/api/coverage-pools/${poolId}`).then(r => r.json());
+      const filterCriteria = JSON.parse(pool.filterCriteria);
+      
+      let endpoint = '';
+      let filename = '';
+      
+      switch (type) {
+        case 'spare':
+          endpoint = '/api/spare-units';
+          filename = `${analytics.poolName}_SpareUnits.xlsx`;
+          break;
+        case 'covered':
+          endpoint = '/api/covered-units';
+          filename = `${analytics.poolName}_CoveredUnits.xlsx`;
+          break;
+        case 'claims':
+          endpoint = '/api/claims';
+          filename = `${analytics.poolName}_Claims.xlsx`;
+          break;
+        case 'replacements':
+          endpoint = '/api/replacements';
+          filename = `${analytics.poolName}_Replacements.xlsx`;
+          break;
+      }
+      
+      // Build query params from filter criteria
+      const params = new URLSearchParams();
+      if (filterCriteria.make?.length) params.append('make', filterCriteria.make.join(','));
+      if (filterCriteria.model?.length) params.append('model', filterCriteria.model.join(','));
+      if (filterCriteria.processor?.length) params.append('processor', filterCriteria.processor.join(','));
+      if (filterCriteria.ram?.length) params.append('ram', filterCriteria.ram.join(','));
+      if (filterCriteria.category?.length) params.append('category', filterCriteria.category.join(','));
+      
+      const data = await fetch(`${endpoint}?${params.toString()}`).then(r => r.json());
+      
+      // Create worksheet and workbook
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, type.charAt(0).toUpperCase() + type.slice(1));
+      
+      // Download file
+      XLSX.writeFile(wb, filename);
+    } catch (error) {
+      console.error('Export failed:', error);
+    }
+  };
+
   return (
     <main className="container mx-auto p-6 space-y-6" data-testid="page-pool-detail">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-6">
-        <Link href="/coverage-pools">
-          <Button variant="ghost" size="icon" data-testid="button-back-to-pools">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </Link>
+      {/* Breadcrumb & Actions */}
+      <div className="flex items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
+          <Link href="/coverage-pools">
+            <Button variant="ghost" size="icon" data-testid="button-back-to-pools">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </Link>
           <h1 className="text-3xl font-bold" data-testid="text-pool-name">{analytics.poolName}</h1>
           <Badge variant="outline" className="text-xs">
             <Calendar className="w-3 h-3 mr-1" />
             {analytics.timeRangeMonths} months
           </Badge>
         </div>
+        
+        {/* Export Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" data-testid="button-export-dropdown">
+              <Download className="h-4 w-4 mr-2" />
+              Export Data
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleExport('spare')} data-testid="menu-export-spare">
+              Export Spare Units ({analytics.currentSpareCount})
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('covered')} data-testid="menu-export-covered">
+              Export Covered Units ({analytics.currentCoveredCount})
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleExport('claims')} data-testid="menu-export-claims">
+              Export Claims ({analytics.totalClaims})
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('replacements')} data-testid="menu-export-replacements">
+              Export Replacements ({analytics.totalReplacements})
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Recommendations Alert */}
