@@ -1,10 +1,12 @@
+import { Link } from "wouter";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Trash2 } from "lucide-react";
 
 interface PoolCoverageCardProps {
+  poolId: string;
   groupName: string;
   specifications: string[];
   inventoryRequired: number; // coveredCount - units in field under coverage
@@ -13,11 +15,11 @@ interface PoolCoverageCardProps {
   availableStockCount?: number; // available stock matching pool criteria
   claimsCount?: number; // claims matching pool criteria
   runRate?: number; // claims per month (run rate)
-  onExpand?: () => void;
   onDelete?: () => void;
 }
 
 export default function PoolCoverageCard({
+  poolId,
   groupName,
   specifications,
   inventoryRequired: coveredCount,
@@ -26,7 +28,6 @@ export default function PoolCoverageCard({
   availableStockCount,
   claimsCount,
   runRate,
-  onExpand,
   onDelete,
 }: PoolCoverageCardProps) {
   const getCoverageColor = (percentage: number) => {
@@ -100,14 +101,15 @@ export default function PoolCoverageCard({
       </CardContent>
       <CardFooter>
         <Button 
+          asChild
           variant="outline" 
           className="w-full" 
           size="sm"
-          onClick={onExpand}
-          data-testid={`button-expand-coverage-pool-${groupName.toLowerCase().replace(/\s+/g, "-")}`}
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Expand Pool
+          <Link href={`/pools/${poolId}`} data-testid={`button-view-pool-details-${groupName.toLowerCase().replace(/\s+/g, "-")}`}>
+            View Details
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Link>
         </Button>
       </CardFooter>
     </Card>

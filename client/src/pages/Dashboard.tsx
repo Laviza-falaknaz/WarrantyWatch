@@ -1,8 +1,6 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import MetricCard from "@/components/MetricCard";
 import PoolCoverageCard from "@/components/PoolCoverageCard";
-import { PoolDetailDialog } from "@/components/PoolDetailDialog";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Shield, Package } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,7 +21,6 @@ import {
 } from "recharts";
 
 export default function Dashboard() {
-  const [selectedPool, setSelectedPool] = useState<{ name: string; filterCriteria: string } | null>(null);
   const { data: analytics, isLoading: analyticsLoading } = useQuery<{
     totalSpareUnits: number;
     totalCoveredUnits: number;
@@ -364,27 +361,17 @@ export default function Dashboard() {
             {poolCoverageStats.slice(0, 6).map((group: any) => (
               <PoolCoverageCard
                 key={group.id}
+                poolId={group.id}
                 groupName={group.name}
                 specifications={group.specifications}
                 inventoryRequired={group.inventoryRequired}
                 poolUnits={group.poolUnits}
                 coveragePercentage={group.coverage}
-                onExpand={() => setSelectedPool({ name: group.name, filterCriteria: group.filterCriteria })}
               />
             ))}
           </div>
         )}
       </div>
-
-      {/* Pool Detail Dialog */}
-      {selectedPool && (
-        <PoolDetailDialog
-          open={!!selectedPool}
-          onOpenChange={(open) => !open && setSelectedPool(null)}
-          poolName={selectedPool.name}
-          filterCriteria={selectedPool.filterCriteria}
-        />
-      )}
     </div>
   );
 }

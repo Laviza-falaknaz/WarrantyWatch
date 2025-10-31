@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import PoolCoverageCard from "@/components/PoolCoverageCard";
-import { PoolDetailDialog } from "@/components/PoolDetailDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,8 +34,6 @@ import type { CoveragePoolWithStats } from "@shared/schema";
 
 export default function PoolGroups() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [selectedPool, setSelectedPool] = useState<CoveragePoolWithStats | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [poolToDelete, setPoolToDelete] = useState<string | null>(null);
   const [poolName, setPoolName] = useState("");
@@ -337,6 +334,7 @@ export default function PoolGroups() {
         {poolsWithDetails.map((pool: any) => (
           <PoolCoverageCard
             key={pool.id}
+            poolId={pool.id}
             groupName={pool.name}
             specifications={pool.specifications}
             inventoryRequired={pool.coveredCount}
@@ -345,10 +343,6 @@ export default function PoolGroups() {
             availableStockCount={pool.availableStockCount}
             claimsCount={pool.claimsLast6Months}
             runRate={pool.runRate}
-            onExpand={() => {
-              setSelectedPool(pool);
-              setDetailDialogOpen(true);
-            }}
             onDelete={() => {
               setPoolToDelete(pool.id);
               setDeleteDialogOpen(true);
@@ -356,13 +350,6 @@ export default function PoolGroups() {
           />
         ))}
       </div>
-
-      <PoolDetailDialog
-        open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
-        poolName={selectedPool?.name || ""}
-        filterCriteria={selectedPool?.filterCriteria || "{}"}
-      />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
