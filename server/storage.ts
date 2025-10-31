@@ -235,12 +235,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkReplaceSpareUnits(data: InsertSpareUnit[]): Promise<number> {
-    // Transaction: Clear all existing spare units and insert new data in batches
+    // Transaction: Truncate all existing spare units and insert new data in batches
     const BATCH_SIZE = 500;
     
     return await db.transaction(async (tx) => {
-      // Clear all existing spare units
-      await tx.delete(spareUnit);
+      // Truncate table - delete all existing spare units
+      await tx.execute(sql`TRUNCATE TABLE ${spareUnit} RESTART IDENTITY CASCADE`);
       
       // Insert new data in batches
       let totalInserted = 0;

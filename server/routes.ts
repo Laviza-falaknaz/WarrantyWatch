@@ -138,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const count = await storage.bulkReplaceSpareUnits(validatedData);
       
       res.status(200).json({ 
-        message: "Spare units upserted successfully", 
+        message: `Successfully processed ${count} spare units`, 
         count,
         processed: count 
       });
