@@ -13,9 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download } from "lucide-react";
+import { Download, Warehouse, ClipboardList, TrendingUp } from "lucide-react";
 import DataTable, { Column } from "@/components/DataTable";
-import type { SpareUnit, CoveredUnit } from "@shared/schema";
+import type { SpareUnit, CoveredUnit, AvailableStock, Claim, AppConfiguration } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 interface PoolDetailDialogProps {
@@ -53,6 +53,24 @@ export function PoolDetailDialog({
     enabled: open,
   });
 
+  // Fetch available stock (with high limit to get all records)
+  const { data: availableStock, isLoading: availableLoading } = useQuery<AvailableStock[]>({
+    queryKey: ["/api/available-stock", { limit: 999999 }],
+    enabled: open,
+  });
+
+  // Fetch claims (with high limit to get all records)
+  const { data: claims, isLoading: claimsLoading } = useQuery<Claim[]>({
+    queryKey: ["/api/claims", { limit: 999999 }],
+    enabled: open,
+  });
+
+  // Fetch configuration for run rate period
+  const { data: config } = useQuery<AppConfiguration>({
+    queryKey: ["/api/configuration"],
+    enabled: open,
+  });
+
   // Filter units based on criteria (case-insensitive and trimmed for robustness)
   const filterUnits = <T extends Record<string, any>>(units: T[] | undefined): T[] => {
     if (!units) return [];
@@ -80,6 +98,25 @@ export function PoolDetailDialog({
 
   const filteredSpareUnits = filterUnits(spareUnits);
   const filteredCoveredUnits = filterUnits(coveredUnits);
+  const filteredAvailableStock = filterUnits(availableStock);
+  const filteredClaims = filterUnits(claims);
+
+  // Calculate run rate (claims per month over configured period)
+  const runRate = useMemo(() => {
+    const periodMonths = config?.runRatePeriodMonths || 6;
+    const cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - periodMonths);
+    
+    if (!filteredClaims.length) return 0;
+    
+    const recentClaims = filteredClaims.filter(claim => {
+      if (!claim.claimDate) return false;
+      const claimDate = new Date(claim.claimDate);
+      return claimDate >= cutoffDate;
+    });
+    
+    return recentClaims.length / periodMonths;
+  }, [filteredClaims, config]);
 
   // Column definitions for spare units
   const spareColumns: Column<SpareUnit>[] = useMemo(() => [
@@ -282,6 +319,66 @@ export function PoolDetailDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Pool Statistics Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Available Stock</CardTitle>
+                <Warehouse className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {availableLoading ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <div className="text-2xl font-bold" data-testid="text-available-stock-count">
+                    {filteredAvailableStock.length}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Units matching pool criteria
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Claims History</CardTitle>
+                <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {claimsLoading ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <div className="text-2xl font-bold" data-testid="text-claims-count">
+                    {filteredClaims.length}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total claims for this pool
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Run Rate</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {claimsLoading ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <div className="text-2xl font-bold" data-testid="text-run-rate">
+                    {runRate != null ? runRate.toFixed(2) : "—"}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Claims per month ({config?.runRatePeriodMonths || 6} month period)
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Filter Criteria Summary */}
           <Card>
             <CardHeader>
