@@ -32,8 +32,13 @@ Preferred communication style: Simple, everyday language.
   - `spare_unit`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy)
   - `covered_unit`: UPSERT strategy (update existing, insert new)
   - `available_stock`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy)
-  - `claims`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy)
-  - `replacements`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy)
+  - `claims`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy) with automatic deduplication
+  - `replacements`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy) with automatic deduplication
+- **Bulk Upload Deduplication** (October 2025): Claims and replacements endpoints automatically handle duplicates within upload batches:
+  - Groups by composite key (serialNumber + areaId + itemId + rma)
+  - Keeps only the record with the most recent date (claimDate for claims, replacedDate for replacements)
+  - Normalizes dates before comparison for consistent ordinal comparison
+  - Returns detailed statistics (inserted count, duplicates removed, total received)
 - **Data Access Layer**: Storage abstraction (`IStorage` interface).
 - **Performance & Scalability**: Server-side pagination (100 items/page), query limits (default 10,000 records), separate lightweight stats endpoints, and optimized bulk upload processes with transactional batching and streamlined validation.
 
