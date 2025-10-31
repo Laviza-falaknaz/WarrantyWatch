@@ -342,6 +342,9 @@ export default function PoolGroups() {
             inventoryRequired={pool.coveredCount}
             poolUnits={pool.spareCount}
             coveragePercentage={pool.coverageRatio}
+            availableStockCount={pool.availableStockCount}
+            claimsCount={pool.claimsLast6Months}
+            runRate={pool.runRate}
             onExpand={() => {
               setSelectedPool(pool);
               setDetailDialogOpen(true);

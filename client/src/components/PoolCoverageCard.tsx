@@ -10,6 +10,9 @@ interface PoolCoverageCardProps {
   inventoryRequired: number; // coveredCount - units in field under coverage
   poolUnits: number; // spareCount - spare units available in pool
   coveragePercentage: number; // coverageRatio
+  availableStockCount?: number; // available stock matching pool criteria
+  claimsCount?: number; // claims matching pool criteria
+  runRate?: number; // claims per month (run rate)
   onExpand?: () => void;
   onDelete?: () => void;
 }
@@ -20,6 +23,9 @@ export default function PoolCoverageCard({
   inventoryRequired: coveredCount,
   poolUnits: spareCount,
   coveragePercentage: coverageRatio,
+  availableStockCount,
+  claimsCount,
+  runRate,
   onExpand,
   onDelete,
 }: PoolCoverageCardProps) {
@@ -70,6 +76,27 @@ export default function PoolCoverageCard({
           </span>
         </div>
         <Progress value={coverageRatio} className="h-2" />
+        
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t">
+          <div className="text-center">
+            <div className="text-xs text-muted-foreground">Available</div>
+            <div className="text-sm font-medium" data-testid={`text-available-stock-${groupName.toLowerCase().replace(/\s+/g, "-")}`}>
+              {availableStockCount ?? 0}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-muted-foreground">Claims</div>
+            <div className="text-sm font-medium" data-testid={`text-claims-${groupName.toLowerCase().replace(/\s+/g, "-")}`}>
+              {claimsCount ?? 0}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-muted-foreground">Run Rate</div>
+            <div className="text-sm font-medium" data-testid={`text-run-rate-${groupName.toLowerCase().replace(/\s+/g, "-")}`}>
+              {runRate != null ? runRate.toFixed(1) : '0.0'}/mo
+            </div>
+          </div>
+        </div>
       </CardContent>
       <CardFooter>
         <Button 
