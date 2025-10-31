@@ -1,10 +1,23 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertSpareUnitSchema, insertCoveredUnitSchema, bulkInsertCoveredUnitSchema, insertCoveragePoolSchema, spareUnit, coveredUnit } from "@shared/schema";
+import { 
+  insertSpareUnitSchema, 
+  insertCoveredUnitSchema, 
+  bulkInsertCoveredUnitSchema, 
+  insertCoveragePoolSchema,
+  insertAvailableStockSchema,
+  insertClaimSchema,
+  insertReplacementSchema,
+  spareUnit, 
+  coveredUnit,
+  availableStock,
+  claim,
+  replacement
+} from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql as drizzleSql } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Spare Unit routes (units in pool available to cover warranties)
@@ -451,6 +464,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching coverage pools with stats:", error);
       res.status(500).json({ error: "Failed to fetch coverage pools with stats" });
+    }
+  });
+
+  // Available Stock routes (stock outside pool that can supplement if needed)
+  app.get("/api/available-stock", async (req, res) => {
+    try {
+      let limit: number | undefined = undefined;
+      if (req.query.limit) {
+        const parsedLimit = parseInt(req.query.limit as string, 10);
+        if (isNaN(parsedLimit) || parsedLimit < 1) {
+          return res.status(400).json({ error: "Invalid limit parameter: must be a positive integer" });
+        }
+        limit = Math.min(parsedLimit, 10000);
+      }
+      
+      let offset: number | undefined = undefined;
+      if (req.query.offset) {
+        const parsedOffset = parseInt(req.query.offset as string, 10);
+        if (isNaN(parsedOffset) || parsedOffset < 0) {
+          return res.status(400).json({ error: "Invalid offset parameter: must be a non-negative integer" });
+        }
+        offset = parsedOffset;
+      }
+      
+      const filters = {
+        make: req.query.make ? (Array.isArray(req.query.make) ? req.query.make as string[] : [req.query.make as string]) : undefined,
+        model: req.query.model ? (Array.isArray(req.query.model) ? req.query.model as string[] : [req.query.model as string]) : undefined,
+        processor: req.query.processor ? (Array.isArray(req.query.processor) ? req.query.processor as string[] : [req.query.processor as string]) : undefined,
+        ram: req.query.ram ? (Array.isArray(req.query.ram) ? req.query.ram as string[] : [req.query.ram as string]) : undefined,
+        category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category as string[] : [req.query.category as string]) : undefined,
+        search: req.query.search as string | undefined,
+        limit,
+        offset,
+      };
+      
+      const units = await storage.getAvailableStock(filters);
+      res.json(units);
+    } catch (error) {
+      console.error("Error fetching available stock:", error);
+      res.status(500).json({ error: "Failed to fetch available stock" });
+    }
+  });
+
+  // Bulk replace available stock (clear all + batch insert for 80k+ units)
+  app.post("/api/available-stock/bulk", async (req, res) => {
+    try {
+      if (!Array.isArray(req.body)) {
+        return res.status(400).json({ error: "Request body must be an array of available stock units" });
+      }
+
+      const validatedData = z.array(insertAvailableStockSchema).parse(req.body);
+      
+      const count = await storage.bulkReplaceAvailableStock(validatedData);
+      res.json({ message: `Successfully replaced all available stock with ${count} units`, count });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      console.error("Error bulk replacing available stock:", error);
+      res.status(500).json({ error: "Failed to bulk replace available stock" });
+    }
+  });
+
+  // Claims routes (warranty returns)
+  app.get("/api/claims", async (req, res) => {
+    try {
+      let limit: number | undefined = undefined;
+      if (req.query.limit) {
+        const parsedLimit = parseInt(req.query.limit as string, 10);
+        if (isNaN(parsedLimit) || parsedLimit < 1) {
+          return res.status(400).json({ error: "Invalid limit parameter: must be a positive integer" });
+        }
+        limit = Math.min(parsedLimit, 10000);
+      }
+      
+      let offset: number | undefined = undefined;
+      if (req.query.offset) {
+        const parsedOffset = parseInt(req.query.offset as string, 10);
+        if (isNaN(parsedOffset) || parsedOffset < 0) {
+          return res.status(400).json({ error: "Invalid offset parameter: must be a non-negative integer" });
+        }
+        offset = parsedOffset;
+      }
+      
+      const filters = {
+        make: req.query.make ? (Array.isArray(req.query.make) ? req.query.make as string[] : [req.query.make as string]) : undefined,
+        model: req.query.model ? (Array.isArray(req.query.model) ? req.query.model as string[] : [req.query.model as string]) : undefined,
+        processor: req.query.processor ? (Array.isArray(req.query.processor) ? req.query.processor as string[] : [req.query.processor as string]) : undefined,
+        ram: req.query.ram ? (Array.isArray(req.query.ram) ? req.query.ram as string[] : [req.query.ram as string]) : undefined,
+        category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category as string[] : [req.query.category as string]) : undefined,
+        search: req.query.search as string | undefined,
+        limit,
+        offset,
+      };
+      
+      const claims = await storage.getClaims(filters);
+      res.json(claims);
+    } catch (error) {
+      console.error("Error fetching claims:", error);
+      res.status(500).json({ error: "Failed to fetch claims" });
+    }
+  });
+
+  // Bulk upsert claims (15k units, composite key: serialNumber + areaId + itemId + rma)
+  app.post("/api/claims/bulk", async (req, res) => {
+    try {
+      if (!Array.isArray(req.body)) {
+        return res.status(400).json({ error: "Request body must be an array of claims" });
+      }
+
+      const validatedData = z.array(insertClaimSchema).parse(req.body);
+      
+      const count = await storage.bulkUpsertClaims(validatedData);
+      res.json({ message: `Successfully upserted ${count} claims`, count });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      console.error("Error bulk upserting claims:", error);
+      res.status(500).json({ error: "Failed to bulk upsert claims" });
+    }
+  });
+
+  // Replacements routes (sent as replacements)
+  app.get("/api/replacements", async (req, res) => {
+    try {
+      let limit: number | undefined = undefined;
+      if (req.query.limit) {
+        const parsedLimit = parseInt(req.query.limit as string, 10);
+        if (isNaN(parsedLimit) || parsedLimit < 1) {
+          return res.status(400).json({ error: "Invalid limit parameter: must be a positive integer" });
+        }
+        limit = Math.min(parsedLimit, 10000);
+      }
+      
+      let offset: number | undefined = undefined;
+      if (req.query.offset) {
+        const parsedOffset = parseInt(req.query.offset as string, 10);
+        if (isNaN(parsedOffset) || parsedOffset < 0) {
+          return res.status(400).json({ error: "Invalid offset parameter: must be a non-negative integer" });
+        }
+        offset = parsedOffset;
+      }
+      
+      const filters = {
+        make: req.query.make ? (Array.isArray(req.query.make) ? req.query.make as string[] : [req.query.make as string]) : undefined,
+        model: req.query.model ? (Array.isArray(req.query.model) ? req.query.model as string[] : [req.query.model as string]) : undefined,
+        processor: req.query.processor ? (Array.isArray(req.query.processor) ? req.query.processor as string[] : [req.query.processor as string]) : undefined,
+        ram: req.query.ram ? (Array.isArray(req.query.ram) ? req.query.ram as string[] : [req.query.ram as string]) : undefined,
+        category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category as string[] : [req.query.category as string]) : undefined,
+        search: req.query.search as string | undefined,
+        limit,
+        offset,
+      };
+      
+      const replacements = await storage.getReplacements(filters);
+      res.json(replacements);
+    } catch (error) {
+      console.error("Error fetching replacements:", error);
+      res.status(500).json({ error: "Failed to fetch replacements" });
+    }
+  });
+
+  // Bulk upsert replacements (15k units, composite key: serialNumber + areaId + itemId + rma)
+  app.post("/api/replacements/bulk", async (req, res) => {
+    try {
+      if (!Array.isArray(req.body)) {
+        return res.status(400).json({ error: "Request body must be an array of replacements" });
+      }
+
+      const validatedData = z.array(insertReplacementSchema).parse(req.body);
+      
+      const count = await storage.bulkUpsertReplacements(validatedData);
+      res.json({ message: `Successfully upserted ${count} replacements`, count });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      console.error("Error bulk upserting replacements:", error);
+      res.status(500).json({ error: "Failed to bulk upsert replacements" });
     }
   });
 
