@@ -31,7 +31,7 @@ export default function PoolDetail() {
   });
 
   // Fetch pool details for filter criteria
-  const { data: poolData } = useQuery({
+  const { data: poolData } = useQuery<{ filterCriteria: string }>({
     queryKey: [`/api/coverage-pools/${poolId}`],
     enabled: !!poolId,
   });
@@ -290,7 +290,7 @@ export default function PoolDetail() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Coverage Ratio */}
         <Card data-testid="card-coverage-ratio">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
@@ -419,6 +419,39 @@ export default function PoolDetail() {
                 <span className="text-destructive">Need {analytics.unitsNeededForTarget} more units</span>
               ) : (
                 <span className="text-green-600">Meets target coverage</span>
+              )}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Available Stock */}
+        <Card data-testid="card-available-stock" className="border-blue-200 dark:border-blue-900">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-medium">Available Stock</CardTitle>
+              <UITooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">Units matching pool criteria available outside the warranty pool. Can be allocated on-demand to address coverage deficits or urgent requirements.</p>
+                </TooltipContent>
+              </UITooltip>
+            </div>
+            <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400" data-testid="value-available-stock">
+              {analytics.currentAvailableStockCount}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              units ready to allocate
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {analytics.currentAvailableStockCount > 0 ? (
+                <span className="text-blue-600 dark:text-blue-400">Can supplement spare pool</span>
+              ) : (
+                <span className="text-muted-foreground">No matching units available</span>
               )}
             </p>
           </CardContent>
