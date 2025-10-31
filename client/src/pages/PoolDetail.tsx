@@ -1,490 +1,352 @@
 import { useMemo } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, Warehouse, ClipboardList, TrendingUp, ChevronLeft } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Package, Target, Calendar, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 import DataTable, { Column } from "@/components/DataTable";
-import type { SpareUnit, CoveredUnit, AvailableStock, Claim, AppConfiguration, CoveragePool } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
+import type { CoveragePoolAnalytics, MonthlyAnalytics } from "@shared/schema";
 
 export default function PoolDetail() {
   const [, params] = useRoute("/pools/:poolId");
   const poolId = params?.poolId;
-  const { toast } = useToast();
 
-  // Fetch pool details
-  const { data: pool, isLoading: poolLoading } = useQuery<CoveragePool>({
-    queryKey: [`/api/coverage-pools/${poolId}`],
+  // Fetch pool analytics
+  const { data: analytics, isLoading } = useQuery<CoveragePoolAnalytics>({
+    queryKey: [`/api/coverage-pools/${poolId}/analytics`],
     enabled: !!poolId,
   });
 
-  const criteria = useMemo(() => {
-    if (!pool?.filterCriteria) return {};
-    try {
-      return JSON.parse(pool.filterCriteria);
-    } catch {
-      return {};
-    }
-  }, [pool?.filterCriteria]);
-
-  // Fetch spare units (with high limit to get all records)
-  const { data: spareUnits, isLoading: spareLoading } = useQuery<SpareUnit[]>({
-    queryKey: ["/api/spare-units", { limit: 10000 }],
-    enabled: !!poolId,
-  });
-
-  // Fetch covered units (with high limit to get all records)
-  const { data: coveredUnits, isLoading: coveredLoading } = useQuery<CoveredUnit[]>({
-    queryKey: ["/api/covered-units", { limit: 10000 }],
-    enabled: !!poolId,
-  });
-
-  // Fetch available stock (with high limit to get all records)
-  const { data: availableStock, isLoading: availableLoading } = useQuery<AvailableStock[]>({
-    queryKey: ["/api/available-stock", { limit: 10000 }],
-    enabled: !!poolId,
-  });
-
-  // Fetch claims (with high limit to get all records)
-  const { data: claims, isLoading: claimsLoading } = useQuery<Claim[]>({
-    queryKey: ["/api/claims", { limit: 10000 }],
-    enabled: !!poolId,
-  });
-
-  // Fetch configuration for run rate period
-  const { data: config } = useQuery<AppConfiguration>({
-    queryKey: ["/api/configuration"],
-  });
-
-  // Filter units based on criteria (case-insensitive and trimmed for robustness)
-  const filterUnits = <T extends Record<string, any>>(units: T[] | undefined): T[] => {
-    if (!units) return [];
-    
-    return units.filter(unit => {
-      for (const [key, value] of Object.entries(criteria)) {
-        if (!value) continue;
-        
-        const values = Array.isArray(value) ? value : [value];
-        const unitValue = unit[key];
-        
-        if (!unitValue) return false;
-        
-        const normalizedUnitValue = String(unitValue).trim().toLowerCase();
-        const normalizedValues = values.map(v => String(v).trim().toLowerCase());
-        
-        if (!normalizedValues.includes(normalizedUnitValue)) return false;
-      }
-      return true;
-    });
-  };
-
-  const filteredSpareUnits = filterUnits(spareUnits);
-  const filteredCoveredUnits = filterUnits(coveredUnits);
-  const filteredAvailableStock = filterUnits(availableStock);
-  const filteredClaims = filterUnits(claims);
-
-  // Calculate run rate (claims per month over configured period)
-  const runRate = useMemo(() => {
-    const periodMonths = config?.runRatePeriodMonths || 6;
-    const cutoffDate = new Date();
-    cutoffDate.setMonth(cutoffDate.getMonth() - periodMonths);
-    
-    if (!filteredClaims.length) return 0;
-    
-    const recentClaims = filteredClaims.filter(claim => {
-      if (!claim.claimDate) return false;
-      const claimDate = new Date(claim.claimDate);
-      return claimDate >= cutoffDate;
-    });
-    
-    return recentClaims.length / periodMonths;
-  }, [filteredClaims, config]);
-
-  // Column definitions for spare units
-  const spareColumns: Column<SpareUnit>[] = useMemo(() => [
-    {
-      key: "serialNumber",
-      header: "Serial Number",
-      render: (unit) => (
-        <span className="font-mono text-sm">{unit.serialNumber}</span>
-      ),
-    },
-    {
-      key: "itemId",
-      header: "Item ID",
-      render: (unit) => (
-        <span className="font-mono text-sm">{unit.itemId || "—"}</span>
-      ),
-    },
-    {
-      key: "make",
-      header: "Make",
-    },
-    {
-      key: "model",
-      header: "Model",
-    },
-    {
-      key: "processor",
-      header: "Processor",
-    },
-    {
-      key: "ram",
-      header: "RAM",
-    },
-    {
-      key: "category",
-      header: "Category",
-    },
-    {
-      key: "hdd",
-      header: "Storage",
-    },
-    {
-      key: "generation",
-      header: "Generation",
-    },
-    {
-      key: "areaId",
-      header: "Area ID",
-    },
-    {
-      key: "currentHolder",
-      header: "Current Holder",
-      render: (unit) => unit.currentHolder || "Available",
-    },
-  ], []);
-
-  // Column definitions for covered units
-  const coveredColumns: Column<CoveredUnit>[] = useMemo(() => [
-    {
-      key: "serialNumber",
-      header: "Serial Number",
-      render: (unit) => (
-        <span className="font-mono text-sm">{unit.serialNumber}</span>
-      ),
-    },
-    {
-      key: "customerName",
-      header: "Customer Name",
-    },
-    {
-      key: "make",
-      header: "Make",
-    },
-    {
-      key: "model",
-      header: "Model",
-    },
-    {
-      key: "processor",
-      header: "Processor",
-    },
-    {
-      key: "ram",
-      header: "RAM",
-    },
-    {
-      key: "category",
-      header: "Category",
-    },
-    {
-      key: "hdd",
-      header: "Storage",
-    },
-    {
-      key: "generation",
-      header: "Generation",
-    },
-    {
-      key: "areaId",
-      header: "Area ID",
-    },
-    {
-      key: "orderNumber",
-      header: "Order Number",
-      render: (unit) => (
-        <span className="font-mono text-sm">{unit.orderNumber || "—"}</span>
-      ),
-    },
-  ], []);
-
-  // Export to Excel function
-  const handleExportToExcel = () => {
-    if (!pool) return;
-    
-    try {
-      const workbook = XLSX.utils.book_new();
-
-      const spareData = filteredSpareUnits.map(unit => ({
-        "Serial Number": unit.serialNumber,
-        "Item ID": unit.itemId || "",
-        "Make": unit.make,
-        "Model": unit.model,
-        "Processor": unit.processor,
-        "RAM": unit.ram,
-        "Category": unit.category || "",
-        "Storage Size": unit.hdd || "",
-        "Generation": unit.generation || "",
-        "Area ID": unit.areaId,
-        "Current Holder": unit.currentHolder || "Available",
-        "Reserved For Case": unit.reservedForCase || "",
-      }));
-
-      const coveredData = filteredCoveredUnits.map(unit => ({
-        "Serial Number": unit.serialNumber,
-        "Customer Name": unit.customerName || "",
-        "Make": unit.make,
-        "Model": unit.model,
-        "Processor": unit.processor,
-        "RAM": unit.ram,
-        "Category": unit.category || "",
-        "Storage Size": unit.hdd || "",
-        "Generation": unit.generation || "",
-        "Area ID": unit.areaId,
-        "Order Number": unit.orderNumber || "",
-        "Coverage Start": unit.coverageStartDate ? new Date(unit.coverageStartDate).toLocaleDateString() : "",
-        "Coverage End": unit.coverageEndDate ? new Date(unit.coverageEndDate).toLocaleDateString() : "",
-      }));
-
-      const spareSheet = XLSX.utils.json_to_sheet(spareData);
-      const coveredSheet = XLSX.utils.json_to_sheet(coveredData);
-
-      XLSX.utils.book_append_sheet(workbook, spareSheet, "Spare Units");
-      XLSX.utils.book_append_sheet(workbook, coveredSheet, "Covered Units");
-
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `${pool.name.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.xlsx`;
-
-      XLSX.writeFile(workbook, filename);
-
-      toast({
-        title: "Export Successful",
-        description: `Downloaded ${filteredSpareUnits.length} spare units and ${filteredCoveredUnits.length} covered units to Excel`,
-      });
-    } catch (error) {
-      toast({
-        title: "Export Failed",
-        description: "There was an error exporting to Excel. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  if (poolLoading) {
+  // Loading state
+  if (isLoading || !analytics) {
     return (
-      <div className="container mx-auto p-6 max-w-7xl space-y-6">
-        <Skeleton className="h-12 w-64" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
+      <main className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center gap-2 mb-6">
+          <Skeleton className="h-9 w-9" />
+          <Skeleton className="h-9 w-64" />
         </div>
-        <Skeleton className="h-96" />
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </main>
     );
   }
 
-  if (!pool) {
-    return (
-      <div className="container mx-auto p-6 max-w-7xl">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">Pool not found</p>
-            <div className="mt-4 flex justify-center">
-              <Button asChild variant="outline">
-                <Link href="/coverage-pools" data-testid="link-back-to-pools">
-                  <ChevronLeft className="h-4 w-4 mr-2" />
-                  Back to Coverage Pools
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Prepare chart data combining historical and forecast
+  const chartData = [
+    ...analytics.monthlyData.map(m => ({
+      month: m.monthLabel,
+      claims: m.claims,
+      replacements: m.replacements,
+      type: 'actual' as const,
+    })),
+    ...analytics.forecast.map(f => ({
+      month: f.monthLabel,
+      claims: f.forecastClaims,
+      replacements: f.forecastClaims, // Forecast replacements to match forecast claims (assuming target fulfillment)
+      type: 'forecast' as const,
+      confidenceLower: f.confidenceLower,
+      confidenceUpper: f.confidenceUpper,
+    })),
+  ];
+
+  // Monthly breakdown table columns
+  const monthlyColumns: Column<MonthlyAnalytics>[] = [
+    {
+      key: "monthLabel",
+      header: "Month",
+      render: (row) => <span className="font-medium">{row.monthLabel}</span>,
+    },
+    {
+      key: "claims",
+      header: "Claims",
+      render: (row) => (
+        <div className="flex items-center gap-2">
+          <span>{row.claims}</span>
+          {row.claimsGrowthMoM !== undefined && (
+            <Badge variant={row.claimsGrowthMoM > 0 ? "destructive" : "secondary"} className="text-xs">
+              {row.claimsGrowthMoM > 0 ? <ArrowUpRight className="w-3 h-3 mr-1" /> : row.claimsGrowthMoM < 0 ? <ArrowDownRight className="w-3 h-3 mr-1" /> : <Minus className="w-3 h-3 mr-1" />}
+              {Math.abs(row.claimsGrowthMoM).toFixed(1)}%
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "replacements",
+      header: "Replacements",
+      render: (row) => row.replacements,
+    },
+    {
+      key: "fulfillmentRate",
+      header: "Fulfillment Rate",
+      render: (row) => (
+        <Badge variant={row.fulfillmentRate >= 100 ? "default" : row.fulfillmentRate >= 80 ? "secondary" : "destructive"}>
+          {row.fulfillmentRate.toFixed(1)}%
+        </Badge>
+      ),
+    },
+    {
+      key: "netBacklog",
+      header: "Net Backlog",
+      render: (row) => (
+        <span className={row.netBacklog > 0 ? "text-destructive font-medium" : row.netBacklog < 0 ? "text-muted-foreground" : ""}>
+          {row.netBacklog > 0 ? "+" : ""}{row.netBacklog}
+        </span>
+      ),
+    },
+    {
+      key: "coverageRatio",
+      header: "Coverage %",
+      render: (row) => `${row.coverageRatio.toFixed(1)}%`,
+    },
+  ];
+
+  // Determine recommendation status
+  const isOnTarget = analytics.currentCoverageRatio >= analytics.targetCoverageRatio;
+  const hasGoodRunway = analytics.inventoryRunwayMonths >= 3;
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl space-y-6">
-      {/* Breadcrumb and Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href="/coverage-pools" className="hover:text-foreground" data-testid="link-breadcrumb-pools">
-              Coverage Pools
-            </Link>
-            <span>/</span>
-            <span className="text-foreground">{pool.name}</span>
-          </div>
-          <h1 className="text-3xl font-bold" data-testid="heading-pool-name">
-            {pool.name}
-          </h1>
-          <p className="text-muted-foreground">
-            View all spare units and covered units in this coverage pool
-          </p>
+    <main className="container mx-auto p-6 space-y-6" data-testid="page-pool-detail">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 mb-6">
+        <Link href="/pools">
+          <Button variant="ghost" size="icon" data-testid="button-back-to-pools">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold" data-testid="text-pool-name">{analytics.poolName}</h1>
+          <Badge variant="outline" className="text-xs">
+            <Calendar className="w-3 h-3 mr-1" />
+            {analytics.timeRangeMonths} months
+          </Badge>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleExportToExcel}
-          disabled={filteredSpareUnits.length === 0 && filteredCoveredUnits.length === 0}
-          data-testid="button-export-excel"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Export to Excel
-        </Button>
       </div>
 
-      {/* Pool Statistics Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+      {/* Recommendations Alert */}
+      {!isOnTarget && (
+        <Alert variant="destructive" data-testid="alert-recommendations">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Action Required</AlertTitle>
+          <AlertDescription>{analytics.recommendedAction}</AlertDescription>
+        </Alert>
+      )}
+
+      {isOnTarget && !hasGoodRunway && (
+        <Alert data-testid="alert-recommendations">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Low Inventory Runway</AlertTitle>
+          <AlertDescription>{analytics.recommendedAction}</AlertDescription>
+        </Alert>
+      )}
+
+      {isOnTarget && hasGoodRunway && (
+        <Alert data-testid="alert-recommendations" className="border-green-500 bg-green-50 dark:bg-green-950">
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertTitle className="text-green-800 dark:text-green-200">On Track</AlertTitle>
+          <AlertDescription className="text-green-700 dark:text-green-300">{analytics.recommendedAction}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Coverage Ratio */}
+        <Card data-testid="card-coverage-ratio">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available Stock</CardTitle>
-            <Warehouse className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Coverage Ratio</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {availableLoading ? (
-              <Skeleton className="h-8 w-20" />
-            ) : (
-              <div className="text-2xl font-bold" data-testid="text-available-stock-count">
-                {filteredAvailableStock.length}
-              </div>
-            )}
+            <div className="text-2xl font-bold" data-testid="value-coverage-ratio">
+              {analytics.currentCoverageRatio.toFixed(1)}%
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Units matching pool criteria
+              Target: {analytics.targetCoverageRatio}% 
+              {analytics.currentCoverageRatio >= analytics.targetCoverageRatio ? (
+                <CheckCircle2 className="inline w-3 h-3 ml-1 text-green-600" />
+              ) : (
+                <AlertTriangle className="inline w-3 h-3 ml-1 text-destructive" />
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {analytics.currentSpareCount} spare / {analytics.currentCoveredCount} covered
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Fulfillment Rate */}
+        <Card data-testid="card-fulfillment-rate">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Claims History</CardTitle>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Avg Fulfillment</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {claimsLoading ? (
-              <Skeleton className="h-8 w-20" />
-            ) : (
-              <div className="text-2xl font-bold" data-testid="text-claims-count">
-                {filteredClaims.length}
-              </div>
-            )}
+            <div className="text-2xl font-bold" data-testid="value-fulfillment-rate">
+              {analytics.averageFulfillmentRate.toFixed(1)}%
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Total claims for this pool
+              {analytics.totalReplacements} of {analytics.totalClaims} claims fulfilled
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Net backlog: {analytics.totalNetBacklog > 0 ? "+" : ""}{analytics.totalNetBacklog}
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Claims Growth */}
+        <Card data-testid="card-claims-growth">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Run Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Claims Growth</CardTitle>
+            {analytics.claimsGrowthMoM > 0 ? (
+              <TrendingUp className="h-4 w-4 text-destructive" />
+            ) : analytics.claimsGrowthMoM < 0 ? (
+              <TrendingDown className="h-4 w-4 text-green-600" />
+            ) : (
+              <Minus className="h-4 w-4 text-muted-foreground" />
+            )}
           </CardHeader>
           <CardContent>
-            {claimsLoading ? (
-              <Skeleton className="h-8 w-20" />
-            ) : (
-              <div className="text-2xl font-bold" data-testid="text-run-rate">
-                {runRate != null ? runRate.toFixed(2) : "—"}
-              </div>
-            )}
+            <div className={`text-2xl font-bold ${analytics.claimsGrowthMoM > 0 ? 'text-destructive' : analytics.claimsGrowthMoM < 0 ? 'text-green-600' : ''}`} data-testid="value-claims-growth">
+              {analytics.claimsGrowthMoM > 0 ? "+" : ""}{analytics.claimsGrowthMoM.toFixed(1)}%
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Claims per month ({config?.runRatePeriodMonths || 6} month period)
+              Month-over-month
+            </p>
+            {analytics.claimsGrowthYoY !== undefined && (
+              <p className="text-xs text-muted-foreground">
+                YoY: {analytics.claimsGrowthYoY > 0 ? "+" : ""}{analytics.claimsGrowthYoY.toFixed(1)}%
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Inventory Runway */}
+        <Card data-testid="card-inventory-runway">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Inventory Runway</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="value-inventory-runway">
+              {analytics.inventoryRunwayMonths >= 999 ? "∞" : analytics.inventoryRunwayMonths.toFixed(1)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {analytics.inventoryRunwayMonths >= 999 ? "No claims in period" : "months at current rate"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {analytics.unitsNeededForTarget > 0 ? (
+                <span className="text-destructive">Need {analytics.unitsNeededForTarget} more units</span>
+              ) : (
+                <span className="text-green-600">Meets target coverage</span>
+              )}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filter Criteria Summary */}
-      <Card>
+      {/* Claims vs Replacements Trend Chart */}
+      <Card data-testid="card-trend-chart">
         <CardHeader>
-          <CardTitle className="text-sm">Filter Criteria</CardTitle>
+          <CardTitle>Claims vs Replacements Trend</CardTitle>
+          <CardDescription>
+            Historical data ({analytics.timeRangeMonths} months) with 3-month forecast
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {Object.keys(criteria).length === 0 ? (
-              <Badge variant="outline">All Units (No Filters)</Badge>
-            ) : (
-              Object.entries(criteria).map(([key, value]) => {
-                if (!value) return null;
-                const values = Array.isArray(value) ? value : [value];
-                return values.map((v, idx) => (
-                  <Badge key={`${key}-${idx}`} variant="secondary">
-                    {key}: {v}
-                  </Badge>
-                ));
-              })
-            )}
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 12 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload || !payload.length) return null;
+                    const data = payload[0].payload;
+                    return (
+                      <div className="bg-background border rounded-lg p-3 shadow-lg">
+                        <p className="font-semibold mb-1">{data.month}</p>
+                        {data.type === 'actual' ? (
+                          <>
+                            <p className="text-sm text-destructive">Claims: {data.claims}</p>
+                            <p className="text-sm text-green-600">Replacements: {data.replacements}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm text-muted-foreground font-medium">Forecast</p>
+                            <p className="text-sm text-destructive">Claims: {data.claims}</p>
+                            <p className="text-sm text-green-600">Replacements: {data.replacements}</p>
+                            {data.confidenceLower !== undefined && (
+                              <p className="text-xs text-muted-foreground">
+                                Confidence: {data.confidenceLower} - {data.confidenceUpper}
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  }}
+                />
+                <Legend />
+                <ReferenceLine x={analytics.monthlyData[analytics.monthlyData.length - 1]?.monthLabel} stroke="#888" strokeDasharray="3 3" />
+                <Line
+                  type="monotone"
+                  dataKey="claims"
+                  stroke="hsl(var(--destructive))"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  name="Claims"
+                  connectNulls
+                />
+                <Line
+                  type="monotone"
+                  dataKey="replacements"
+                  stroke="hsl(142, 76%, 36%)"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  name="Replacements"
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabs for Spare Units and Covered Units */}
-      <Tabs defaultValue="spare" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="spare" data-testid="tab-spare-units">
-            Spare Units ({filteredSpareUnits.length})
-          </TabsTrigger>
-          <TabsTrigger value="covered" data-testid="tab-covered-units">
-            Covered Units ({filteredCoveredUnits.length})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="spare" className="space-y-4 mt-4">
-          {spareLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-20" />
-              ))}
-            </div>
-          ) : filteredSpareUnits.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-center text-muted-foreground">
-                  No spare units match this pool's criteria
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="border rounded-md overflow-auto">
-              <DataTable
-                columns={spareColumns}
-                data={filteredSpareUnits}
-              />
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="covered" className="space-y-4 mt-4">
-          {coveredLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-20" />
-              ))}
-            </div>
-          ) : filteredCoveredUnits.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-center text-muted-foreground">
-                  No covered units match this pool's criteria
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="border rounded-md overflow-auto">
-              <DataTable
-                columns={coveredColumns}
-                data={filteredCoveredUnits}
-              />
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
+      {/* Monthly Breakdown Table */}
+      <Card data-testid="card-monthly-breakdown">
+        <CardHeader>
+          <CardTitle>Monthly Breakdown</CardTitle>
+          <CardDescription>
+            Detailed month-by-month analysis of claims, replacements, and coverage metrics
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            data={analytics.monthlyData}
+            columns={monthlyColumns}
+          />
+        </CardContent>
+      </Card>
+    </main>
   );
 }
