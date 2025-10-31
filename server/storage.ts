@@ -137,7 +137,7 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<Claim[]>;
-  bulkUpsertClaims(data: InsertClaim[]): Promise<number>;
+  bulkReplaceClaims(data: InsertClaim[]): Promise<number>;
   
   // Replacement methods
   getReplacements(filters?: {
@@ -150,7 +150,7 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<Replacement[]>;
-  bulkUpsertReplacements(data: InsertReplacement[]): Promise<number>;
+  bulkReplaceReplacements(data: InsertReplacement[]): Promise<number>;
   
   // Configuration
   getConfiguration(): Promise<AppConfiguration>;
@@ -235,63 +235,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkReplaceSpareUnits(data: InsertSpareUnit[]): Promise<number> {
-    // Upsert based on composite key (serialNumber + areaId + itemId)
-    // Using ON CONFLICT to update if exists, insert if not
-    if (data.length === 0) {
-      return 0;
-    }
+    // Transaction: Clear all existing spare units and insert new data in batches
+    const BATCH_SIZE = 500;
     
-    // Deduplicate records by composite key (serialNumber + areaId + itemId)
-    // Keep the last occurrence of each duplicate
-    const uniqueRecords = new Map<string, InsertSpareUnit>();
-    for (const record of data) {
-      const key = `${record.serialNumber}|${record.areaId}|${record.itemId}`;
-      uniqueRecords.set(key, record);
-    }
-    const deduplicatedData = Array.from(uniqueRecords.values());
-    
-    if (deduplicatedData.length < data.length) {
-      console.log(`[bulk-upload] Deduplicated ${data.length - deduplicatedData.length} duplicate spare unit records (${data.length} -> ${deduplicatedData.length})`);
-    }
-    
-    // Process in batches of 500 to handle large datasets
-    const batchSize = 500;
-    let totalProcessed = 0;
-    
-    for (let i = 0; i < deduplicatedData.length; i += batchSize) {
-      const batch = deduplicatedData.slice(i, i + batchSize);
+    return await db.transaction(async (tx) => {
+      // Clear all existing spare units
+      await tx.delete(spareUnit);
       
-      // Execute batch in a transaction for atomicity
-      await db.transaction(async (tx) => {
-        await tx.insert(spareUnit)
-          .values(batch)
-          .onConflictDoUpdate({
-            target: [spareUnit.serialNumber, spareUnit.areaId, spareUnit.itemId],
-            set: {
-              make: sql`excluded.make`,
-              model: sql`excluded.model`,
-              processor: sql`excluded.processor`,
-              generation: sql`excluded.generation`,
-              ram: sql`excluded.ram`,
-              hdd: sql`excluded.hdd`,
-              displaySize: sql`excluded.display_size`,
-              touchscreen: sql`excluded.touchscreen`,
-              category: sql`excluded.category`,
-              reservedForCase: sql`excluded.reserved_for_case`,
-              retiredOrder: sql`excluded.retired_order`,
-              currentHolder: sql`excluded.current_holder`,
-              retiredDate: sql`excluded.retired_date`,
-              productDescription: sql`excluded.product_description`,
-              productNumber: sql`excluded.product_number`,
-              modifiedOn: sql`now()`,
-            },
-          });
-      });
+      // Insert new data in batches
+      let totalInserted = 0;
+      for (let i = 0; i < data.length; i += BATCH_SIZE) {
+        const batch = data.slice(i, i + BATCH_SIZE);
+        await tx.insert(spareUnit).values(batch);
+        totalInserted += batch.length;
+      }
       
-      totalProcessed += batch.length;
-    }
-    
-    return totalProcessed;
+      return totalInserted;
+    });
   }
 
   async getCoveredUnits(filters?: {
@@ -915,12 +875,16 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
 
-  async bulkUpsertClaims(data: InsertClaim[]): Promise<number> {
-    // Upsert claims in batches using composite key (serialNumber + areaId + itemId + rma)
+  async bulkReplaceClaims(data: InsertClaim[]): Promise<number> {
+    // Transaction: Clear all existing claims and insert new data in batches
     const BATCH_SIZE = 500;
     
     return await db.transaction(async (tx) => {
-      let totalUpserted = 0;
+      // Clear all existing claims
+      await tx.delete(claim);
+      
+      // Insert new data in batches
+      let totalInserted = 0;
       for (let i = 0; i < data.length; i += BATCH_SIZE) {
         const batch = data.slice(i, i + BATCH_SIZE);
         
@@ -930,30 +894,11 @@ export class DatabaseStorage implements IStorage {
           claimDate: item.claimDate instanceof Date ? item.claimDate : new Date(item.claimDate),
         }));
         
-        await tx.insert(claim)
-          .values(processedBatch)
-          .onConflictDoUpdate({
-            target: [claim.serialNumber, claim.areaId, claim.itemId, claim.rma],
-            set: {
-              make: sql`excluded.make`,
-              model: sql`excluded.model`,
-              processor: sql`excluded.processor`,
-              generation: sql`excluded.generation`,
-              ram: sql`excluded.ram`,
-              hdd: sql`excluded.hdd`,
-              displaySize: sql`excluded.display_size`,
-              touchscreen: sql`excluded.touchscreen`,
-              category: sql`excluded.category`,
-              productDescription: sql`excluded.product_description`,
-              productNumber: sql`excluded.product_number`,
-              claimDate: sql`excluded.claim_date`,
-              modifiedOn: new Date(),
-            }
-          });
-        totalUpserted += batch.length;
+        await tx.insert(claim).values(processedBatch);
+        totalInserted += batch.length;
       }
       
-      return totalUpserted;
+      return totalInserted;
     });
   }
 
@@ -1020,12 +965,16 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
 
-  async bulkUpsertReplacements(data: InsertReplacement[]): Promise<number> {
-    // Upsert replacements in batches using composite key (serialNumber + areaId + itemId + rma)
+  async bulkReplaceReplacements(data: InsertReplacement[]): Promise<number> {
+    // Transaction: Clear all existing replacements and insert new data in batches
     const BATCH_SIZE = 500;
     
     return await db.transaction(async (tx) => {
-      let totalUpserted = 0;
+      // Clear all existing replacements
+      await tx.delete(replacement);
+      
+      // Insert new data in batches
+      let totalInserted = 0;
       for (let i = 0; i < data.length; i += BATCH_SIZE) {
         const batch = data.slice(i, i + BATCH_SIZE);
         
@@ -1035,30 +984,11 @@ export class DatabaseStorage implements IStorage {
           replacedDate: item.replacedDate instanceof Date ? item.replacedDate : new Date(item.replacedDate),
         }));
         
-        await tx.insert(replacement)
-          .values(processedBatch)
-          .onConflictDoUpdate({
-            target: [replacement.serialNumber, replacement.areaId, replacement.itemId, replacement.rma],
-            set: {
-              make: sql`excluded.make`,
-              model: sql`excluded.model`,
-              processor: sql`excluded.processor`,
-              generation: sql`excluded.generation`,
-              ram: sql`excluded.ram`,
-              hdd: sql`excluded.hdd`,
-              displaySize: sql`excluded.display_size`,
-              touchscreen: sql`excluded.touchscreen`,
-              category: sql`excluded.category`,
-              productDescription: sql`excluded.product_description`,
-              productNumber: sql`excluded.product_number`,
-              replacedDate: sql`excluded.replaced_date`,
-              modifiedOn: new Date(),
-            }
-          });
-        totalUpserted += batch.length;
+        await tx.insert(replacement).values(processedBatch);
+        totalInserted += batch.length;
       }
       
-      return totalUpserted;
+      return totalInserted;
     });
   }
 

@@ -615,8 +615,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = z.array(insertClaimSchema).parse(req.body);
       
-      const count = await storage.bulkUpsertClaims(validatedData);
-      res.json({ message: `Successfully upserted ${count} claims`, count });
+      const count = await storage.bulkReplaceClaims(validatedData);
+      res.json({ message: `Successfully replaced ${count} claims`, count });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid data", details: error.errors });
@@ -675,8 +675,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = z.array(insertReplacementSchema).parse(req.body);
       
-      const count = await storage.bulkUpsertReplacements(validatedData);
-      res.json({ message: `Successfully upserted ${count} replacements`, count });
+      const count = await storage.bulkReplaceReplacements(validatedData);
+      res.json({ message: `Successfully replaced ${count} replacements`, count });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid data", details: error.errors });

@@ -126,7 +126,7 @@ Remove a spare unit from the pool.
 **Response**: 204 No Content
 
 ### Bulk Upload Spare Units
-**For Azure Data Factory Integration** - Upsert multiple spare units in a single transaction.
+**For Azure Data Factory Integration** - Replace all spare units with new data in a single transaction.
 
 **Endpoint**: `POST /api/spare-units/bulk`
 
@@ -157,8 +157,8 @@ Remove a spare unit from the pool.
 ```
 
 **Features**:
-- **Composite Key**: Upserts based on `(serialNumber, areaId, itemId)`
-- **Transaction-Wrapped**: All inserts/updates succeed or fail together
+- **Clear-All Strategy**: Truncates existing spare units data and inserts new records
+- **Transaction-Wrapped**: Truncate + insert operations are atomic
 - **Batch Processing**: Processes in batches of 500 records
 - **Performance**: Optimized for large datasets (tested with 10K+ records)
 
@@ -592,7 +592,7 @@ Remove a claim record.
 **Response**: 204 No Content
 
 ### Bulk Upload Claims
-**For Azure Data Factory Integration** - Upsert multiple claim records in a single transaction.
+**For Azure Data Factory Integration** - Replace all claims with new data in a single transaction.
 
 **Endpoint**: `POST /api/claims/bulk`
 
@@ -621,8 +621,8 @@ Remove a claim record.
 ```
 
 **Features**:
-- **Composite Key**: Upserts based on `(serialNumber, areaId, itemId, rma)`
-- **Transaction-Wrapped**: All inserts/updates succeed or fail together
+- **Clear-All Strategy**: Truncates existing claims data and inserts new records
+- **Transaction-Wrapped**: Truncate + insert operations are atomic
 - **Batch Processing**: Processes in batches of 500 records
 - **Date Handling**: Accepts ISO date strings for claimDate
 
@@ -733,7 +733,7 @@ Remove a replacement record.
 **Response**: 204 No Content
 
 ### Bulk Upload Replacements
-**For Azure Data Factory Integration** - Upsert multiple replacement records in a single transaction.
+**For Azure Data Factory Integration** - Replace all replacements with new data in a single transaction.
 
 **Endpoint**: `POST /api/replacements/bulk`
 
@@ -762,10 +762,10 @@ Remove a replacement record.
 ```
 
 **Features**:
-- **Composite Key**: Upserts based on `(serialNumber, areaId, itemId, rma)`
-- **Transaction-Wrapped**: All inserts/updates succeed or fail together
+- **Clear-All Strategy**: Truncates existing replacements data and inserts new records
+- **Transaction-Wrapped**: Truncate + insert operations are atomic
 - **Batch Processing**: Processes in batches of 500 records
-- **Date Handling**: Accepts ISO date strings for replacementDate
+- **Date Handling**: Accepts ISO date strings for replacedDate
 
 **Response**:
 ```json
