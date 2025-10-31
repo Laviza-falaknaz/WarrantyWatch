@@ -793,12 +793,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkReplaceAvailableStock(data: InsertAvailableStock[]): Promise<number> {
-    // Transaction: Clear all existing stock and insert new data in batches
+    // Transaction: Truncate all existing stock and insert new data in batches
     const BATCH_SIZE = 500;
     
     return await db.transaction(async (tx) => {
-      // Clear all existing available stock
-      await tx.delete(availableStock);
+      // Truncate table - delete all existing available stock
+      await tx.execute(sql`TRUNCATE TABLE ${availableStock} RESTART IDENTITY CASCADE`);
       
       // Insert new data in batches
       let totalInserted = 0;
@@ -876,19 +876,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkReplaceClaims(data: InsertClaim[]): Promise<number> {
-    // Transaction: Clear all existing claims and insert new data in batches
+    // Transaction: Truncate all existing claims and insert new data in batches
     const BATCH_SIZE = 500;
     
     return await db.transaction(async (tx) => {
-      // Clear all existing claims
-      await tx.delete(claim);
+      // Truncate table - delete all existing claims
+      await tx.execute(sql`TRUNCATE TABLE ${claim} RESTART IDENTITY CASCADE`);
       
       // Insert new data in batches
       let totalInserted = 0;
       for (let i = 0; i < data.length; i += BATCH_SIZE) {
         const batch = data.slice(i, i + BATCH_SIZE);
         
-        // Convert date strings to Date objects
+        // Convert date strings to Date objects if needed
         const processedBatch = batch.map(item => ({
           ...item,
           claimDate: item.claimDate instanceof Date ? item.claimDate : new Date(item.claimDate),
@@ -966,19 +966,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkReplaceReplacements(data: InsertReplacement[]): Promise<number> {
-    // Transaction: Clear all existing replacements and insert new data in batches
+    // Transaction: Truncate all existing replacements and insert new data in batches
     const BATCH_SIZE = 500;
     
     return await db.transaction(async (tx) => {
-      // Clear all existing replacements
-      await tx.delete(replacement);
+      // Truncate table - delete all existing replacements
+      await tx.execute(sql`TRUNCATE TABLE ${replacement} RESTART IDENTITY CASCADE`);
       
       // Insert new data in batches
       let totalInserted = 0;
       for (let i = 0; i < data.length; i += BATCH_SIZE) {
         const batch = data.slice(i, i + BATCH_SIZE);
         
-        // Convert date strings to Date objects
+        // Convert date strings to Date objects if needed
         const processedBatch = batch.map(item => ({
           ...item,
           replacedDate: item.replacedDate instanceof Date ? item.replacedDate : new Date(item.replacedDate),

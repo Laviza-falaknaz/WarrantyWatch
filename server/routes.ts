@@ -546,6 +546,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get available stock stats
+  app.get("/api/available-stock/stats", async (req, res) => {
+    try {
+      const filters = {
+        search: req.query.search as string | undefined,
+      };
+      
+      const units = await storage.getAvailableStock(filters);
+      const total = units.length;
+      const reserved = units.filter(u => u.reservedForCase).length;
+      const available = total - reserved;
+      
+      res.json({ total, reserved, available });
+    } catch (error) {
+      console.error("Error fetching available stock stats:", error);
+      res.status(500).json({ error: "Failed to fetch available stock stats" });
+    }
+  });
+
   // Bulk replace available stock (clear all + batch insert for 80k+ units)
   app.post("/api/available-stock/bulk", async (req, res) => {
     try {
@@ -606,6 +625,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get claims stats
+  app.get("/api/claims/stats", async (req, res) => {
+    try {
+      const filters = {
+        search: req.query.search as string | undefined,
+      };
+      
+      const claims = await storage.getClaims(filters);
+      const total = claims.length;
+      
+      res.json({ total });
+    } catch (error) {
+      console.error("Error fetching claims stats:", error);
+      res.status(500).json({ error: "Failed to fetch claims stats" });
+    }
+  });
+
   // Bulk upsert claims (15k units, composite key: serialNumber + areaId + itemId + rma)
   app.post("/api/claims/bulk", async (req, res) => {
     try {
@@ -663,6 +699,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching replacements:", error);
       res.status(500).json({ error: "Failed to fetch replacements" });
+    }
+  });
+
+  // Get replacements stats
+  app.get("/api/replacements/stats", async (req, res) => {
+    try {
+      const filters = {
+        search: req.query.search as string | undefined,
+      };
+      
+      const replacements = await storage.getReplacements(filters);
+      const total = replacements.length;
+      
+      res.json({ total });
+    } catch (error) {
+      console.error("Error fetching replacements stats:", error);
+      res.status(500).json({ error: "Failed to fetch replacements stats" });
     }
   });
 
