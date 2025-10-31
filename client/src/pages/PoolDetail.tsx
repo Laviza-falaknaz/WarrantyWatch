@@ -22,10 +22,17 @@ import type { CoveragePoolAnalytics, MonthlyAnalytics } from "@shared/schema";
 export default function PoolDetail() {
   const [, params] = useRoute("/pools/:poolId");
   const poolId = params?.poolId;
+  const { toast } = useToast();
 
   // Fetch pool analytics
   const { data: analytics, isLoading } = useQuery<CoveragePoolAnalytics>({
     queryKey: [`/api/coverage-pools/${poolId}/analytics`],
+    enabled: !!poolId,
+  });
+
+  // Fetch pool details for filter criteria
+  const { data: poolData } = useQuery({
+    queryKey: [`/api/coverage-pools/${poolId}`],
     enabled: !!poolId,
   });
 
@@ -130,28 +137,41 @@ export default function PoolDetail() {
   // Export functions
   const handleExport = async (type: 'spare' | 'covered' | 'claims' | 'replacements') => {
     try {
-      const pool = await fetch(`/api/coverage-pools/${poolId}`).then(r => r.json());
-      const filterCriteria = JSON.parse(pool.filterCriteria);
+      if (!poolData || !analytics) {
+        toast({
+          title: "Export Failed",
+          description: "Pool data not loaded yet. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const filterCriteria = JSON.parse(poolData.filterCriteria);
       
       let endpoint = '';
       let filename = '';
+      let dataType = '';
       
       switch (type) {
         case 'spare':
           endpoint = '/api/spare-units';
           filename = `${analytics.poolName}_SpareUnits.xlsx`;
+          dataType = 'Spare Units';
           break;
         case 'covered':
           endpoint = '/api/covered-units';
           filename = `${analytics.poolName}_CoveredUnits.xlsx`;
+          dataType = 'Covered Units';
           break;
         case 'claims':
           endpoint = '/api/claims';
           filename = `${analytics.poolName}_Claims.xlsx`;
+          dataType = 'Claims';
           break;
         case 'replacements':
           endpoint = '/api/replacements';
           filename = `${analytics.poolName}_Replacements.xlsx`;
+          dataType = 'Replacements';
           break;
       }
       
@@ -163,7 +183,21 @@ export default function PoolDetail() {
       if (filterCriteria.ram?.length) params.append('ram', filterCriteria.ram.join(','));
       if (filterCriteria.category?.length) params.append('category', filterCriteria.category.join(','));
       
-      const data = await fetch(`${endpoint}?${params.toString()}`).then(r => r.json());
+      const response = await fetch(`${endpoint}?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data || data.length === 0) {
+        toast({
+          title: "No Data",
+          description: `No ${dataType.toLowerCase()} found matching the pool criteria.`,
+        });
+        return;
+      }
       
       // Create worksheet and workbook
       const ws = XLSX.utils.json_to_sheet(data);
@@ -172,8 +206,18 @@ export default function PoolDetail() {
       
       // Download file
       XLSX.writeFile(wb, filename);
+      
+      toast({
+        title: "Export Successful",
+        description: `Downloaded ${data.length} ${dataType.toLowerCase()} to ${filename}`,
+      });
     } catch (error) {
       console.error('Export failed:', error);
+      toast({
+        title: "Export Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
     }
   };
 
