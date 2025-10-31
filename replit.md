@@ -75,7 +75,7 @@ Preferred communication style: Simple, everyday language.
   - Claims Growth: MoM or YoY percentage change with directional indicators
   - Inventory Runway: Months of coverage at current claim rate (spare units / avg monthly claims)
 - **Recommendations Engine**: Generates actionable guidance based on coverage status, target thresholds, and runway projections
-- **Pool Detail Dashboard**: Full-page analytics view featuring KPI cards with explanatory tooltips, dual-axis trend chart (claims vs replacements with forecast extension), monthly breakdown table, color-coded status indicators, and Excel export dropdown for downloading pool-filtered data (spare units, covered units, claims, replacements)
+- **Pool Detail Dashboard**: Full-page analytics view featuring 5 KPI cards with explanatory tooltips (Coverage Ratio, Fulfillment Rate, Claims Growth, Inventory Runway, Available Stock), dual-axis trend chart (claims vs replacements with forecast extension), monthly breakdown table, color-coded status indicators, and Excel export dropdown for downloading pool-filtered data (spare units, covered units, claims, replacements). The Available Stock KPI (October 2025) displays pool-matching units outside the warranty pool that can be allocated on-demand to address coverage deficits.
 
 **Authentication and Authorization**:
 - **Current State**: No authentication/authorization implemented; assumes a trusted internal network.
