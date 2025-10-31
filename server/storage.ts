@@ -756,6 +756,299 @@ export class DatabaseStorage implements IStorage {
     return { total };
   }
 
+  async getAvailableStock(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<AvailableStock[]> {
+    let query = db.select().from(availableStock);
+    
+    const conditions = [];
+    
+    if (filters?.make && filters.make.length > 0) {
+      conditions.push(inArray(availableStock.make, filters.make));
+    }
+    
+    if (filters?.model && filters.model.length > 0) {
+      conditions.push(inArray(availableStock.model, filters.model));
+    }
+    
+    if (filters?.processor && filters.processor.length > 0) {
+      conditions.push(inArray(availableStock.processor, filters.processor));
+    }
+    
+    if (filters?.ram && filters.ram.length > 0) {
+      conditions.push(inArray(availableStock.ram, filters.ram));
+    }
+    
+    if (filters?.category && filters.category.length > 0) {
+      conditions.push(inArray(availableStock.category, filters.category));
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(availableStock.serialNumber, searchTerm),
+          like(availableStock.make, searchTerm),
+          like(availableStock.model, searchTerm),
+          like(availableStock.productDescription, searchTerm)
+        )
+      );
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    query = query.orderBy(desc(availableStock.createdOn)) as any;
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+    
+    return await query;
+  }
+
+  async bulkReplaceAvailableStock(data: InsertAvailableStock[]): Promise<number> {
+    // Transaction: Clear all existing stock and insert new data in batches
+    const BATCH_SIZE = 500;
+    
+    return await db.transaction(async (tx) => {
+      // Clear all existing available stock
+      await tx.delete(availableStock);
+      
+      // Insert new data in batches
+      let totalInserted = 0;
+      for (let i = 0; i < data.length; i += BATCH_SIZE) {
+        const batch = data.slice(i, i + BATCH_SIZE);
+        await tx.insert(availableStock).values(batch);
+        totalInserted += batch.length;
+      }
+      
+      return totalInserted;
+    });
+  }
+
+  async getClaims(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Claim[]> {
+    let query = db.select().from(claim);
+    
+    const conditions = [];
+    
+    if (filters?.make && filters.make.length > 0) {
+      conditions.push(inArray(claim.make, filters.make));
+    }
+    
+    if (filters?.model && filters.model.length > 0) {
+      conditions.push(inArray(claim.model, filters.model));
+    }
+    
+    if (filters?.processor && filters.processor.length > 0) {
+      conditions.push(inArray(claim.processor, filters.processor));
+    }
+    
+    if (filters?.ram && filters.ram.length > 0) {
+      conditions.push(inArray(claim.ram, filters.ram));
+    }
+    
+    if (filters?.category && filters.category.length > 0) {
+      conditions.push(inArray(claim.category, filters.category));
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(claim.serialNumber, searchTerm),
+          like(claim.make, searchTerm),
+          like(claim.model, searchTerm),
+          like(claim.rma, searchTerm)
+        )
+      );
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    query = query.orderBy(desc(claim.claimDate)) as any;
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+    
+    return await query;
+  }
+
+  async bulkUpsertClaims(data: InsertClaim[]): Promise<number> {
+    // Upsert claims in batches using composite key (serialNumber + areaId + itemId + rma)
+    const BATCH_SIZE = 500;
+    
+    return await db.transaction(async (tx) => {
+      let totalUpserted = 0;
+      for (let i = 0; i < data.length; i += BATCH_SIZE) {
+        const batch = data.slice(i, i + BATCH_SIZE);
+        
+        // Convert date strings to Date objects
+        const processedBatch = batch.map(item => ({
+          ...item,
+          claimDate: item.claimDate instanceof Date ? item.claimDate : new Date(item.claimDate),
+        }));
+        
+        await tx.insert(claim)
+          .values(processedBatch)
+          .onConflictDoUpdate({
+            target: [claim.serialNumber, claim.areaId, claim.itemId, claim.rma],
+            set: {
+              make: sql`excluded.make`,
+              model: sql`excluded.model`,
+              processor: sql`excluded.processor`,
+              generation: sql`excluded.generation`,
+              ram: sql`excluded.ram`,
+              hdd: sql`excluded.hdd`,
+              displaySize: sql`excluded.display_size`,
+              touchscreen: sql`excluded.touchscreen`,
+              category: sql`excluded.category`,
+              productDescription: sql`excluded.product_description`,
+              productNumber: sql`excluded.product_number`,
+              claimDate: sql`excluded.claim_date`,
+              modifiedOn: new Date(),
+            }
+          });
+        totalUpserted += batch.length;
+      }
+      
+      return totalUpserted;
+    });
+  }
+
+  async getReplacements(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Replacement[]> {
+    let query = db.select().from(replacement);
+    
+    const conditions = [];
+    
+    if (filters?.make && filters.make.length > 0) {
+      conditions.push(inArray(replacement.make, filters.make));
+    }
+    
+    if (filters?.model && filters.model.length > 0) {
+      conditions.push(inArray(replacement.model, filters.model));
+    }
+    
+    if (filters?.processor && filters.processor.length > 0) {
+      conditions.push(inArray(replacement.processor, filters.processor));
+    }
+    
+    if (filters?.ram && filters.ram.length > 0) {
+      conditions.push(inArray(replacement.ram, filters.ram));
+    }
+    
+    if (filters?.category && filters.category.length > 0) {
+      conditions.push(inArray(replacement.category, filters.category));
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(replacement.serialNumber, searchTerm),
+          like(replacement.make, searchTerm),
+          like(replacement.model, searchTerm),
+          like(replacement.rma, searchTerm)
+        )
+      );
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    query = query.orderBy(desc(replacement.replacedDate)) as any;
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+    
+    return await query;
+  }
+
+  async bulkUpsertReplacements(data: InsertReplacement[]): Promise<number> {
+    // Upsert replacements in batches using composite key (serialNumber + areaId + itemId + rma)
+    const BATCH_SIZE = 500;
+    
+    return await db.transaction(async (tx) => {
+      let totalUpserted = 0;
+      for (let i = 0; i < data.length; i += BATCH_SIZE) {
+        const batch = data.slice(i, i + BATCH_SIZE);
+        
+        // Convert date strings to Date objects
+        const processedBatch = batch.map(item => ({
+          ...item,
+          replacedDate: item.replacedDate instanceof Date ? item.replacedDate : new Date(item.replacedDate),
+        }));
+        
+        await tx.insert(replacement)
+          .values(processedBatch)
+          .onConflictDoUpdate({
+            target: [replacement.serialNumber, replacement.areaId, replacement.itemId, replacement.rma],
+            set: {
+              make: sql`excluded.make`,
+              model: sql`excluded.model`,
+              processor: sql`excluded.processor`,
+              generation: sql`excluded.generation`,
+              ram: sql`excluded.ram`,
+              hdd: sql`excluded.hdd`,
+              displaySize: sql`excluded.display_size`,
+              touchscreen: sql`excluded.touchscreen`,
+              category: sql`excluded.category`,
+              productDescription: sql`excluded.product_description`,
+              productNumber: sql`excluded.product_number`,
+              replacedDate: sql`excluded.replaced_date`,
+              modifiedOn: new Date(),
+            }
+          });
+        totalUpserted += batch.length;
+      }
+      
+      return totalUpserted;
+    });
+  }
+
   async getConfiguration(): Promise<AppConfiguration> {
     // Get or create configuration (single row with id='system')
     const [config] = await db.select().from(appConfiguration).where(eq(appConfiguration.id, 'system'));

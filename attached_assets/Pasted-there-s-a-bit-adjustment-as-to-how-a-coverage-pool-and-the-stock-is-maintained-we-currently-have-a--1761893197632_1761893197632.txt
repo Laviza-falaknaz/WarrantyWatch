@@ -1,0 +1,74 @@
+there's a bit adjustment as to how a coverage pool and the stock is maintained. we currently have a spare pool and a covered units list which displays the applicable warranties.
+
+now alongside, we want to have a list of all available stock (outside the pool) which can be used to supplement pool if needed, a list of recent claims (to show units of that specs were returned for replacement) and a list of replacements (to show units that had similar specs and were sent as replacements recently)
+
+the coverage pool's % is ok for now the spare vs covered. but thecoverage pool should also tell the user about how many units are available in stock if needed, what is the claims history and run rate (the claims over last 6 months)
+
+here's the sample objects for each of these
+
+all available stock unit:
+{
+
+        "serialNumber": "103909826030",
+        "areaId": "UAE",
+        "itemId": "1001",
+        "make": "LENOVO",
+        "model": "THINKPAD T490S 16GB",
+        "processor": "CORE I7",
+        "generation": "8TH",
+        "ram": "16384",
+        "hdd": "512",
+        "displaySize": "14",
+        "touchscreen": false,
+        "category": "REMAN",
+        "reservedSegregationGroup": "UK",
+        "reservedForCase": "20575-1",
+        "productDescription": "LENOVO T490S, CI7 (8TH GEN), 16384, 512, 14\" FHD, NO OS,  30 DAY DOA",
+        "productNumber": "1LT490SI716512"
+    }
+
+claimed unit:
+{
+"serialNumber": "204313000083",
+"areaId": "UK",
+"itemId": "1001",
+"make": "LENOVO",
+"model": "THINKPAD T470S",
+"processor": "CORE I5",
+"generation": "7TH",
+"ram": "8192",
+"hdd": "256",
+"displaySize": "14",
+"touchscreen": false,
+"category": "REMAN",
+"productDescription": "LENOVO THINKPAD T470S CORE I5 7TH GEN 8GB RAM 256GB SSD 14" FHD UK KEYBOARD WINDOWS 10 PRO 1 YEAR ADV WARRANTY CIRCULAR",
+"productNumber": "C9Z0W20224",
+"rma": "RMA-09125",
+"claimDate": "2025-06-10T07:25:07Z"
+}
+
+replacement unit:
+{
+"serialNumber": "215331001845",
+"areaId": "UAE",
+"itemId": "1001",
+"make": "HP",
+"model": "ELITEBOOK 840 G7",
+"processor": "CORE I5",
+"generation": "10TH",
+"ram": "16384",
+"hdd": "256",
+"displaySize": "14",
+"touchscreen": false,
+"category": "CIRCULAR",
+"productDescription": "",
+"productNumber": "",
+"rma": "RMA-09384",
+"replacedDate": "2025-07-30T00:00:00Z"
+}
+
+update configurations as required for instance if a user wishes to change duration to compute the runrate on pools. etc etc. also udate the dashbpoard and analytics to work accordingly.
+
+ADDITIONALLY, create APIs to add the data to these entities. replacements and claims expect 15k units,.... all available stock expects 80k units... this keep getting sold so the api should have handling to clear off all and then add without meeting the limits. maybe batch processin or whatevr
+
+the claims and replacements can be added as upserts for but the key would be serialid, area id, item id, rma number for these units. since one same item can be rewtruend against 2 different rmas.
