@@ -21,12 +21,18 @@ Preferred communication style: Simple, everyday language.
 - **Design Principles**: Data-first presentation for enterprise dashboards, high information density, Inter and JetBrains Mono typography, consistent spacing.
 - **State Management**: TanStack Query for server state, local React state for UI, Context API for theme.
 - **Routing**: wouter.
-- **Key Pages**: Dashboard, Spare Pool, Covered Units, Coverage Pools, Analytics, Warranty Explorer, Configuration, Claims History, Replacements, Available Stock.
+- **Key Pages**: Dashboard (with integrated analytics charts), Replacement Pool, Stock under Warranty, Coverage Pools, Warranty Explorer, Configuration, Claims History, Replacements, Available Stock.
+- **Navigation**: Sidebar organized into logical groups: Overview, Core Inventory, Inventory Tracking, Management & Tools.
 
 **Backend Architecture**:
 - **Framework**: Express.js with TypeScript on Node.js.
 - **Server Structure**: RESTful API organized by domain, with middleware for JSON parsing, logging, and error handling.
-- **API Endpoints**: Standard CRUD operations for units and pools, analytics, configuration, and bulk upload endpoints for `spare_unit` (upsert), `covered_unit` (upsert), `available_stock`, `claims`, and `replacements` (truncate-and-insert).
+- **API Endpoints**: Standard CRUD operations for units and pools, analytics, configuration, dedicated stats endpoints for all entity types, and bulk upload endpoints:
+  - `spare_unit`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy)
+  - `covered_unit`: UPSERT strategy (update existing, insert new)
+  - `available_stock`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy)
+  - `claims`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy)
+  - `replacements`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy)
 - **Data Access Layer**: Storage abstraction (`IStorage` interface).
 - **Performance & Scalability**: Server-side pagination (100 items/page), query limits (default 10,000 records), separate lightweight stats endpoints, and optimized bulk upload processes with transactional batching and streamlined validation.
 
@@ -34,11 +40,14 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL via Neon Serverless.
 - **ORM**: Drizzle ORM for type-safe queries, schema-first approach, and migration support.
 - **Schema Design**:
-    1.  `spare_unit` table: Stores spare laptop details.
-    2.  `covered_unit` table: Stores deployed laptop details and warranty coverage.
+    1.  `spare_unit` table: Stores spare laptop details (replacement pool inventory).
+    2.  `covered_unit` table: Stores deployed laptop details and warranty coverage (stock under warranty).
     3.  `coverage_pool` table: Defines dynamic coverage pools with JSON-serialized filter criteria.
-    4.  `app_configuration` table: Single-row table for runtime system settings.
-- **Key Design Decisions**: Matching specification fields across unit tables for pool matching, JSON-serialized filter criteria for flexibility, UUID primary keys, audit timestamps, and singleton configuration pattern.
+    4.  `available_stock` table: Tracks all available inventory across areas.
+    5.  `claims` table: Records warranty claim history.
+    6.  `replacements` table: Tracks replacement fulfillment history.
+    7.  `app_configuration` table: Single-row table for runtime system settings.
+- **Key Design Decisions**: Matching specification fields across unit tables for pool matching, JSON-serialized filter criteria for flexibility, UUID primary keys, composite keys for tracking entities (serialNumber + areaId + itemId for spare/available, + rma for claims/replacements), audit timestamps, and singleton configuration pattern.
 
 **Runtime Configuration System**:
 - **Purpose**: Allows administrators to configure system thresholds and preferences without code changes.
