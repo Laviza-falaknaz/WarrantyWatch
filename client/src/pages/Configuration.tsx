@@ -19,6 +19,7 @@ const configurationFormSchema = z.object({
   lowCoverageThresholdPercent: z.coerce.number().min(0).max(100),
   expiringCoverageDays: z.coerce.number().int().min(1).max(365),
   poolInactivityDays: z.coerce.number().int().min(1).max(365),
+  runRatePeriodMonths: z.coerce.number().int().min(1).max(24),
   enableLowCoverageAlerts: z.boolean(),
   enableExpiringAlerts: z.boolean(),
   dashboardRefreshMinutes: z.coerce.number().int().min(1).max(60),
@@ -39,6 +40,7 @@ export default function Configuration() {
       lowCoverageThresholdPercent: 10,
       expiringCoverageDays: 30,
       poolInactivityDays: 90,
+      runRatePeriodMonths: 6,
       enableLowCoverageAlerts: true,
       enableExpiringAlerts: true,
       dashboardRefreshMinutes: 5,
@@ -51,6 +53,7 @@ export default function Configuration() {
         lowCoverageThresholdPercent: Number(configuration.lowCoverageThresholdPercent),
         expiringCoverageDays: configuration.expiringCoverageDays,
         poolInactivityDays: configuration.poolInactivityDays,
+        runRatePeriodMonths: configuration.runRatePeriodMonths,
         enableLowCoverageAlerts: configuration.enableLowCoverageAlerts,
         enableExpiringAlerts: configuration.enableExpiringAlerts,
         dashboardRefreshMinutes: configuration.dashboardRefreshMinutes,
@@ -196,6 +199,28 @@ export default function Configuration() {
                     </FormControl>
                     <FormDescription>
                       Mark coverage pools as inactive after this many days of no modifications
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="runRatePeriodMonths"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Run Rate Calculation Period (Months)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="6"
+                        {...field}
+                        data-testid="input-run-rate-period-months"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Calculate claims run rate based on this many months of history (1-24 months)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
