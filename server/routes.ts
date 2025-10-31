@@ -397,6 +397,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/coverage-pools-with-stats", async (req, res) => {
     try {
       const pools = await storage.getCoveragePools();
+      const config = await storage.getConfiguration();
+      
+      // Calculate date range for run rate (claims from last N months)
+      const runRatePeriodMonths = config.runRatePeriodMonths || 6;
+      const runRateStartDate = new Date();
+      runRateStartDate.setMonth(runRateStartDate.getMonth() - runRatePeriodMonths);
       
       const poolsWithStats = await Promise.all(pools.map(async (pool) => {
         const filterCriteria = JSON.parse(pool.filterCriteria);
@@ -404,12 +410,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Build conditions for filtering
         const spareConditions: any[] = [];
         const coveredConditions: any[] = [];
+        const availableStockConditions: any[] = [];
+        const claimConditions: any[] = [];
         
         // Helper to add filter conditions - converts single values to arrays for consistency
         const addFilterCondition = (
           value: string | string[] | undefined,
           spareField: any,
-          coveredField: any
+          coveredField: any,
+          availableField: any,
+          claimField: any
         ) => {
           if (value) {
             // Convert single value to array for backward compatibility
@@ -421,35 +431,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (coveredField) {
                 coveredConditions.push(inArray(coveredField, values));
               }
+              if (availableField) {
+                availableStockConditions.push(inArray(availableField, values));
+              }
+              if (claimField) {
+                claimConditions.push(inArray(claimField, values));
+              }
             }
           }
         };
         
         // Apply filters for common fields
-        addFilterCondition(filterCriteria.make, spareUnit.make, coveredUnit.make);
-        addFilterCondition(filterCriteria.model, spareUnit.model, coveredUnit.model);
-        addFilterCondition(filterCriteria.processor, spareUnit.processor, coveredUnit.processor);
-        addFilterCondition(filterCriteria.ram, spareUnit.ram, coveredUnit.ram);
-        addFilterCondition(filterCriteria.category, spareUnit.category, coveredUnit.category);
-        addFilterCondition(filterCriteria.hdd, spareUnit.hdd, coveredUnit.hdd);
-        addFilterCondition(filterCriteria.generation, spareUnit.generation, coveredUnit.generation);
+        addFilterCondition(filterCriteria.make, spareUnit.make, coveredUnit.make, availableStock.make, claim.make);
+        addFilterCondition(filterCriteria.model, spareUnit.model, coveredUnit.model, availableStock.model, claim.model);
+        addFilterCondition(filterCriteria.processor, spareUnit.processor, coveredUnit.processor, availableStock.processor, claim.processor);
+        addFilterCondition(filterCriteria.ram, spareUnit.ram, coveredUnit.ram, availableStock.ram, claim.ram);
+        addFilterCondition(filterCriteria.category, spareUnit.category, coveredUnit.category, availableStock.category, claim.category);
+        addFilterCondition(filterCriteria.hdd, spareUnit.hdd, coveredUnit.hdd, availableStock.hdd, claim.hdd);
+        addFilterCondition(filterCriteria.generation, spareUnit.generation, coveredUnit.generation, availableStock.generation, claim.generation);
         
         // Count spare units matching filter
-        let spareQuery = db.select().from(spareUnit);
+        let spareQuery = db.select({ count: drizzleSql<number>`count(*)::int` }).from(spareUnit);
         if (spareConditions.length > 0) {
           spareQuery = spareQuery.where(and(...spareConditions)) as any;
         }
-        const spareItems = await spareQuery;
+        const [spareResult] = await spareQuery;
+        const spareCount = spareResult?.count || 0;
         
         // Count covered units matching filter
-        let coveredQuery = db.select().from(coveredUnit);
+        let coveredQuery = db.select({ count: drizzleSql<number>`count(*)::int` }).from(coveredUnit);
         if (coveredConditions.length > 0) {
           coveredQuery = coveredQuery.where(and(...coveredConditions)) as any;
         }
-        const coveredItems = await coveredQuery;
+        const [coveredResult] = await coveredQuery;
+        const coveredCount = coveredResult?.count || 0;
         
-        const spareCount = spareItems.length;
-        const coveredCount = coveredItems.length;
+        // Count available stock matching filter
+        let availableStockQuery = db.select({ count: drizzleSql<number>`count(*)::int` }).from(availableStock);
+        if (availableStockConditions.length > 0) {
+          availableStockQuery = availableStockQuery.where(and(...availableStockConditions)) as any;
+        }
+        const [availableStockResult] = await availableStockQuery;
+        const availableStockCount = availableStockResult?.count || 0;
+        
+        // Count claims in run rate period matching filter
+        const claimDateConditions = [...claimConditions, drizzleSql`${claim.claimDate} >= ${runRateStartDate}`];
+        let claimQuery = db.select({ count: drizzleSql<number>`count(*)::int` }).from(claim);
+        if (claimDateConditions.length > 0) {
+          claimQuery = claimQuery.where(and(...claimDateConditions)) as any;
+        }
+        const [claimResult] = await claimQuery;
+        const claimsInPeriod = claimResult?.count || 0;
+        
+        // Calculate run rate (claims per month)
+        const runRate = runRatePeriodMonths > 0 ? claimsInPeriod / runRatePeriodMonths : 0;
+        
         const coverageRatio = coveredCount > 0 ? (spareCount / coveredCount) * 100 : 0;
         
         return {
@@ -457,6 +493,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           spareCount,
           coveredCount,
           coverageRatio,
+          availableStockCount,
+          claimsLast6Months: claimsInPeriod, // Actually uses configured period
+          runRate: Number(runRate.toFixed(2)),
         };
       }));
       
