@@ -558,6 +558,7 @@ export class DatabaseStorage implements IStorage {
     totalCoveredUnits: number;
     activeCoverage: number;
     expiringCoverage: number;
+    unallocatedSpareUnits: number;
     averageCoverageRatio: number;
     lowCoverageThresholdPercent: number;
     expiringCoverageDays: number;
@@ -570,6 +571,17 @@ export class DatabaseStorage implements IStorage {
     const [spareCount] = await db.select({ count: sql<number>`count(*)` }).from(spareUnit);
     const [coveredCount] = await db.select({ count: sql<number>`count(*)` }).from(coveredUnit);
     const [activeCoverageCount] = await db.select({ count: sql<number>`count(*)` }).from(coveredUnit).where(eq(coveredUnit.isCoverageActive, true));
+    
+    // Count unallocated spare units (not reserved for any case)
+    const [unallocatedCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(spareUnit)
+      .where(
+        or(
+          eq(spareUnit.reservedForCase, ''),
+          sql`${spareUnit.reservedForCase} IS NULL`
+        )
+      );
     
     // Count coverage expiring in configured days
     const expiringDate = new Date();
@@ -595,6 +607,7 @@ export class DatabaseStorage implements IStorage {
       totalCoveredUnits: totalCovered,
       activeCoverage: Number(activeCoverageCount?.count || 0),
       expiringCoverage: Number(expiringCount?.count || 0),
+      unallocatedSpareUnits: Number(unallocatedCount?.count || 0),
       averageCoverageRatio,
       lowCoverageThresholdPercent: lowCoverageThreshold,
       expiringCoverageDays: expiringDays,

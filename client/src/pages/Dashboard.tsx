@@ -15,6 +15,7 @@ export default function Dashboard() {
     totalCoveredUnits: number;
     activeCoverage: number;
     expiringCoverage: number;
+    unallocatedSpareUnits: number;
     averageCoverageRatio: number;
     lowCoverageThresholdPercent: number;
     expiringCoverageDays: number;
@@ -61,8 +62,8 @@ export default function Dashboard() {
             Monitor coverage and pool status across all replacement pool units
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
@@ -79,30 +80,48 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <MetricCard
-          title="Stock under Warranty"
+          title="Total Warranty Stock"
+          value={analytics?.totalCoveredUnits || 0}
+          icon={Shield}
+          subtitle="All units under warranty"
+          data-testid="card-total-warranty-stock"
+        />
+        <MetricCard
+          title="Active Warranty"
           value={analytics?.activeCoverage || 0}
           icon={Shield}
-          subtitle="Active warranty coverage"
+          subtitle="Non-expired coverage"
+          data-testid="card-active-warranty"
         />
         <MetricCard
           title="Total Replacement Pool"
           value={analytics?.totalSpareUnits || 0}
           icon={Package}
-          subtitle="Available in pool"
+          subtitle="All spare units"
+          data-testid="card-total-replacement-pool"
         />
         <MetricCard
-          title="Expiring Coverage"
+          title="Unallocated Pool"
+          value={analytics?.unallocatedSpareUnits || 0}
+          icon={Package}
+          subtitle="Not reserved"
+          data-testid="card-unallocated-pool"
+        />
+        <MetricCard
+          title="Expiring Warranty Stock"
           value={analytics?.expiringCoverage || 0}
           icon={TrendingUp}
           subtitle={`Next ${analytics?.expiringCoverageDays || 30} days`}
+          data-testid="card-expiring-warranty-stock"
         />
         <MetricCard
-          title="Low Coverage Alerts"
+          title="Low Coverage Groups"
           value={lowCoverageCount}
           icon={AlertTriangle}
           subtitle={`Below ${threshold}% threshold`}
+          data-testid="card-low-coverage-groups"
         />
       </div>
 
