@@ -26,6 +26,7 @@ Preferred communication style: Simple, everyday language.
 - **UX Improvements**: 
   - Pool details converted from dialog popup to dedicated full page (October 2025) for better spacing and data table visibility with large datasets
   - Pool detail page transformed into comprehensive analytics dashboard (October 2025) featuring KPI cards, trend forecasting, monthly breakdowns, and actionable recommendations
+  - Excel export functionality added (October 2025) allowing filtered data export for spare units, covered units, claims, and replacements with pool-specific filtering
 
 **Backend Architecture**:
 - **Framework**: Express.js with TypeScript on Node.js.
@@ -74,7 +75,7 @@ Preferred communication style: Simple, everyday language.
   - Claims Growth: MoM or YoY percentage change with directional indicators
   - Inventory Runway: Months of coverage at current claim rate (spare units / avg monthly claims)
 - **Recommendations Engine**: Generates actionable guidance based on coverage status, target thresholds, and runway projections
-- **Pool Detail Dashboard**: Full-page analytics view featuring KPI cards, dual-axis trend chart (claims vs replacements with forecast extension), monthly breakdown table, and color-coded status indicators
+- **Pool Detail Dashboard**: Full-page analytics view featuring KPI cards with explanatory tooltips, dual-axis trend chart (claims vs replacements with forecast extension), monthly breakdown table, color-coded status indicators, and Excel export dropdown for downloading pool-filtered data (spare units, covered units, claims, replacements)
 
 **Authentication and Authorization**:
 - **Current State**: No authentication/authorization implemented; assumes a trusted internal network.
