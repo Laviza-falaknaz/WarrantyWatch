@@ -21,8 +21,9 @@ Preferred communication style: Simple, everyday language.
 - **Design Principles**: Data-first presentation for enterprise dashboards, high information density, Inter and JetBrains Mono typography, consistent spacing.
 - **State Management**: TanStack Query for server state, local React state for UI, Context API for theme.
 - **Routing**: wouter.
-- **Key Pages**: Dashboard (with integrated analytics charts), Replacement Pool, Stock under Warranty, Coverage Pools, Warranty Explorer, Configuration, Claims History, Replacements, Available Stock.
-- **Navigation**: Sidebar organized into logical groups: Overview, Core Inventory, Inventory Tracking, Management & Tools.
+- **Key Pages**: Dashboard (with integrated analytics charts), Replacement Pool, Stock under Warranty, Coverage Pools, Pool Detail (full-page view at /pools/:poolId), Warranty Explorer, Configuration, Claims History, Replacements, Available Stock.
+- **Navigation**: Sidebar organized into logical groups: Overview, Core Inventory, Inventory Tracking, Management & Tools. Pool detail view uses breadcrumb navigation with direct links back to Coverage Pools page.
+- **UX Improvements**: Pool details converted from dialog popup to dedicated full page (October 2025) for better spacing and data table visibility with large datasets.
 
 **Backend Architecture**:
 - **Framework**: Express.js with TypeScript on Node.js.
