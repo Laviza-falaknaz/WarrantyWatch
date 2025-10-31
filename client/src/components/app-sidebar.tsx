@@ -21,6 +21,16 @@ const menuGroups = [
         url: "/",
         icon: LayoutDashboard,
       },
+      {
+        title: "Coverage Pools",
+        url: "/coverage-pools",
+        icon: Layers,
+      },
+      {
+        title: "Warranty Explorer",
+        url: "/warranty-explorer",
+        icon: Search,
+      }
     ],
   },
   {
@@ -61,16 +71,6 @@ const menuGroups = [
   {
     label: "Management & Tools",
     items: [
-      {
-        title: "Coverage Pools",
-        url: "/coverage-pools",
-        icon: Layers,
-      },
-      {
-        title: "Warranty Explorer",
-        url: "/warranty-explorer",
-        icon: Search,
-      },
       {
         title: "Configuration",
         url: "/configuration",
