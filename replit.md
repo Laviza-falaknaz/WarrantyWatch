@@ -12,6 +12,33 @@ The core concept revolves around a **warranty pool management system** where:
 The **Coverage Ratio = (Spare Units / Covered Units) × 100%**. Both spare and covered units have matching specification fields (e.g., make, model, processor) which are used by coverage pools to group units and calculate ratios, identifying areas needing more spares.
 
 ### Recent Changes
+**October 31, 2025**:
+1. **Dashboard Summary Card Expansion**: Updated Dashboard to display 6 comprehensive metrics in 3x2 grid:
+   - Total Warranty Stock (all covered units)
+   - Active Warranty (non-expired coverage only)
+   - Total Replacement Pool (all spare units)
+   - Unallocated Pool (spare units not reserved)
+   - Expiring Warranty Stock (units expiring in configured period)
+   - Low Coverage Groups (pools below threshold)
+
+2. **Run Rate Configuration**: Added configurable run rate calculation period to Configuration page:
+   - New setting: runRatePeriodMonths (1-24 months, default 6)
+   - Dynamically adjusts claims run rate calculations for coverage pools
+   - Located in Expiry Settings card
+
+3. **Enhanced Coverage Pool Analytics**: Updated pool cards to display three additional metrics:
+   - Available Stock Count - matching units from all available inventory
+   - Claims Count - total claims matching pool specifications
+   - Run Rate - claims per month (calculated over configured period)
+   - Metrics displayed in clean 3-column grid below coverage ratio
+
+4. **Complete API Documentation**: Created comprehensive API_DOCUMENTATION.md with:
+   - All endpoints documented with complete field lists matching actual production data
+   - Full schema for all 5 entity types: Spare Units, Covered Units, Available Stock, Claims, Replacements
+   - Detailed filter criteria documentation for coverage pools
+   - Azure Data Factory integration examples and best practices
+   - Bulk upload specifications with composite key details
+
 **October 30, 2025**:
 1. **Coverage Pool Expansion Fixes**: Resolved three critical issues with pool detail dialog:
    - **Dashboard Expansion**: Fixed "Expand Pool" buttons on Dashboard - now properly opens PoolDetailDialog with pool data (previously only logged to console)

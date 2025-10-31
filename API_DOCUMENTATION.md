@@ -41,22 +41,26 @@ Retrieve a list of spare units with pagination and search.
 [
   {
     "id": "uuid",
-    "serialNumber": "ABC123456",
-    "make": "HP",
-    "model": "EliteBook 840 G8",
-    "processor": "Intel i7-1165G7",
-    "ram": "16GB",
-    "category": "Business",
-    "hdd": "512GB SSD",
-    "generation": "11th Gen",
-    "customerId": "CUST-001",
-    "customerName": "Acme Corp",
-    "areaId": "AREA-01",
-    "itemId": "ITEM-001",
-    "orderNumber": "ORD-12345",
-    "retiredOrder": null,
-    "reservedForCase": null,
-    "createdOn": "2024-01-15T10:30:00Z"
+    "serialNumber": "104034844936",
+    "areaId": "UAE",
+    "itemId": "1001",
+    "make": "DELL",
+    "model": "LATITUDE 5420",
+    "processor": "CORE I5",
+    "generation": "11TH",
+    "ram": "32768",
+    "hdd": "256",
+    "displaySize": "14",
+    "touchscreen": false,
+    "category": "CIRCULAR",
+    "reservedForCase": "20375-3",
+    "retiredOrder": "",
+    "currentHolder": "",
+    "retiredDate": "2025-09-30T00:00:00Z",
+    "productDescription": "DELL LATITUDE 5420 CORE I5 11TH GEN, 32GB, 256GB, 14\" FHD, WINDOWS HELLO, WIN11 PRO, 4 YEAR WARRANTY",
+    "productNumber": "CD5420I532256W11HUK",
+    "createdOn": "2024-01-15T10:30:00Z",
+    "modifiedOn": "2024-01-15T10:30:00Z"
   }
 ]
 ```
@@ -79,22 +83,27 @@ Add a new spare unit to the replacement pool.
 
 **Endpoint**: `POST /api/spare-units`
 
-**Request Body**:
+**Request Body**: All fields from the response example above are accepted (except id, createdOn, modifiedOn)
 ```json
 {
-  "serialNumber": "ABC123456",
-  "make": "HP",
-  "model": "EliteBook 840 G8",
-  "processor": "Intel i7-1165G7",
-  "ram": "16GB",
-  "category": "Business",
-  "hdd": "512GB SSD",
-  "generation": "11th Gen",
-  "customerId": "CUST-001",
-  "customerName": "Acme Corp",
-  "areaId": "AREA-01",
-  "itemId": "ITEM-001",
-  "orderNumber": "ORD-12345"
+  "serialNumber": "104034844936",
+  "areaId": "UAE",
+  "itemId": "1001",
+  "make": "DELL",
+  "model": "LATITUDE 5420",
+  "processor": "CORE I5",
+  "generation": "11TH",
+  "ram": "32768",
+  "hdd": "256",
+  "displaySize": "14",
+  "touchscreen": false,
+  "category": "CIRCULAR",
+  "reservedForCase": "20375-3",
+  "retiredOrder": "",
+  "currentHolder": "",
+  "retiredDate": "2025-09-30T00:00:00Z",
+  "productDescription": "DELL LATITUDE 5420 CORE I5 11TH GEN, 32GB, 256GB, 14\" FHD",
+  "productNumber": "CD5420I532256W11HUK"
 }
 ```
 
@@ -121,25 +130,28 @@ Remove a spare unit from the pool.
 
 **Endpoint**: `POST /api/spare-units/bulk`
 
-**Request Body**: Array of spare unit objects
+**Request Body**: Array of spare unit objects (all fields from GET response except id, createdOn, modifiedOn)
 ```json
 [
   {
-    "serialNumber": "ABC123456",
-    "make": "HP",
-    "model": "EliteBook 840 G8",
-    "processor": "Intel i7-1165G7",
-    "ram": "16GB",
-    "category": "Business",
-    "hdd": "512GB SSD",
-    "generation": "11th Gen",
-    "customerId": "CUST-001",
-    "customerName": "Acme Corp",
-    "areaId": "AREA-01",
-    "itemId": "ITEM-001",
-    "orderNumber": "ORD-12345",
-    "retiredOrder": null,
-    "reservedForCase": null
+    "serialNumber": "104034844936",
+    "areaId": "UAE",
+    "itemId": "1001",
+    "make": "DELL",
+    "model": "LATITUDE 5420",
+    "processor": "CORE I5",
+    "generation": "11TH",
+    "ram": "32768",
+    "hdd": "256",
+    "displaySize": "14",
+    "touchscreen": false,
+    "category": "CIRCULAR",
+    "reservedForCase": "20375-3",
+    "retiredOrder": "",
+    "currentHolder": "",
+    "retiredDate": "2025-09-30T00:00:00Z",
+    "productDescription": "DELL LATITUDE 5420 CORE I5 11TH GEN, 32GB, 256GB, 14\" FHD",
+    "productNumber": "CD5420I532256W11HUK"
   }
 ]
 ```
@@ -177,24 +189,33 @@ Retrieve units currently under warranty coverage.
 [
   {
     "id": "uuid",
-    "serialNumber": "XYZ789012",
-    "make": "Dell",
-    "model": "Latitude 7420",
-    "processor": "Intel i5-1145G7",
-    "ram": "8GB",
-    "category": "Business",
-    "hdd": "256GB SSD",
-    "generation": "11th Gen",
-    "customerId": "CUST-002",
-    "customerName": "TechCo Inc",
-    "areaId": "AREA-02",
-    "itemId": "ITEM-002",
-    "orderNumber": "ORD-67890",
-    "coverageStartDate": "2024-01-01",
-    "coverageEndDate": "2025-12-31",
-    "coverageDurationDays": 730,
-    "isCoverageActive": true,
-    "createdOn": "2024-01-01T08:00:00Z"
+    "serialNumber": "200349000421",
+    "areaId": "UK",
+    "itemId": "1001",
+    "make": "HP",
+    "model": "ELITEBOOK 840 G3",
+    "processor": "CORE I5",
+    "generation": "6TH",
+    "ram": "8192",
+    "hdd": "256",
+    "displaySize": "14",
+    "touchscreen": false,
+    "category": "REMAN",
+    "coverageStartDate": "2022-01-28T00:00:00",
+    "coverageEndDate": "2023-01-28T00:00:00",
+    "coverageDescription": "1 YEAR ADVANCE REPLACEMENT WARRANTY (UK)",
+    "coverageDurationDays": 365,
+    "isCoverageActive": false,
+    "customerName": "MEDHURST COMMUNICATIONS LIMITED",
+    "customerEmail": "",
+    "customerPhone": "",
+    "orderNumber": "12022",
+    "orderDate": null,
+    "currentHolder": "",
+    "productDescription": "HP ELITEBOOK 840 G3 CORE I5 6TH",
+    "productNumber": "APIN-0000190",
+    "createdOn": "2024-01-01T08:00:00Z",
+    "modifiedOn": "2024-01-01T08:00:00Z"
   }
 ]
 ```
@@ -217,24 +238,32 @@ Add a new unit to warranty coverage tracking.
 
 **Endpoint**: `POST /api/covered-units`
 
-**Request Body**:
+**Request Body**: All fields from GET response except id, createdOn, modifiedOn, coverageDurationDays, isCoverageActive (auto-calculated)
 ```json
 {
-  "serialNumber": "XYZ789012",
-  "make": "Dell",
-  "model": "Latitude 7420",
-  "processor": "Intel i5-1145G7",
-  "ram": "8GB",
-  "category": "Business",
-  "hdd": "256GB SSD",
-  "generation": "11th Gen",
-  "customerId": "CUST-002",
-  "customerName": "TechCo Inc",
-  "areaId": "AREA-02",
-  "itemId": "ITEM-002",
-  "orderNumber": "ORD-67890",
-  "coverageStartDate": "2024-01-01",
-  "coverageEndDate": "2025-12-31"
+  "serialNumber": "200349000421",
+  "areaId": "UK",
+  "itemId": "1001",
+  "make": "HP",
+  "model": "ELITEBOOK 840 G3",
+  "processor": "CORE I5",
+  "generation": "6TH",
+  "ram": "8192",
+  "hdd": "256",
+  "displaySize": "14",
+  "touchscreen": false,
+  "category": "REMAN",
+  "coverageStartDate": "2022-01-28T00:00:00",
+  "coverageEndDate": "2023-01-28T00:00:00",
+  "coverageDescription": "1 YEAR ADVANCE REPLACEMENT WARRANTY (UK)",
+  "customerName": "MEDHURST COMMUNICATIONS LIMITED",
+  "customerEmail": "",
+  "customerPhone": "",
+  "orderNumber": "12022",
+  "orderDate": null,
+  "currentHolder": "",
+  "productDescription": "HP ELITEBOOK 840 G3 CORE I5 6TH",
+  "productNumber": "APIN-0000190"
 }
 ```
 
@@ -266,25 +295,33 @@ Remove a unit from warranty tracking.
 
 **Endpoint**: `POST /api/covered-units/bulk`
 
-**Request Body**: Array of covered unit objects
+**Request Body**: Array of covered unit objects (all fields from GET response except id, createdOn, modifiedOn, coverageDurationDays, isCoverageActive)
 ```json
 [
   {
-    "serialNumber": "XYZ789012",
-    "make": "Dell",
-    "model": "Latitude 7420",
-    "processor": "Intel i5-1145G7",
-    "ram": "8GB",
-    "category": "Business",
-    "hdd": "256GB SSD",
-    "generation": "11th Gen",
-    "customerId": "CUST-002",
-    "customerName": "TechCo Inc",
-    "areaId": "AREA-02",
-    "itemId": "ITEM-002",
-    "orderNumber": "ORD-67890",
-    "coverageStartDate": "2024-01-01",
-    "coverageEndDate": "2025-12-31"
+    "serialNumber": "200349000421",
+    "areaId": "UK",
+    "itemId": "1001",
+    "make": "HP",
+    "model": "ELITEBOOK 840 G3",
+    "processor": "CORE I5",
+    "generation": "6TH",
+    "ram": "8192",
+    "hdd": "256",
+    "displaySize": "14",
+    "touchscreen": false,
+    "category": "REMAN",
+    "coverageStartDate": "2022-01-28T00:00:00",
+    "coverageEndDate": "2023-01-28T00:00:00",
+    "coverageDescription": "1 YEAR ADVANCE REPLACEMENT WARRANTY (UK)",
+    "customerName": "MEDHURST COMMUNICATIONS LIMITED",
+    "customerEmail": "",
+    "customerPhone": "",
+    "orderNumber": "12022",
+    "orderDate": null,
+    "currentHolder": "",
+    "productDescription": "HP ELITEBOOK 840 G3 CORE I5 6TH",
+    "productNumber": "APIN-0000190"
   }
 ]
 ```
@@ -332,15 +369,24 @@ Retrieve all available inventory units (not allocated to warranty pools).
 [
   {
     "id": "uuid",
-    "serialNumber": "STK-001234",
-    "make": "Lenovo",
-    "model": "ThinkPad X1 Carbon Gen 9",
-    "processor": "Intel i7-1185G7",
-    "ram": "16GB",
-    "category": "Premium",
-    "hdd": "1TB SSD",
-    "generation": "11th Gen",
-    "createdOn": "2024-03-15T10:00:00Z"
+    "serialNumber": "103909826030",
+    "areaId": "UAE",
+    "itemId": "1001",
+    "make": "LENOVO",
+    "model": "THINKPAD T490S 16GB",
+    "processor": "CORE I7",
+    "generation": "8TH",
+    "ram": "16384",
+    "hdd": "512",
+    "displaySize": "14",
+    "touchscreen": false,
+    "category": "REMAN",
+    "reservedSegregationGroup": "UK",
+    "reservedForCase": "20575-1",
+    "productDescription": "LENOVO T490S, CI7 (8TH GEN), 16384, 512, 14\" FHD, NO OS,  30 DAY DOA",
+    "productNumber": "1LT490SI716512",
+    "createdOn": "2024-03-15T10:00:00Z",
+    "modifiedOn": "2024-03-15T10:00:00Z"
   }
 ]
 ```
@@ -362,17 +408,25 @@ Add a new item to available inventory.
 
 **Endpoint**: `POST /api/available-stock`
 
-**Request Body**:
+**Request Body**: All fields from GET response except id, createdOn, modifiedOn
 ```json
 {
-  "serialNumber": "STK-001234",
-  "make": "Lenovo",
-  "model": "ThinkPad X1 Carbon Gen 9",
-  "processor": "Intel i7-1185G7",
-  "ram": "16GB",
-  "category": "Premium",
-  "hdd": "1TB SSD",
-  "generation": "11th Gen"
+  "serialNumber": "103909826030",
+  "areaId": "UAE",
+  "itemId": "1001",
+  "make": "LENOVO",
+  "model": "THINKPAD T490S 16GB",
+  "processor": "CORE I7",
+  "generation": "8TH",
+  "ram": "16384",
+  "hdd": "512",
+  "displaySize": "14",
+  "touchscreen": false,
+  "category": "REMAN",
+  "reservedSegregationGroup": "UK",
+  "reservedForCase": "20575-1",
+  "productDescription": "LENOVO T490S, CI7 (8TH GEN), 16384, 512, 14\" FHD, NO OS,  30 DAY DOA",
+  "productNumber": "1LT490SI716512"
 }
 ```
 
@@ -399,18 +453,26 @@ Remove an item from available inventory.
 
 **Endpoint**: `POST /api/available-stock/bulk`
 
-**Request Body**: Array of available stock objects
+**Request Body**: Array of available stock objects (all fields from GET response except id, createdOn, modifiedOn)
 ```json
 [
   {
-    "serialNumber": "STK-001234",
-    "make": "Lenovo",
-    "model": "ThinkPad X1 Carbon Gen 9",
-    "processor": "Intel i7-1185G7",
-    "ram": "16GB",
-    "category": "Premium",
-    "hdd": "1TB SSD",
-    "generation": "11th Gen"
+    "serialNumber": "103909826030",
+    "areaId": "UAE",
+    "itemId": "1001",
+    "make": "LENOVO",
+    "model": "THINKPAD T490S 16GB",
+    "processor": "CORE I7",
+    "generation": "8TH",
+    "ram": "16384",
+    "hdd": "512",
+    "displaySize": "14",
+    "touchscreen": false,
+    "category": "REMAN",
+    "reservedSegregationGroup": "UK",
+    "reservedForCase": "20575-1",
+    "productDescription": "LENOVO T490S, CI7 (8TH GEN), 16384, 512, 14\" FHD, NO OS,  30 DAY DOA",
+    "productNumber": "1LT490SI716512"
   }
 ]
 ```
@@ -450,19 +512,24 @@ Retrieve warranty claim records.
 [
   {
     "id": "uuid",
-    "serialNumber": "CLM-567890",
-    "make": "HP",
-    "model": "ProBook 450 G8",
-    "processor": "Intel i5-1135G7",
-    "ram": "8GB",
-    "category": "Business",
-    "hdd": "256GB SSD",
-    "generation": "11th Gen",
-    "areaId": "AREA-03",
-    "itemId": "ITEM-003",
-    "rma": "RMA-2024-001",
-    "claimDate": "2024-06-15",
-    "createdOn": "2024-06-15T14:30:00Z"
+    "serialNumber": "204313000083",
+    "areaId": "UK",
+    "itemId": "1001",
+    "make": "LENOVO",
+    "model": "THINKPAD T470S",
+    "processor": "CORE I5",
+    "generation": "7TH",
+    "ram": "8192",
+    "hdd": "256",
+    "displaySize": "14",
+    "touchscreen": false,
+    "category": "REMAN",
+    "productDescription": "LENOVO THINKPAD T470S CORE I5 7TH GEN 8GB RAM 256GB SSD 14\" FHD UK KEYBOARD WINDOWS 10 PRO 1 YEAR ADV WARRANTY CIRCULAR",
+    "productNumber": "C9Z0W20224",
+    "rma": "RMA-09125",
+    "claimDate": "2025-06-10T07:25:07Z",
+    "createdOn": "2024-06-15T14:30:00Z",
+    "modifiedOn": "2024-06-15T14:30:00Z"
   }
 ]
 ```
@@ -484,21 +551,25 @@ Record a new warranty claim.
 
 **Endpoint**: `POST /api/claims`
 
-**Request Body**:
+**Request Body**: All fields from GET response except id, createdOn, modifiedOn
 ```json
 {
-  "serialNumber": "CLM-567890",
-  "make": "HP",
-  "model": "ProBook 450 G8",
-  "processor": "Intel i5-1135G7",
-  "ram": "8GB",
-  "category": "Business",
-  "hdd": "256GB SSD",
-  "generation": "11th Gen",
-  "areaId": "AREA-03",
-  "itemId": "ITEM-003",
-  "rma": "RMA-2024-001",
-  "claimDate": "2024-06-15"
+  "serialNumber": "204313000083",
+  "areaId": "UK",
+  "itemId": "1001",
+  "make": "LENOVO",
+  "model": "THINKPAD T470S",
+  "processor": "CORE I5",
+  "generation": "7TH",
+  "ram": "8192",
+  "hdd": "256",
+  "displaySize": "14",
+  "touchscreen": false,
+  "category": "REMAN",
+  "productDescription": "LENOVO THINKPAD T470S CORE I5 7TH GEN 8GB RAM 256GB SSD 14\" FHD",
+  "productNumber": "C9Z0W20224",
+  "rma": "RMA-09125",
+  "claimDate": "2025-06-10T07:25:07Z"
 }
 ```
 
@@ -525,22 +596,26 @@ Remove a claim record.
 
 **Endpoint**: `POST /api/claims/bulk`
 
-**Request Body**: Array of claim objects
+**Request Body**: Array of claim objects (all fields from GET response except id, createdOn, modifiedOn)
 ```json
 [
   {
-    "serialNumber": "CLM-567890",
-    "make": "HP",
-    "model": "ProBook 450 G8",
-    "processor": "Intel i5-1135G7",
-    "ram": "8GB",
-    "category": "Business",
-    "hdd": "256GB SSD",
-    "generation": "11th Gen",
-    "areaId": "AREA-03",
-    "itemId": "ITEM-003",
-    "rma": "RMA-2024-001",
-    "claimDate": "2024-06-15"
+    "serialNumber": "204313000083",
+    "areaId": "UK",
+    "itemId": "1001",
+    "make": "LENOVO",
+    "model": "THINKPAD T470S",
+    "processor": "CORE I5",
+    "generation": "7TH",
+    "ram": "8192",
+    "hdd": "256",
+    "displaySize": "14",
+    "touchscreen": false,
+    "category": "REMAN",
+    "productDescription": "LENOVO THINKPAD T470S CORE I5 7TH GEN 8GB RAM 256GB SSD 14\" FHD",
+    "productNumber": "C9Z0W20224",
+    "rma": "RMA-09125",
+    "claimDate": "2025-06-10T07:25:07Z"
   }
 ]
 ```
@@ -578,19 +653,24 @@ Retrieve replacement unit records.
 [
   {
     "id": "uuid",
-    "serialNumber": "RPL-987654",
-    "make": "Dell",
-    "model": "Latitude 5420",
-    "processor": "Intel i5-1145G7",
-    "ram": "8GB",
-    "category": "Business",
-    "hdd": "256GB SSD",
-    "generation": "11th Gen",
-    "areaId": "AREA-04",
-    "itemId": "ITEM-004",
-    "rma": "RMA-2024-002",
-    "replacementDate": "2024-06-20",
-    "createdOn": "2024-06-20T09:15:00Z"
+    "serialNumber": "215331001845",
+    "areaId": "UAE",
+    "itemId": "1001",
+    "make": "HP",
+    "model": "ELITEBOOK 840 G7",
+    "processor": "CORE I5",
+    "generation": "10TH",
+    "ram": "16384",
+    "hdd": "256",
+    "displaySize": "14",
+    "touchscreen": false,
+    "category": "CIRCULAR",
+    "productDescription": "",
+    "productNumber": "",
+    "rma": "RMA-09384",
+    "replacedDate": "2025-07-30T00:00:00Z",
+    "createdOn": "2024-06-20T09:15:00Z",
+    "modifiedOn": "2024-06-20T09:15:00Z"
   }
 ]
 ```
@@ -612,21 +692,25 @@ Record a new replacement unit.
 
 **Endpoint**: `POST /api/replacements`
 
-**Request Body**:
+**Request Body**: All fields from GET response except id, createdOn, modifiedOn
 ```json
 {
-  "serialNumber": "RPL-987654",
-  "make": "Dell",
-  "model": "Latitude 5420",
-  "processor": "Intel i5-1145G7",
-  "ram": "8GB",
-  "category": "Business",
-  "hdd": "256GB SSD",
-  "generation": "11th Gen",
-  "areaId": "AREA-04",
-  "itemId": "ITEM-004",
-  "rma": "RMA-2024-002",
-  "replacementDate": "2024-06-20"
+  "serialNumber": "215331001845",
+  "areaId": "UAE",
+  "itemId": "1001",
+  "make": "HP",
+  "model": "ELITEBOOK 840 G7",
+  "processor": "CORE I5",
+  "generation": "10TH",
+  "ram": "16384",
+  "hdd": "256",
+  "displaySize": "14",
+  "touchscreen": false,
+  "category": "CIRCULAR",
+  "productDescription": "",
+  "productNumber": "",
+  "rma": "RMA-09384",
+  "replacedDate": "2025-07-30T00:00:00Z"
 }
 ```
 
@@ -653,22 +737,26 @@ Remove a replacement record.
 
 **Endpoint**: `POST /api/replacements/bulk`
 
-**Request Body**: Array of replacement objects
+**Request Body**: Array of replacement objects (all fields from GET response except id, createdOn, modifiedOn)
 ```json
 [
   {
-    "serialNumber": "RPL-987654",
-    "make": "Dell",
-    "model": "Latitude 5420",
-    "processor": "Intel i5-1145G7",
-    "ram": "8GB",
-    "category": "Business",
-    "hdd": "256GB SSD",
-    "generation": "11th Gen",
-    "areaId": "AREA-04",
-    "itemId": "ITEM-004",
-    "rma": "RMA-2024-002",
-    "replacementDate": "2024-06-20"
+    "serialNumber": "215331001845",
+    "areaId": "UAE",
+    "itemId": "1001",
+    "make": "HP",
+    "model": "ELITEBOOK 840 G7",
+    "processor": "CORE I5",
+    "generation": "10TH",
+    "ram": "16384",
+    "hdd": "256",
+    "displaySize": "14",
+    "touchscreen": false,
+    "category": "CIRCULAR",
+    "productDescription": "",
+    "productNumber": "",
+    "rma": "RMA-09384",
+    "replacedDate": "2025-07-30T00:00:00Z"
   }
 ]
 ```
@@ -760,17 +848,29 @@ Define a new coverage pool with filter criteria.
 ```
 
 **Filter Criteria Format** (JSON string):
+All specification fields can be used as filter criteria. The pool matching logic currently uses these 7 fields:
 ```json
 {
-  "make": ["HP", "Dell"],
-  "model": ["EliteBook 840 G8"],
-  "processor": ["Intel i7-1165G7"],
-  "ram": ["16GB"],
-  "category": ["Business"],
-  "hdd": ["512GB SSD"],
-  "generation": ["11th Gen"]
+  "make": ["HP", "DELL"],
+  "model": ["ELITEBOOK 840 G8", "LATITUDE 5420"],
+  "processor": ["CORE I5", "CORE I7"],
+  "ram": ["8192", "16384"],
+  "category": ["CIRCULAR", "REMAN"],
+  "hdd": ["256", "512"],
+  "generation": ["10TH", "11TH"]
 }
 ```
+
+**Available Fields** (all optional):
+- `make` - Manufacturer (e.g., HP, DELL, LENOVO, APPLE)
+- `model` - Model name (e.g., ELITEBOOK 840 G7, THINKPAD T490S)
+- `processor` - Processor type (e.g., CORE I5, CORE I7)
+- `ram` - RAM size in MB (e.g., "8192", "16384", "32768")
+- `category` - Unit category (e.g., CIRCULAR, REMAN)
+- `hdd` - Storage size in GB (e.g., "256", "512", "1024")
+- `generation` - Processor generation (e.g., "7TH", "8TH", "10TH", "11TH")
+
+**Note**: Additional fields like `displaySize` and `touchscreen` exist in the database schema but are not currently used in pool matching logic. The matching focuses on the 7 key specification fields above.
 
 **Response**: Created coverage pool object (201 Created)
 
