@@ -21,9 +21,11 @@ Preferred communication style: Simple, everyday language.
 - **Design Principles**: Data-first presentation for enterprise dashboards, high information density, Inter and JetBrains Mono typography, consistent spacing.
 - **State Management**: TanStack Query for server state, local React state for UI, Context API for theme.
 - **Routing**: wouter.
-- **Key Pages**: Dashboard (with integrated analytics charts), Replacement Pool, Stock under Warranty, Coverage Pools, Pool Detail (full-page view at /pools/:poolId), Warranty Explorer, Configuration, Claims History, Replacements, Available Stock.
+- **Key Pages**: Dashboard (with integrated analytics charts), Replacement Pool, Stock under Warranty, Coverage Pools, Pool Detail (full-page analytics dashboard at /pools/:poolId), Warranty Explorer, Configuration, Claims History, Replacements, Available Stock.
 - **Navigation**: Sidebar organized into logical groups: Overview, Core Inventory, Inventory Tracking, Management & Tools. Pool detail view uses breadcrumb navigation with direct links back to Coverage Pools page.
-- **UX Improvements**: Pool details converted from dialog popup to dedicated full page (October 2025) for better spacing and data table visibility with large datasets.
+- **UX Improvements**: 
+  - Pool details converted from dialog popup to dedicated full page (October 2025) for better spacing and data table visibility with large datasets
+  - Pool detail page transformed into comprehensive analytics dashboard (October 2025) featuring KPI cards, trend forecasting, monthly breakdowns, and actionable recommendations
 
 **Backend Architecture**:
 - **Framework**: Express.js with TypeScript on Node.js.
@@ -58,8 +60,21 @@ Preferred communication style: Simple, everyday language.
 **Runtime Configuration System**:
 - **Purpose**: Allows administrators to configure system thresholds and preferences without code changes.
 - **Implementation**: Single-row `app_configuration` table with strongly-typed fields.
-- **Configuration Settings**: Includes `lowCoverageThresholdPercent`, `expiringCoverageDays`, `poolInactivityDays`, `enableLowCoverageAlerts`, `enableExpiringAlerts`, and `dashboardRefreshMinutes`.
+- **Configuration Settings**: Includes `lowCoverageThresholdPercent`, `expiringCoverageDays`, `poolInactivityDays`, `enableLowCoverageAlerts`, `enableExpiringAlerts`, `dashboardRefreshMinutes`, `targetCoveragePercent` (default: 20%), `analyticsTimeRangeMonths` (default: 12, range: 1-36), and `analyticsForecastMonths` (default: 3, range: 1-12).
 - **UI**: Configuration page provides a form-based interface for updating settings.
+
+**Coverage Pool Analytics System** (October 2025):
+- **Endpoint**: `GET /api/coverage-pools/:id/analytics` with query parameters for timeRangeMonths and forecastMonths
+- **Monthly Aggregation**: Uses SQL date_trunc to group claims and replacements by month, calculating coverage ratio, fulfillment rate, and net backlog for each period
+- **Growth Metrics**: Calculates month-over-month (MoM) and year-over-year (YoY) percentage changes for claims trends
+- **Demand Forecasting**: Implements 3-month moving average for claims prediction with confidence intervals (±20% of forecast value)
+- **KPI Calculations**:
+  - Coverage Ratio: (spare units / covered units) × 100% compared against target
+  - Average Fulfillment Rate: Average of (replacements / claims) across all months
+  - Claims Growth: MoM or YoY percentage change with directional indicators
+  - Inventory Runway: Months of coverage at current claim rate (spare units / avg monthly claims)
+- **Recommendations Engine**: Generates actionable guidance based on coverage status, target thresholds, and runway projections
+- **Pool Detail Dashboard**: Full-page analytics view featuring KPI cards, dual-axis trend chart (claims vs replacements with forecast extension), monthly breakdown table, and color-coded status indicators
 
 **Authentication and Authorization**:
 - **Current State**: No authentication/authorization implemented; assumes a trusted internal network.

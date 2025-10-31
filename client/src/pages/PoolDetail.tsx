@@ -123,7 +123,7 @@ export default function PoolDetail() {
     <main className="container mx-auto p-6 space-y-6" data-testid="page-pool-detail">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6">
-        <Link href="/pools">
+        <Link href="/coverage-pools">
           <Button variant="ghost" size="icon" data-testid="button-back-to-pools">
             <ChevronLeft className="h-4 w-4" />
           </Button>
