@@ -137,7 +137,7 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<Claim[]>;
-  bulkReplaceClaims(data: InsertClaim[]): Promise<number>;
+  bulkReplaceClaims(data: InsertClaim[]): Promise<{ inserted: number; duplicatesRemoved: number }>;
   
   // Replacement methods
   getReplacements(filters?: {
@@ -150,7 +150,7 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<Replacement[]>;
-  bulkReplaceReplacements(data: InsertReplacement[]): Promise<number>;
+  bulkReplaceReplacements(data: InsertReplacement[]): Promise<{ inserted: number; duplicatesRemoved: number }>;
   
   // Configuration
   getConfiguration(): Promise<AppConfiguration>;
@@ -875,30 +875,57 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
 
-  async bulkReplaceClaims(data: InsertClaim[]): Promise<number> {
+  async bulkReplaceClaims(data: InsertClaim[]): Promise<{ inserted: number; duplicatesRemoved: number }> {
     // Transaction: Truncate all existing claims and insert new data in batches
     const BATCH_SIZE = 500;
+    
+    console.log(`[bulk-claims] Starting bulk replace with ${data.length} claims`);
+    
+    // First, normalize all dates to Date objects for consistent comparison
+    const normalizedData = data.map(item => ({
+      ...item,
+      claimDate: item.claimDate instanceof Date ? item.claimDate : new Date(item.claimDate),
+    }));
+    
+    // Deduplicate claims based on composite key (serialNumber + areaId + itemId + rma)
+    // Keep only the claim with the most recent claimDate for each unique key
+    const claimsMap = new Map<string, typeof normalizedData[0]>();
+    
+    for (const item of normalizedData) {
+      const compositeKey = `${item.serialNumber}|${item.areaId}|${item.itemId}|${item.rma}`;
+      
+      const existing = claimsMap.get(compositeKey);
+      if (existing) {
+        // Both dates are now guaranteed to be Date objects - safe ordinal comparison
+        if (item.claimDate > existing.claimDate) {
+          claimsMap.set(compositeKey, item);
+        }
+      } else {
+        claimsMap.set(compositeKey, item);
+      }
+    }
+    
+    const deduplicatedData = Array.from(claimsMap.values());
+    const duplicatesRemoved = data.length - deduplicatedData.length;
+    
+    if (duplicatesRemoved > 0) {
+      console.log(`[bulk-claims] Removed ${duplicatesRemoved} duplicate claims, keeping most recent by claim date`);
+    }
     
     return await db.transaction(async (tx) => {
       // Truncate table - delete all existing claims
       await tx.execute(sql`TRUNCATE TABLE ${claim} RESTART IDENTITY CASCADE`);
       
-      // Insert new data in batches
+      // Insert new data in batches (dates already normalized, no need to re-parse)
       let totalInserted = 0;
-      for (let i = 0; i < data.length; i += BATCH_SIZE) {
-        const batch = data.slice(i, i + BATCH_SIZE);
-        
-        // Convert date strings to Date objects if needed
-        const processedBatch = batch.map(item => ({
-          ...item,
-          claimDate: item.claimDate instanceof Date ? item.claimDate : new Date(item.claimDate),
-        }));
-        
-        await tx.insert(claim).values(processedBatch);
+      for (let i = 0; i < deduplicatedData.length; i += BATCH_SIZE) {
+        const batch = deduplicatedData.slice(i, i + BATCH_SIZE);
+        await tx.insert(claim).values(batch);
         totalInserted += batch.length;
       }
       
-      return totalInserted;
+      console.log(`[bulk-claims] Successfully inserted ${totalInserted} claims`);
+      return { inserted: totalInserted, duplicatesRemoved };
     });
   }
 
@@ -965,30 +992,57 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
 
-  async bulkReplaceReplacements(data: InsertReplacement[]): Promise<number> {
+  async bulkReplaceReplacements(data: InsertReplacement[]): Promise<{ inserted: number; duplicatesRemoved: number }> {
     // Transaction: Truncate all existing replacements and insert new data in batches
     const BATCH_SIZE = 500;
+    
+    console.log(`[bulk-replacements] Starting bulk replace with ${data.length} replacements`);
+    
+    // First, normalize all dates to Date objects for consistent comparison
+    const normalizedData = data.map(item => ({
+      ...item,
+      replacedDate: item.replacedDate instanceof Date ? item.replacedDate : new Date(item.replacedDate),
+    }));
+    
+    // Deduplicate replacements based on composite key (serialNumber + areaId + itemId + rma)
+    // Keep only the replacement with the most recent replacedDate for each unique key
+    const replacementsMap = new Map<string, typeof normalizedData[0]>();
+    
+    for (const item of normalizedData) {
+      const compositeKey = `${item.serialNumber}|${item.areaId}|${item.itemId}|${item.rma}`;
+      
+      const existing = replacementsMap.get(compositeKey);
+      if (existing) {
+        // Both dates are now guaranteed to be Date objects - safe ordinal comparison
+        if (item.replacedDate > existing.replacedDate) {
+          replacementsMap.set(compositeKey, item);
+        }
+      } else {
+        replacementsMap.set(compositeKey, item);
+      }
+    }
+    
+    const deduplicatedData = Array.from(replacementsMap.values());
+    const duplicatesRemoved = data.length - deduplicatedData.length;
+    
+    if (duplicatesRemoved > 0) {
+      console.log(`[bulk-replacements] Removed ${duplicatesRemoved} duplicate replacements, keeping most recent by replaced date`);
+    }
     
     return await db.transaction(async (tx) => {
       // Truncate table - delete all existing replacements
       await tx.execute(sql`TRUNCATE TABLE ${replacement} RESTART IDENTITY CASCADE`);
       
-      // Insert new data in batches
+      // Insert new data in batches (dates already normalized, no need to re-parse)
       let totalInserted = 0;
-      for (let i = 0; i < data.length; i += BATCH_SIZE) {
-        const batch = data.slice(i, i + BATCH_SIZE);
-        
-        // Convert date strings to Date objects if needed
-        const processedBatch = batch.map(item => ({
-          ...item,
-          replacedDate: item.replacedDate instanceof Date ? item.replacedDate : new Date(item.replacedDate),
-        }));
-        
-        await tx.insert(replacement).values(processedBatch);
+      for (let i = 0; i < deduplicatedData.length; i += BATCH_SIZE) {
+        const batch = deduplicatedData.slice(i, i + BATCH_SIZE);
+        await tx.insert(replacement).values(batch);
         totalInserted += batch.length;
       }
       
-      return totalInserted;
+      console.log(`[bulk-replacements] Successfully inserted ${totalInserted} replacements`);
+      return { inserted: totalInserted, duplicatesRemoved };
     });
   }
 

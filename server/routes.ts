@@ -651,8 +651,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = z.array(insertClaimSchema).parse(req.body);
       
-      const count = await storage.bulkReplaceClaims(validatedData);
-      res.json({ message: `Successfully replaced ${count} claims`, count });
+      const result = await storage.bulkReplaceClaims(validatedData);
+      
+      let message = `Successfully processed ${result.inserted} claims`;
+      if (result.duplicatesRemoved > 0) {
+        message += ` (removed ${result.duplicatesRemoved} duplicates, kept most recent by claim date)`;
+      }
+      
+      res.json({ 
+        message, 
+        count: result.inserted,
+        inserted: result.inserted,
+        duplicatesRemoved: result.duplicatesRemoved,
+        totalReceived: validatedData.length
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid data", details: error.errors });
@@ -728,8 +740,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = z.array(insertReplacementSchema).parse(req.body);
       
-      const count = await storage.bulkReplaceReplacements(validatedData);
-      res.json({ message: `Successfully replaced ${count} replacements`, count });
+      const result = await storage.bulkReplaceReplacements(validatedData);
+      
+      let message = `Successfully processed ${result.inserted} replacements`;
+      if (result.duplicatesRemoved > 0) {
+        message += ` (removed ${result.duplicatesRemoved} duplicates, kept most recent by replaced date)`;
+      }
+      
+      res.json({ 
+        message, 
+        count: result.inserted,
+        inserted: result.inserted,
+        duplicatesRemoved: result.duplicatesRemoved,
+        totalReceived: validatedData.length
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid data", details: error.errors });
