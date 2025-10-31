@@ -43,26 +43,34 @@ export function PoolDetailDialog({
 
   // Fetch spare units (with high limit to get all records)
   const { data: spareUnits, isLoading: spareLoading } = useQuery<SpareUnit[]>({
-    queryKey: ["/api/spare-units", { limit: 999999 }],
+    queryKey: ["/api/spare-units", { limit: 10000 }],
     enabled: open,
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   // Fetch covered units (with high limit to get all records)
   const { data: coveredUnits, isLoading: coveredLoading } = useQuery<CoveredUnit[]>({
-    queryKey: ["/api/covered-units", { limit: 999999 }],
+    queryKey: ["/api/covered-units", { limit: 10000 }],
     enabled: open,
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   // Fetch available stock (with high limit to get all records)
   const { data: availableStock, isLoading: availableLoading } = useQuery<AvailableStock[]>({
-    queryKey: ["/api/available-stock", { limit: 999999 }],
+    queryKey: ["/api/available-stock", { limit: 10000 }],
     enabled: open,
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   // Fetch claims (with high limit to get all records)
   const { data: claims, isLoading: claimsLoading } = useQuery<Claim[]>({
-    queryKey: ["/api/claims", { limit: 999999 }],
+    queryKey: ["/api/claims", { limit: 10000 }],
     enabled: open,
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   // Fetch configuration for run rate period
