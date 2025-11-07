@@ -465,7 +465,7 @@ export default function Configuration() {
                       />
                     </FormControl>
                     <FormDescription>
-                      Required to update configuration settings (default: admin123)
+                      Required to update configuration settings
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -496,3 +496,5 @@ export default function Configuration() {
     </div>
   );
 }
+
+// default password for URL configurations is admin123
