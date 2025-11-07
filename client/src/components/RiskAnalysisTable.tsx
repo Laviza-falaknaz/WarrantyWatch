@@ -61,11 +61,7 @@ export default function RiskAnalysisTable() {
 
   const sendAlertMutation = useMutation({
     mutationFn: async (combination: RiskCombination) => {
-      return apiRequest('/api/risk-combinations/send-alert', {
-        method: 'POST',
-        body: JSON.stringify(combination),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiRequest('POST', '/api/risk-combinations/send-alert', combination);
     },
     onSuccess: () => {
       toast({
@@ -93,11 +89,7 @@ export default function RiskAnalysisTable() {
           generation: combination.generation || undefined,
         }),
       };
-      return apiRequest('/api/coverage-pools', {
-        method: 'POST',
-        body: JSON.stringify(poolData),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiRequest('POST', '/api/coverage-pools', poolData);
     },
     onSuccess: () => {
       toast({

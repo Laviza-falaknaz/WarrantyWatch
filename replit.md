@@ -1,7 +1,7 @@
 # Coverage Pool Management Application
 
 ### Overview
-This application is an enterprise coverage pool management system designed to track warranty coverage for deployed laptop inventory and optimize the allocation of spare units. It allows users to monitor spare units, covered units, coverage pools, and coverage analytics. The system provides a comprehensive dashboard for statistics, managing units, tracking warranty expirations, and creating dynamic coverage groups based on custom filter criteria.
+This application is an enterprise coverage pool management system designed to track warranty coverage for deployed laptop inventory and optimize the allocation of spare units. It features automated risk analysis, Power Automate webhook integration, and intelligent pool creation. The system provides a comprehensive dashboard with high-risk combination analysis, real-time alerting, and actionable recommendations for inventory management.
 
 The core concept revolves around a **warranty pool management system** where:
 - **Covered Units**: Laptops deployed in the field under warranty.
@@ -21,9 +21,11 @@ Preferred communication style: Simple, everyday language.
 - **Design Principles**: Data-first presentation for enterprise dashboards, high information density, Inter and JetBrains Mono typography, consistent spacing.
 - **State Management**: TanStack Query for server state, local React state for UI, Context API for theme.
 - **Routing**: wouter.
-- **Key Pages**: Dashboard (with integrated analytics charts), Replacement Pool, Stock under Warranty, Coverage Pools, Pool Detail (full-page analytics dashboard at /pools/:poolId), Warranty Explorer, Configuration, Claims History, Replacements, Available Stock.
+- **Key Pages**: Dashboard (redesigned 3-column layout with risk analysis), Replacement Pool, Stock under Warranty, Coverage Pools, Pool Detail (full-page analytics dashboard at /pools/:poolId), Warranty Explorer, Configuration (with webhook integration), Claims History, Replacements, Available Stock.
 - **Navigation**: Sidebar organized into logical groups: Overview, Core Inventory, Inventory Tracking, Management & Tools. Pool detail view uses breadcrumb navigation with direct links back to Coverage Pools page.
 - **UX Improvements**: 
+  - **Dashboard Redesign** (November 2025): 3-column responsive layout (25%-50%-25%) with left column for KPI cards and compact charts, center column for high-risk combinations table with sortable columns and color-coded risk badges, right column for scrollable pool summary cards
+  - **Risk Analysis & Alerting** (November 2025): RiskAnalysisTable component with Send Alert (webhook integration) and Create Pool (auto-pool creation) actions, real-time toast notifications
   - Pool details converted from dialog popup to dedicated full page (October 2025) for better spacing and data table visibility with large datasets
   - Pool detail page transformed into comprehensive analytics dashboard (October 2025) featuring KPI cards, trend forecasting, monthly breakdowns, and actionable recommendations
   - Excel export functionality added (October 2025) allowing filtered data export for spare units, covered units, claims, and replacements with pool-specific filtering
@@ -31,7 +33,7 @@ Preferred communication style: Simple, everyday language.
 **Backend Architecture**:
 - **Framework**: Express.js with TypeScript on Node.js.
 - **Server Structure**: RESTful API organized by domain, with middleware for JSON parsing, logging, and error handling.
-- **API Endpoints**: Standard CRUD operations for units and pools, analytics, configuration, dedicated stats endpoints for all entity types, and bulk upload endpoints:
+- **API Endpoints**: Standard CRUD operations for units and pools, analytics, configuration, risk analysis, webhook integration, dedicated stats endpoints for all entity types, and bulk upload endpoints:
   - `spare_unit`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy)
   - `covered_unit`: UPSERT strategy (update existing, insert new)
   - `available_stock`: TRUNCATE with RESTART IDENTITY CASCADE (clear-all strategy)
@@ -61,8 +63,21 @@ Preferred communication style: Simple, everyday language.
 **Runtime Configuration System**:
 - **Purpose**: Allows administrators to configure system thresholds and preferences without code changes.
 - **Implementation**: Single-row `app_configuration` table with strongly-typed fields.
-- **Configuration Settings**: Includes `lowCoverageThresholdPercent`, `expiringCoverageDays`, `poolInactivityDays`, `enableLowCoverageAlerts`, `enableExpiringAlerts`, `dashboardRefreshMinutes`, `targetCoveragePercent` (default: 20%), `analyticsTimeRangeMonths` (default: 12, range: 1-36), and `analyticsForecastMonths` (default: 3, range: 1-12).
-- **UI**: Configuration page provides a form-based interface for updating settings.
+- **Configuration Settings**: Includes `lowCoverageThresholdPercent`, `expiringCoverageDays`, `poolInactivityDays`, `enableLowCoverageAlerts`, `enableExpiringAlerts`, `dashboardRefreshMinutes`, `targetCoveragePercent` (default: 20%), `analyticsTimeRangeMonths` (default: 12, range: 1-36), `analyticsForecastMonths` (default: 3, range: 1-12), and `alertWebhookUrl` (Power Automate webhook URL for risk alerts).
+- **Security**: Configuration updates require admin password authentication (default: admin123, configurable via ADMIN_PASSWORD environment variable).
+- **UI**: Configuration page provides form-based interface with webhook integration card for Power Automate URL configuration and password-protected updates.
+
+**High-Risk Combination Analysis System** (November 2025):
+- **Endpoint**: `GET /api/risk-combinations` with query parameters for sorting, pagination
+- **Risk Scoring**: Multi-tier classification (critical/high/medium/low) based on coverage ratio and claims run rate:
+  - Critical: Coverage <50% AND Run rate ≥4 claims/month
+  - High: Coverage <75% AND Run rate ≥2 claims/month
+  - Medium: Coverage 75-110% OR Run rate ≥1 claims/month
+  - Low: All other combinations
+- **Analysis Period**: Rolling 6-month window for claims and replacements analysis
+- **Metrics**: Coverage ratio, monthly run rate, fulfillment rate (replacements/claims), risk score
+- **Actions**: Webhook alerting via `POST /api/risk-combinations/send-alert` and auto-pool creation
+- **Integration**: Sends structured JSON payloads to configured Power Automate webhook URL with equipment details, risk metrics, and timestamp
 
 **Coverage Pool Analytics System** (October 2025):
 - **Endpoint**: `GET /api/coverage-pools/:id/analytics` with query parameters for timeRangeMonths and forecastMonths
