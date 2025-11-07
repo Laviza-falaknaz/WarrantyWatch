@@ -181,6 +181,7 @@ export const appConfiguration = pgTable("app_configuration", {
   // Alert settings
   enableLowCoverageAlerts: boolean("enable_low_coverage_alerts").notNull().default(true),
   enableExpiringAlerts: boolean("enable_expiring_alerts").notNull().default(true),
+  alertWebhookUrl: text("alert_webhook_url").default('https://01f7d87362b64cf3a95fbd0a0c6bc1.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e588982081fa4405b395f6a4d567c323/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Cd5dTN0ndNEbjqLeRT7yeDOKO0KHA0_BG0uwyDuPjjw'), // Power Automate webhook URL
   // Display settings
   dashboardRefreshMinutes: integer("dashboard_refresh_minutes").notNull().default(5),
   // Audit

@@ -26,7 +26,15 @@ import {
   appConfiguration
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, like, or, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, like, or, sql, desc, inArray, gte } from "drizzle-orm";
+
+// Helper: Returns SQL condition to filter out expired covered units
+// Only includes units where coverageEndDate >= today
+function nonExpiredCoveredUnitsCondition() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Start of today
+  return gte(coveredUnit.coverageEndDate, today);
+}
 
 export interface IStorage {
   // Spare Unit methods (units in pool available to cover warranties)
@@ -277,6 +285,9 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(coveredUnit);
     
     const conditions = [];
+    
+    // ALWAYS exclude expired units from results
+    conditions.push(nonExpiredCoveredUnitsCondition());
     
     if (filters?.make && filters.make.length > 0) {
       conditions.push(inArray(coveredUnit.make, filters.make));
