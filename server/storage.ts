@@ -1406,9 +1406,9 @@ export class DatabaseStorage implements IStorage {
           ELSE 100 
         END as fulfillment_rate,
         CASE
-          -- Critical: Spare units less than 5% of total claims in last 6 months (insufficient buffer)
+          -- Critical: Spare units less than 5% of monthly run rate (insufficient buffer for high-demand models)
           WHEN COALESCE(cl.claims_count, 0) > 0 AND 
-               COALESCE(sp.spare_count, 0) < (COALESCE(cl.claims_count, 0) * 0.05)
+               COALESCE(sp.spare_count, 0) < ((COALESCE(cl.claims_count, 0)::numeric / 6.0) * 0.05)
           THEN 'critical'
           -- High: Coverage ratio below 50% OR high run rate (≥4/mo) with coverage below 75%
           WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
@@ -1426,9 +1426,9 @@ export class DatabaseStorage implements IStorage {
           ELSE 'low'
         END as risk_level,
         CASE
-          -- Critical: Spare units less than 5% of total claims
+          -- Critical: Spare units less than 5% of monthly run rate
           WHEN COALESCE(cl.claims_count, 0) > 0 AND 
-               COALESCE(sp.spare_count, 0) < (COALESCE(cl.claims_count, 0) * 0.05)
+               COALESCE(sp.spare_count, 0) < ((COALESCE(cl.claims_count, 0)::numeric / 6.0) * 0.05)
           THEN 95
           -- High: Coverage ratio below 50% OR high run rate with low coverage
           WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
