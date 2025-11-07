@@ -3,9 +3,10 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Bell, Plus, ArrowUpDown } from "lucide-react";
+import { AlertTriangle, Bell, Plus, ArrowUpDown, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -24,6 +25,7 @@ interface RiskCombination {
   coverage_ratio: number;
   run_rate: number;
   fulfillment_rate: number;
+  coverage_of_run_rate: number;
   risk_level: RiskLevel;
   risk_score: number;
 }
@@ -44,14 +46,15 @@ const riskBadgeClass = (level: RiskLevel) => {
 };
 
 export default function RiskAnalysisTable() {
-  const [sortBy, setSortBy] = useState<'riskScore' | 'runRate' | 'coverageRatio' | 'coveredCount'>('riskScore');
+  const [sortBy, setSortBy] = useState<'riskScore' | 'riskLevel' | 'runRate' | 'coverageRatio' | 'coveredCount' | 'coverageOfRunRate'>('riskScore');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(0);
+  const [search, setSearch] = useState('');
   const limit = 20;
   const { toast } = useToast();
 
   const { data: combinations, isLoading } = useQuery<RiskCombination[]>({
-    queryKey: ['/api/risk-combinations', { sortBy, sortOrder, limit, offset: page * limit }],
+    queryKey: ['/api/risk-combinations', { sortBy, sortOrder, limit, offset: page * limit, search }],
   });
 
   const sendAlertMutation = useMutation({
@@ -144,10 +147,25 @@ export default function RiskAnalysisTable() {
           High-Risk Combinations
         </CardTitle>
         <CardDescription>
-          Equipment with high claim rates and low coverage ratio (last 6 months)
+          Equipment with high claim rates and low spare coverage (last 6 months)
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by make, model, processor, or generation..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+              }}
+              className="pl-8"
+              data-testid="input-search-risk"
+            />
+          </div>
+        </div>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -169,7 +187,16 @@ export default function RiskAnalysisTable() {
                     Run Rate <ArrowUpDown className="ml-1 h-3 w-3" />
                   </Button>
                 </TableHead>
-                <TableHead>Risk</TableHead>
+                <TableHead>
+                  <Button variant="ghost" size="sm" onClick={() => handleSort('coverageOfRunRate')} className="h-8 px-2">
+                    Spare/Rate <ArrowUpDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button variant="ghost" size="sm" onClick={() => handleSort('riskLevel')} className="h-8 px-2">
+                    Risk <ArrowUpDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -206,6 +233,11 @@ export default function RiskAnalysisTable() {
                         {combo.claims_last_6_months} claims
                       </div>
                     </TableCell>
+                    <TableCell data-testid={`cell-coverage-runrate-${idx}`}>
+                      <div className={`text-sm font-medium ${combo.coverage_of_run_rate < 5 ? 'text-destructive' : combo.coverage_of_run_rate < 50 ? 'text-orange-600' : ''}`}>
+                        {combo.coverage_of_run_rate}%
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={riskBadgeClass(combo.risk_level)}>
                         {combo.risk_level.toUpperCase()}
@@ -237,7 +269,7 @@ export default function RiskAnalysisTable() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     No high-risk combinations found
                   </TableCell>
                 </TableRow>

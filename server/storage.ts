@@ -1325,10 +1325,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRiskCombinations(options?: {
-    sortBy?: 'riskScore' | 'runRate' | 'coverageRatio' | 'coveredCount';
+    sortBy?: 'riskScore' | 'riskLevel' | 'runRate' | 'coverageRatio' | 'coveredCount' | 'coverageOfRunRate';
     sortOrder?: 'asc' | 'desc';
     limit?: number;
     offset?: number;
+    search?: string;
   }): Promise<any[]> {
     // Calculate date 6 months ago
     const sixMonthsAgo = new Date();
@@ -1405,6 +1406,11 @@ export class DatabaseStorage implements IStorage {
           THEN ROUND((COALESCE(rep.replacement_count, 0)::numeric / cl.claims_count::numeric) * 100, 2) 
           ELSE 100 
         END as fulfillment_rate,
+        CASE 
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 
+          THEN ROUND((COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 100, 2) 
+          ELSE 0 
+        END as coverage_of_run_rate,
         CASE
           -- Critical: Spare units less than 5% of monthly run rate (insufficient buffer for high-demand models)
           WHEN COALESCE(cl.claims_count, 0) > 0 AND 
@@ -1451,8 +1457,21 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN available_metrics av USING (make, model, processor, generation)
       LEFT JOIN claims_metrics cl USING (make, model, processor, generation)
       LEFT JOIN replacement_metrics rep USING (make, model, processor, generation)
-      WHERE COALESCE(cl.claims_count, 0) > 0 OR COALESCE(cov.covered_count, 0) > 0
-      ORDER BY ${sql.raw(options?.sortBy === 'runRate' ? 'run_rate' : options?.sortBy === 'coverageRatio' ? 'coverage_ratio' : options?.sortBy === 'coveredCount' ? 'covered_count' : 'risk_score')} ${sql.raw(options?.sortOrder === 'asc' ? 'ASC' : 'DESC')}
+      WHERE (COALESCE(cl.claims_count, 0) > 0 OR COALESCE(cov.covered_count, 0) > 0)
+        ${options?.search ? sql.raw(`AND (
+          LOWER(c.make) LIKE LOWER('%${options.search}%') OR
+          LOWER(c.model) LIKE LOWER('%${options.search}%') OR
+          LOWER(COALESCE(c.processor, '')) LIKE LOWER('%${options.search}%') OR
+          LOWER(COALESCE(c.generation, '')) LIKE LOWER('%${options.search}%')
+        )`) : sql``}
+      ORDER BY ${sql.raw(
+        options?.sortBy === 'runRate' ? 'run_rate' : 
+        options?.sortBy === 'coverageRatio' ? 'coverage_ratio' : 
+        options?.sortBy === 'coveredCount' ? 'covered_count' :
+        options?.sortBy === 'coverageOfRunRate' ? 'coverage_of_run_rate' :
+        options?.sortBy === 'riskLevel' ? `CASE risk_level WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 END` :
+        'risk_score'
+      )} ${sql.raw(options?.sortOrder === 'asc' ? 'ASC' : 'DESC')}
       LIMIT ${options?.limit || 100}
       OFFSET ${options?.offset || 0}
     `);
