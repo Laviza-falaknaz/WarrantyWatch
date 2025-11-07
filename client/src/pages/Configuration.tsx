@@ -78,7 +78,11 @@ export default function Configuration() {
 
   const updateConfigMutation = useMutation({
     mutationFn: async (data: ConfigurationFormValues) => {
-      return await apiRequest("PATCH", "/api/configuration", data);
+      return await apiRequest("/api/configuration", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/configuration"] });
