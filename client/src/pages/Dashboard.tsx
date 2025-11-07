@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import MetricCard from "@/components/MetricCard";
 import RiskAnalysisTable from "@/components/RiskAnalysisTable";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Shield, Package, AlertTriangle } from "lucide-react";
+import { Shield, Package, TrendingUp, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -94,13 +95,12 @@ export default function Dashboard() {
     });
   })();
 
-  // Generate coverage ratio by make data (replacement units / stock under warranty)
+  // Generate coverage ratio by make data
   const coverageRatioByMake = (() => {
     if (!replacementUnits || !stockUnderWarranty || !Array.isArray(replacementUnits) || !Array.isArray(stockUnderWarranty)) return [];
     
     const makeGroups: any = {};
     
-    // Count replacement units by make
     replacementUnits.forEach((unit: any) => {
       if (!makeGroups[unit.make]) {
         makeGroups[unit.make] = { replacementCount: 0, warrantyStockCount: 0 };
@@ -110,7 +110,6 @@ export default function Dashboard() {
       }
     });
     
-    // Count stock under warranty by make
     stockUnderWarranty.forEach((unit: any) => {
       if (!makeGroups[unit.make]) {
         makeGroups[unit.make] = { replacementCount: 0, warrantyStockCount: 0 };
@@ -161,18 +160,16 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Monitor coverage and pool status across all replacement pool units
+            Monitor coverage, high-risk combinations, and pool status
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-96" />
-          ))}
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.25fr)_minmax(0,0.5fr)_minmax(0,0.25fr)] gap-6">
+          <div className="space-y-4">
+            <Skeleton className="h-24" />
+            <Skeleton className="h-64" />
+          </div>
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96" />
         </div>
       </div>
     );
@@ -191,193 +188,155 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.25fr)_minmax(0,0.5fr)_minmax(0,0.25fr)] gap-6">
         
         {/* Left Column: Summary Cards & Charts */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4">
-        <MetricCard
-          title="Total Warranty Stock"
-          value={analytics?.totalCoveredUnits || 0}
-          icon={Shield}
-          subtitle="All units under warranty"
-          data-testid="card-total-warranty-stock"
-        />
-        <MetricCard
-          title="Active Warranty"
-          value={analytics?.activeCoverage || 0}
-          icon={Shield}
-          subtitle="Non-expired coverage"
-          data-testid="card-active-warranty"
-        />
-        <MetricCard
-          title="Total Replacement Pool"
-          value={analytics?.totalSpareUnits || 0}
-          icon={Package}
-          subtitle="All spare units"
-          data-testid="card-total-replacement-pool"
-        />
-        <MetricCard
-          title="Unallocated Pool"
-          value={analytics?.unallocatedSpareUnits || 0}
-          icon={Package}
-          subtitle="Not reserved"
-          data-testid="card-unallocated-pool"
-        />
-      </div>
+            <MetricCard
+              title="Active Warranty"
+              value={analytics?.activeCoverage || 0}
+              icon={Shield}
+              subtitle="Non-expired coverage"
+              data-testid="card-active-warranty"
+            />
+            <MetricCard
+              title="Replacement Pool"
+              value={analytics?.totalSpareUnits || 0}
+              icon={Package}
+              subtitle="All spare units"
+              data-testid="card-total-replacement-pool"
+            />
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <h3 className="text-base font-medium">Coverage Expiration Trend</h3>
-            <p className="text-xs text-muted-foreground">
-              Stock under warranty with expiring coverage per month
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={coverageExpirationData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis
-                  dataKey="month"
-                  className="text-xs"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                />
-                <YAxis
-                  className="text-xs"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                  label={{
-                    value: "Stock under Warranty",
-                    angle: -90,
-                    position: "insideLeft",
-                    style: { fill: "hsl(var(--muted-foreground))" },
-                  }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "6px",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="expiring"
-                  stroke="hsl(var(--chart-1))"
-                  strokeWidth={2}
-                  dot={{ fill: "hsl(var(--chart-1))" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <h3 className="text-base font-medium">Coverage Ratio by Make</h3>
-            <p className="text-xs text-muted-foreground">
-              Ratio of replacement units to stock under warranty by manufacturer
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={coverageRatioByMake}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis
-                  dataKey="make"
-                  className="text-xs"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                />
-                <YAxis
-                  className="text-xs"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                  label={{
-                    value: "Coverage Ratio %",
-                    angle: -90,
-                    position: "insideLeft",
-                    style: { fill: "hsl(var(--muted-foreground))" },
-                  }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "6px",
-                  }}
-                  formatter={(value: any, name: string) => {
-                    if (name === 'coverageRatio') return [`${value}%`, 'Coverage Ratio'];
-                    return [value, name];
-                  }}
-                />
-                <Bar dataKey="coverageRatio" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <h3 className="text-base font-medium">Coverage Status Distribution</h3>
-            <p className="text-xs text-muted-foreground">
-              Current status breakdown across all stock under warranty in field
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={statusDistribution}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) =>
-                    `${name}: ${(percent * 100).toFixed(0)}%`
-                  }
-                  outerRadius={100}
-                  fill="hsl(var(--chart-1))"
-                  dataKey="value"
-                >
-                  {statusDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "6px",
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div>
-        <h2 className="text-lg font-medium mb-4">Pool Coverage Status</h2>
-        {poolCoverageStats.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center h-48 text-center p-6">
-              <Package className="h-12 w-12 text-muted-foreground mb-3" />
-              <h3 className="font-medium mb-1">No Coverage Pools Yet</h3>
-              <p className="text-sm text-muted-foreground">
-                Create coverage pools to organize and monitor replacement pool unit allocation
-              </p>
+            <CardHeader className="pb-2">
+              <h3 className="text-sm font-medium">Coverage Trend</h3>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={coverageExpirationData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis
+                    dataKey="month"
+                    className="text-xs"
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                  />
+                  <YAxis
+                    className="text-xs"
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="expiring"
+                    stroke="hsl(var(--chart-1))"
+                    strokeWidth={2}
+                    dot={{ fill: "hsl(var(--chart-1))" }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {poolCoverageStats.slice(0, 6).map((group: any) => (
-              <PoolCoverageCard
-                key={group.id}
-                poolId={group.id}
-                groupName={group.name}
-                specifications={group.specifications}
-                inventoryRequired={group.inventoryRequired}
-                poolUnits={group.poolUnits}
-                coveragePercentage={group.coverage}
-              />
-            ))}
-          </div>
-        )}
+
+          <Card>
+            <CardHeader className="pb-2">
+              <h3 className="text-sm font-medium">Coverage by Make</h3>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={coverageRatioByMake.slice(0, 5)}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis
+                    dataKey="make"
+                    className="text-xs"
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                  />
+                  <YAxis
+                    className="text-xs"
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                    }}
+                    formatter={(value: any) => [`${value}%`, 'Coverage']}
+                  />
+                  <Bar dataKey="coverageRatio" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Center Column: Risk Analysis Table */}
+        <div>
+          <RiskAnalysisTable />
+        </div>
+
+        {/* Right Column: Compact Pool Summary */}
+        <div>
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="text-base">Coverage Pools</CardTitle>
+              <CardDescription className="text-xs">Active pool status</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[600px]">
+                <div className="space-y-3 p-6 pt-0">
+                  {poolCoverageStats.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Package className="h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-xs text-muted-foreground">No pools yet</p>
+                    </div>
+                  ) : (
+                    poolCoverageStats.map((pool: any) => (
+                      <Link key={pool.id} href={`/pools/${pool.id}`}>
+                        <Card className="hover-elevate cursor-pointer" data-testid={`pool-card-${pool.id}`}>
+                          <CardContent className="p-3">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-medium truncate">{pool.name}</h4>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {pool.specifications.slice(0, 2).join(' • ')}
+                                </p>
+                              </div>
+                              <Badge 
+                                variant={pool.coverage < 50 ? 'destructive' : pool.coverage < 75 ? 'default' : 'outline'}
+                                className="ml-2 shrink-0"
+                              >
+                                {pool.coverage}%
+                              </Badge>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-3">
+                                <div>
+                                  <div className="text-muted-foreground">Covered</div>
+                                  <div className="font-medium">{pool.coveredCount}</div>
+                                </div>
+                                <div>
+                                  <div className="text-muted-foreground">Spare</div>
+                                  <div className="font-medium">{pool.spareCount}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
