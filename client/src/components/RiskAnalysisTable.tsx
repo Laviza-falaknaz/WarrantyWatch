@@ -33,15 +33,15 @@ interface RiskCombination {
 const riskBadgeClass = (level: RiskLevel) => {
   switch (level) {
     case 'critical': 
-      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-300 dark:border-red-700';
+      return 'bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100 border-red-200 dark:border-red-800 font-semibold';
     case 'high': 
-      return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-orange-300 dark:border-orange-700';
+      return 'bg-orange-50 text-orange-900 dark:bg-orange-950 dark:text-orange-100 border-orange-200 dark:border-orange-800 font-semibold';
     case 'medium': 
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700';
+      return 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100 border-amber-200 dark:border-amber-800 font-semibold';
     case 'low': 
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700';
+      return 'bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-700';
     default: 
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      return 'bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100';
   }
 };
 
@@ -150,7 +150,7 @@ export default function RiskAnalysisTable() {
           Equipment with high claim rates and low spare coverage (last 6 months)
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         <div className="mb-4 flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -166,7 +166,7 @@ export default function RiskAnalysisTable() {
             />
           </div>
         </div>
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto -mx-6 px-6">
           <Table>
             <TableHeader>
               <TableRow>
