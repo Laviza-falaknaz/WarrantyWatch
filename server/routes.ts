@@ -455,6 +455,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send alert for high-risk combination to Power Automate webhook
+  app.post("/api/risk-combinations/send-alert", async (req, res) => {
+    try {
+      const config = await storage.getConfiguration();
+      
+      if (!config.alertWebhookUrl) {
+        return res.status(400).json({ error: "Alert webhook URL not configured" });
+      }
+
+      const alertData = {
+        make: req.body.make,
+        model: req.body.model,
+        processor: req.body.processor,
+        generation: req.body.generation,
+        coveredCount: req.body.covered_count,
+        spareCount: req.body.spare_count,
+        availableStockCount: req.body.available_stock_count,
+        claimsLast6Months: req.body.claims_last_6_months,
+        replacementsLast6Months: req.body.replacements_last_6_months,
+        coverageRatio: req.body.coverage_ratio,
+        runRate: req.body.run_rate,
+        fulfillmentRate: req.body.fulfillment_rate,
+        riskLevel: req.body.risk_level,
+        riskScore: req.body.risk_score,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Send to Power Automate webhook
+      const response = await fetch(config.alertWebhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Webhook responded with status ${response.status}`);
+      }
+
+      res.json({ success: true, message: "Alert sent successfully" });
+    } catch (error) {
+      console.error("Error sending alert:", error);
+      res.status(500).json({ error: "Failed to send alert to webhook" });
+    }
+  });
+
   // Combined endpoint for coverage pools with statistics
   app.get("/api/coverage-pools-with-stats", async (req, res) => {
     try {
@@ -838,7 +885,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/configuration", async (req, res) => {
     try {
-      const config = await storage.updateConfiguration(req.body);
+      // Password protection for configuration updates
+      const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+      const providedPassword = req.body.password;
+      
+      if (providedPassword !== adminPassword) {
+        return res.status(401).json({ error: "Invalid password" });
+      }
+
+      // Remove password from the update data
+      const { password, ...updateData } = req.body;
+      const config = await storage.updateConfiguration(updateData);
       res.json(config);
     } catch (error) {
       console.error("Error updating configuration:", error);

@@ -26,6 +26,8 @@ const configurationFormSchema = z.object({
   enableLowCoverageAlerts: z.boolean(),
   enableExpiringAlerts: z.boolean(),
   dashboardRefreshMinutes: z.coerce.number().int().min(1).max(60),
+  alertWebhookUrl: z.string().url().optional().or(z.literal('')),
+  password: z.string().min(1, "Password is required to update configuration"),
 });
 
 type ConfigurationFormValues = z.infer<typeof configurationFormSchema>;
@@ -50,6 +52,8 @@ export default function Configuration() {
       enableLowCoverageAlerts: true,
       enableExpiringAlerts: true,
       dashboardRefreshMinutes: 5,
+      alertWebhookUrl: '',
+      password: '',
     },
   });
 
@@ -66,6 +70,8 @@ export default function Configuration() {
         enableLowCoverageAlerts: configuration.enableLowCoverageAlerts,
         enableExpiringAlerts: configuration.enableExpiringAlerts,
         dashboardRefreshMinutes: configuration.dashboardRefreshMinutes,
+        alertWebhookUrl: configuration.alertWebhookUrl || '',
+        password: '',
       });
     }
   }, [configuration, form]);
@@ -403,6 +409,63 @@ export default function Configuration() {
                     </FormControl>
                     <FormDescription>
                       How often the dashboard data should refresh automatically (1-60 minutes)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-webhook-integration">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Webhook Integration
+              </CardTitle>
+              <CardDescription>
+                Configure Power Automate webhook for automated alerts
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="alertWebhookUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Alert Webhook URL</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="url"
+                        placeholder="https://prod-xx.eastus.logic.azure.com:443/workflows/..."
+                        {...field}
+                        data-testid="input-alert-webhook-url"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Power Automate webhook URL for receiving high-risk combination alerts
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Admin Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Enter password to save changes"
+                        {...field}
+                        data-testid="input-admin-password"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Required to update configuration settings (default: admin123)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

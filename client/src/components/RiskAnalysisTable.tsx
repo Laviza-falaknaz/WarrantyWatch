@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Bell, Plus, ArrowUpDown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 type RiskLevel = 'critical' | 'high' | 'medium' | 'low';
 
@@ -51,9 +53,65 @@ export default function RiskAnalysisTable() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(0);
   const limit = 20;
+  const { toast } = useToast();
 
   const { data: combinations, isLoading } = useQuery<RiskCombination[]>({
     queryKey: ['/api/risk-combinations', { sortBy, sortOrder, limit, offset: page * limit }],
+  });
+
+  const sendAlertMutation = useMutation({
+    mutationFn: async (combination: RiskCombination) => {
+      return apiRequest('/api/risk-combinations/send-alert', {
+        method: 'POST',
+        body: JSON.stringify(combination),
+        headers: { 'Content-Type': 'application/json' },
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Alert sent",
+        description: "Risk combination alert sent to Power Automate successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Alert failed",
+        description: error.message || "Failed to send alert to webhook",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createPoolMutation = useMutation({
+    mutationFn: async (combination: RiskCombination) => {
+      const poolData = {
+        name: `${combination.make} ${combination.model} Pool`,
+        filterCriteria: JSON.stringify({
+          make: combination.make,
+          model: combination.model,
+          processor: combination.processor || undefined,
+          generation: combination.generation || undefined,
+        }),
+      };
+      return apiRequest('/api/coverage-pools', {
+        method: 'POST',
+        body: JSON.stringify(poolData),
+        headers: { 'Content-Type': 'application/json' },
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Pool created",
+        description: "Coverage pool created successfully from risk combination",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Pool creation failed",
+        description: error.message || "Failed to create coverage pool",
+        variant: "destructive",
+      });
+    },
   });
 
   const handleSort = (column: typeof sortBy) => {
@@ -66,15 +124,11 @@ export default function RiskAnalysisTable() {
   };
 
   const handleSendAlert = async (combination: RiskCombination) => {
-    // Placeholder for send alert functionality
-    console.log('Send alert for:', combination);
-    alert(`Alert would be sent for ${combination.make} ${combination.model}`);
+    sendAlertMutation.mutate(combination);
   };
 
   const handleCreatePool = async (combination: RiskCombination) => {
-    // Placeholder for create pool functionality  
-    console.log('Create pool for:', combination);
-    alert(`Pool would be created for ${combination.make} ${combination.model}`);
+    createPoolMutation.mutate(combination);
   };
 
   if (isLoading) {
