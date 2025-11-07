@@ -28,23 +28,18 @@ interface RiskCombination {
   risk_score: number;
 }
 
-const riskBadgeVariant = (level: RiskLevel) => {
+const riskBadgeClass = (level: RiskLevel) => {
   switch (level) {
-    case 'critical': return 'destructive';
-    case 'high': return 'default';
-    case 'medium': return 'secondary';
-    case 'low': return 'outline';
-    default: return 'outline';
-  }
-};
-
-const riskColor = (level: RiskLevel) => {
-  switch (level) {
-    case 'critical': return 'text-red-600';
-    case 'high': return 'text-orange-600';
-    case 'medium': return 'text-yellow-600';
-    case 'low': return 'text-green-600';
-    default: return '';
+    case 'critical': 
+      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-300 dark:border-red-700';
+    case 'high': 
+      return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-orange-300 dark:border-orange-700';
+    case 'medium': 
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700';
+    case 'low': 
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700';
+    default: 
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
   }
 };
 
@@ -205,7 +200,7 @@ export default function RiskAnalysisTable() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={riskBadgeVariant(combo.risk_level)} className={riskColor(combo.risk_level)}>
+                      <Badge variant="outline" className={riskBadgeClass(combo.risk_level)}>
                         {combo.risk_level.toUpperCase()}
                       </Badge>
                     </TableCell>

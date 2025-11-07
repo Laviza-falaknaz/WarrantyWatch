@@ -1334,60 +1334,114 @@ export class DatabaseStorage implements IStorage {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     
-    // Query to get all unique combinations with their metrics
+    // Optimized query - get each metric separately and join, avoiding cartesian product
     const combinations = await db.execute(sql`
-      WITH combination_metrics AS (
-        SELECT
-          COALESCE(cu.make, c.make, sp.make, av.make) as make,
-          COALESCE(cu.model, c.model, sp.model, av.model) as model,
-          COALESCE(cu.processor, c.processor, sp.processor, av.processor) as processor,
-          COALESCE(cu.generation, c.generation, sp.generation, av.generation) as generation,
-          
-          -- Coverage counts (non-expired covered units only)
-          COUNT(DISTINCT CASE WHEN cu.id IS NOT NULL AND cu.coverage_end_date >= CURRENT_DATE THEN cu.id END) as covered_count,
-          COUNT(DISTINCT sp.id) as spare_count,
-          COUNT(DISTINCT av.id) as available_stock_count,
-          
-          -- Claims metrics (last 6 months)
-          COUNT(DISTINCT CASE WHEN c.claim_date >= ${sixMonthsAgo} THEN c.id END) as claims_last_6_months,
-          COUNT(DISTINCT CASE WHEN r.replaced_date >= ${sixMonthsAgo} THEN r.id END) as replacements_last_6_months
-          
-        FROM ${coveredUnit} cu
-        FULL OUTER JOIN ${claim} c ON cu.make = c.make AND cu.model = c.model AND COALESCE(cu.processor, '') = COALESCE(c.processor, '') AND COALESCE(cu.generation, '') = COALESCE(c.generation, '')
-        FULL OUTER JOIN ${spareUnit} sp ON COALESCE(cu.make, c.make) = sp.make AND COALESCE(cu.model, c.model) = sp.model AND COALESCE(cu.processor, c.processor, '') = COALESCE(sp.processor, '') AND COALESCE(cu.generation, c.generation, '') = COALESCE(sp.generation, '')
-        FULL OUTER JOIN ${availableStock} av ON COALESCE(cu.make, c.make, sp.make) = av.make AND COALESCE(cu.model, c.model, sp.model) = av.model AND COALESCE(cu.processor, c.processor, sp.processor, '') = COALESCE(av.processor, '') AND COALESCE(cu.generation, c.generation, sp.generation, '') = COALESCE(av.generation, '')
-        LEFT JOIN ${replacement} r ON c.make = r.make AND c.model = r.model AND COALESCE(c.processor, '') = COALESCE(r.processor, '') AND COALESCE(c.generation, '') = COALESCE(r.generation, '')
-        
-        WHERE COALESCE(cu.make, c.make, sp.make, av.make) IS NOT NULL
-        GROUP BY 1, 2, 3, 4
+      WITH all_combinations AS (
+        -- Get all unique combinations from covered units, claims, spares, and available stock
+        SELECT DISTINCT make, model, processor, generation FROM ${coveredUnit}
+        UNION
+        SELECT DISTINCT make, model, processor, generation FROM ${claim}
+        UNION
+        SELECT DISTINCT make, model, processor, generation FROM ${spareUnit}
+        UNION
+        SELECT DISTINCT make, model, processor, generation FROM ${availableStock}
+      ),
+      covered_metrics AS (
+        SELECT 
+          make, model, processor, generation,
+          COUNT(*) as covered_count
+        FROM ${coveredUnit}
+        WHERE coverage_end_date >= CURRENT_DATE
+        GROUP BY make, model, processor, generation
+      ),
+      spare_metrics AS (
+        SELECT 
+          make, model, processor, generation,
+          COUNT(*) as spare_count
+        FROM ${spareUnit}
+        GROUP BY make, model, processor, generation
+      ),
+      available_metrics AS (
+        SELECT 
+          make, model, processor, generation,
+          COUNT(*) as available_count
+        FROM ${availableStock}
+        GROUP BY make, model, processor, generation
+      ),
+      claims_metrics AS (
+        SELECT 
+          make, model, processor, generation,
+          COUNT(*) as claims_count
+        FROM ${claim}
+        WHERE claim_date >= ${sixMonthsAgo}
+        GROUP BY make, model, processor, generation
+      ),
+      replacement_metrics AS (
+        SELECT 
+          make, model, processor, generation,
+          COUNT(*) as replacement_count
+        FROM ${replacement}
+        WHERE replaced_date >= ${sixMonthsAgo}
+        GROUP BY make, model, processor, generation
       )
       SELECT
-        make,
-        model,
-        processor,
-        generation,
-        covered_count,
-        spare_count,
-        available_stock_count,
-        claims_last_6_months,
-        replacements_last_6_months,
-        CASE WHEN covered_count > 0 THEN ROUND((spare_count::numeric / covered_count::numeric) * 100, 2) ELSE 0 END as coverage_ratio,
-        ROUND(claims_last_6_months::numeric / 6.0, 2) as run_rate,
-        CASE WHEN claims_last_6_months > 0 THEN ROUND((replacements_last_6_months::numeric / claims_last_6_months::numeric) * 100, 2) ELSE 100 END as fulfillment_rate,
+        c.make,
+        c.model,
+        c.processor,
+        c.generation,
+        COALESCE(cov.covered_count, 0)::int as covered_count,
+        COALESCE(sp.spare_count, 0)::int as spare_count,
+        COALESCE(av.available_count, 0)::int as available_stock_count,
+        COALESCE(cl.claims_count, 0)::int as claims_last_6_months,
+        COALESCE(rep.replacement_count, 0)::int as replacements_last_6_months,
+        CASE 
+          WHEN COALESCE(cov.covered_count, 0) > 0 
+          THEN ROUND((COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100, 2) 
+          ELSE 0 
+        END as coverage_ratio,
+        ROUND(COALESCE(cl.claims_count, 0)::numeric / 6.0, 2) as run_rate,
+        CASE 
+          WHEN COALESCE(cl.claims_count, 0) > 0 
+          THEN ROUND((COALESCE(rep.replacement_count, 0)::numeric / cl.claims_count::numeric) * 100, 2) 
+          ELSE 100 
+        END as fulfillment_rate,
         CASE
-          WHEN (CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) < 50 AND (claims_last_6_months::numeric / 6.0) >= 4 THEN 'critical'
-          WHEN (CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) < 75 AND (claims_last_6_months::numeric / 6.0) >= 2 THEN 'high'
-          WHEN ((CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) BETWEEN 75 AND 110) OR (claims_last_6_months::numeric / 6.0) >= 1 THEN 'medium'
+          WHEN COALESCE(cov.covered_count, 0) > 0 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 50 AND 
+               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 4 
+          THEN 'critical'
+          WHEN COALESCE(cov.covered_count, 0) > 0 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 75 AND 
+               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 2 
+          THEN 'high'
+          WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
+                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 BETWEEN 75 AND 110) OR 
+               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 
+          THEN 'medium'
           ELSE 'low'
         END as risk_level,
         CASE
-          WHEN (CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) < 50 AND (claims_last_6_months::numeric / 6.0) >= 4 THEN 95
-          WHEN (CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) < 75 AND (claims_last_6_months::numeric / 6.0) >= 2 THEN 75
-          WHEN ((CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) BETWEEN 75 AND 110) OR (claims_last_6_months::numeric / 6.0) >= 1 THEN 50
+          WHEN COALESCE(cov.covered_count, 0) > 0 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 50 AND 
+               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 4 
+          THEN 95
+          WHEN COALESCE(cov.covered_count, 0) > 0 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 75 AND 
+               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 2 
+          THEN 75
+          WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
+                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 BETWEEN 75 AND 110) OR 
+               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 
+          THEN 50
           ELSE 20
         END as risk_score
-      FROM combination_metrics
-      WHERE claims_last_6_months > 0 OR covered_count > 0
+      FROM all_combinations c
+      LEFT JOIN covered_metrics cov USING (make, model, processor, generation)
+      LEFT JOIN spare_metrics sp USING (make, model, processor, generation)
+      LEFT JOIN available_metrics av USING (make, model, processor, generation)
+      LEFT JOIN claims_metrics cl USING (make, model, processor, generation)
+      LEFT JOIN replacement_metrics rep USING (make, model, processor, generation)
+      WHERE COALESCE(cl.claims_count, 0) > 0 OR COALESCE(cov.covered_count, 0) > 0
       ORDER BY ${sql.raw(options?.sortBy === 'runRate' ? 'run_rate' : options?.sortBy === 'coverageRatio' ? 'coverage_ratio' : options?.sortBy === 'coveredCount' ? 'covered_count' : 'risk_score')} ${sql.raw(options?.sortOrder === 'asc' ? 'ASC' : 'DESC')}
       LIMIT ${options?.limit || 100}
       OFFSET ${options?.offset || 0}
