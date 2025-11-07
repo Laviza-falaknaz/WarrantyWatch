@@ -69,13 +69,16 @@ Preferred communication style: Simple, everyday language.
 
 **High-Risk Combination Analysis System** (November 2025):
 - **Endpoint**: `GET /api/risk-combinations` with query parameters for sorting, pagination
-- **Risk Scoring**: Multi-tier classification (critical/high/medium/low) based on coverage ratio and claims run rate:
-  - Critical: Coverage <50% AND Run rate ≥4 claims/month
-  - High: Coverage <75% AND Run rate ≥2 claims/month
-  - Medium: Coverage 75-110% OR Run rate ≥1 claims/month
-  - Low: All other combinations
+- **Risk Scoring** (Updated November 2025): Multi-tier classification prioritizing run-rate-based spare adequacy:
+  - **Critical**: Spare count < 5% of monthly run rate (insufficient buffer for high-demand models)
+    - Formula: `spare_count < (run_rate × 0.05)` where `run_rate = claims_last_6_months / 6`
+    - Example: 4 claims/month requires ≥0.2 spares to avoid critical status
+  - **High**: Coverage ratio <50% OR (run rate ≥4/mo AND coverage <75%)
+  - **Medium**: Coverage 50-110% with claim activity OR run rate ≥1/mo
+  - **Low**: All other combinations
 - **Analysis Period**: Rolling 6-month window for claims and replacements analysis
-- **Metrics**: Coverage ratio, monthly run rate, fulfillment rate (replacements/claims), risk score
+- **Metrics**: Coverage ratio, monthly run rate, fulfillment rate (replacements/claims), available stock count, risk score
+- **UI Features**: 7-column table displaying Equipment, Covered, Coverage, **Available Stock** (newly added), Run Rate, Risk, and Actions
 - **Actions**: Webhook alerting via `POST /api/risk-combinations/send-alert` and auto-pool creation
 - **Integration**: Sends structured JSON payloads to configured Power Automate webhook URL with equipment details, risk metrics, and timestamp
 
