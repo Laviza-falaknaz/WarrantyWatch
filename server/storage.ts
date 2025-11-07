@@ -1406,31 +1406,41 @@ export class DatabaseStorage implements IStorage {
           ELSE 100 
         END as fulfillment_rate,
         CASE
-          WHEN COALESCE(cov.covered_count, 0) > 0 AND 
-               (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 50 AND 
-               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 4 
+          -- Critical: Spare units less than 5% of total claims in last 6 months (insufficient buffer)
+          WHEN COALESCE(cl.claims_count, 0) > 0 AND 
+               COALESCE(sp.spare_count, 0) < (COALESCE(cl.claims_count, 0) * 0.05)
           THEN 'critical'
-          WHEN COALESCE(cov.covered_count, 0) > 0 AND 
-               (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 75 AND 
-               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 2 
-          THEN 'high'
+          -- High: Coverage ratio below 50% OR high run rate (≥4/mo) with coverage below 75%
           WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
-                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 BETWEEN 75 AND 110) OR 
+                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 50) OR
+               (COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 4 AND
+                COALESCE(cov.covered_count, 0) > 0 AND
+                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 75)
+          THEN 'high'
+          -- Medium: Moderate coverage (50-110%) with some claim activity OR run rate ≥1/mo
+          WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
+                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 BETWEEN 50 AND 110 AND
+                COALESCE(cl.claims_count, 0) > 0) OR 
                COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 
           THEN 'medium'
           ELSE 'low'
         END as risk_level,
         CASE
-          WHEN COALESCE(cov.covered_count, 0) > 0 AND 
-               (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 50 AND 
-               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 4 
+          -- Critical: Spare units less than 5% of total claims
+          WHEN COALESCE(cl.claims_count, 0) > 0 AND 
+               COALESCE(sp.spare_count, 0) < (COALESCE(cl.claims_count, 0) * 0.05)
           THEN 95
-          WHEN COALESCE(cov.covered_count, 0) > 0 AND 
-               (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 75 AND 
-               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 2 
-          THEN 75
+          -- High: Coverage ratio below 50% OR high run rate with low coverage
           WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
-                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 BETWEEN 75 AND 110) OR 
+                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 50) OR
+               (COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 4 AND
+                COALESCE(cov.covered_count, 0) > 0 AND
+                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 75)
+          THEN 75
+          -- Medium: Moderate coverage with claim activity OR significant run rate
+          WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
+                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 BETWEEN 50 AND 110 AND
+                COALESCE(cl.claims_count, 0) > 0) OR 
                COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 
           THEN 50
           ELSE 20

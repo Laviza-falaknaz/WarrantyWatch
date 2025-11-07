@@ -163,6 +163,7 @@ export default function RiskAnalysisTable() {
                     Coverage <ArrowUpDown className="ml-1 h-3 w-3" />
                   </Button>
                 </TableHead>
+                <TableHead>Available</TableHead>
                 <TableHead>
                   <Button variant="ghost" size="sm" onClick={() => handleSort('runRate')} className="h-8 px-2">
                     Run Rate <ArrowUpDown className="ml-1 h-3 w-3" />
@@ -191,6 +192,12 @@ export default function RiskAnalysisTable() {
                     <TableCell>
                       <div className={`text-sm font-medium ${combo.coverage_ratio < 50 ? 'text-destructive' : combo.coverage_ratio < 75 ? 'text-orange-600' : ''}`}>
                         {combo.coverage_ratio}%
+                      </div>
+                    </TableCell>
+                    <TableCell data-testid={`cell-available-${idx}`}>
+                      <div className="text-sm font-medium">{combo.available_stock_count}</div>
+                      <div className="text-xs text-muted-foreground">
+                        all stock
                       </div>
                     </TableCell>
                     <TableCell>
@@ -230,7 +237,7 @@ export default function RiskAnalysisTable() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     No high-risk combinations found
                   </TableCell>
                 </TableRow>
