@@ -169,6 +169,14 @@ export interface IStorage {
     forecastMonths?: number;
   }): Promise<CoveragePoolAnalytics>;
   
+  // Risk Analysis
+  getRiskCombinations(options?: {
+    sortBy?: 'riskScore' | 'runRate' | 'coverageRatio' | 'coveredCount';
+    sortOrder?: 'asc' | 'desc';
+    limit?: number;
+    offset?: number;
+  }): Promise<any[]>; // Using any[] for now, will add proper type
+  
   // Configuration
   getConfiguration(): Promise<AppConfiguration>;
   updateConfiguration(data: Partial<InsertAppConfiguration>): Promise<AppConfiguration>;
@@ -549,8 +557,9 @@ export class DatabaseStorage implements IStorage {
     const lowCoverageThreshold = Number(config.lowCoverageThresholdPercent);
     
     const [spareCount] = await db.select({ count: sql<number>`count(*)` }).from(spareUnit);
-    const [coveredCount] = await db.select({ count: sql<number>`count(*)` }).from(coveredUnit);
-    const [activeCoverageCount] = await db.select({ count: sql<number>`count(*)` }).from(coveredUnit).where(eq(coveredUnit.isCoverageActive, true));
+    // Only count non-expired covered units
+    const [coveredCount] = await db.select({ count: sql<number>`count(*)` }).from(coveredUnit).where(nonExpiredCoveredUnitsCondition());
+    const [activeCoverageCount] = await db.select({ count: sql<number>`count(*)` }).from(coveredUnit).where(and(eq(coveredUnit.isCoverageActive, true), nonExpiredCoveredUnitsCondition()));
     
     // Count unallocated spare units (not reserved for any case)
     const [unallocatedCount] = await db
@@ -1313,6 +1322,78 @@ export class DatabaseStorage implements IStorage {
       monthlyData,
       forecast,
     };
+  }
+
+  async getRiskCombinations(options?: {
+    sortBy?: 'riskScore' | 'runRate' | 'coverageRatio' | 'coveredCount';
+    sortOrder?: 'asc' | 'desc';
+    limit?: number;
+    offset?: number;
+  }): Promise<any[]> {
+    // Calculate date 6 months ago
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    // Query to get all unique combinations with their metrics
+    const combinations = await db.execute(sql`
+      WITH combination_metrics AS (
+        SELECT
+          COALESCE(cu.make, c.make, sp.make, av.make) as make,
+          COALESCE(cu.model, c.model, sp.model, av.model) as model,
+          COALESCE(cu.processor, c.processor, sp.processor, av.processor) as processor,
+          COALESCE(cu.generation, c.generation, sp.generation, av.generation) as generation,
+          
+          -- Coverage counts (non-expired covered units only)
+          COUNT(DISTINCT CASE WHEN cu.id IS NOT NULL AND cu.coverage_end_date >= CURRENT_DATE THEN cu.id END) as covered_count,
+          COUNT(DISTINCT sp.id) as spare_count,
+          COUNT(DISTINCT av.id) as available_stock_count,
+          
+          -- Claims metrics (last 6 months)
+          COUNT(DISTINCT CASE WHEN c.claim_date >= ${sixMonthsAgo} THEN c.id END) as claims_last_6_months,
+          COUNT(DISTINCT CASE WHEN r.replaced_date >= ${sixMonthsAgo} THEN r.id END) as replacements_last_6_months
+          
+        FROM ${coveredUnit} cu
+        FULL OUTER JOIN ${claim} c ON cu.make = c.make AND cu.model = c.model AND COALESCE(cu.processor, '') = COALESCE(c.processor, '') AND COALESCE(cu.generation, '') = COALESCE(c.generation, '')
+        FULL OUTER JOIN ${spareUnit} sp ON COALESCE(cu.make, c.make) = sp.make AND COALESCE(cu.model, c.model) = sp.model AND COALESCE(cu.processor, c.processor, '') = COALESCE(sp.processor, '') AND COALESCE(cu.generation, c.generation, '') = COALESCE(sp.generation, '')
+        FULL OUTER JOIN ${availableStock} av ON COALESCE(cu.make, c.make, sp.make) = av.make AND COALESCE(cu.model, c.model, sp.model) = av.model AND COALESCE(cu.processor, c.processor, sp.processor, '') = COALESCE(av.processor, '') AND COALESCE(cu.generation, c.generation, sp.generation, '') = COALESCE(av.generation, '')
+        LEFT JOIN ${replacement} r ON c.make = r.make AND c.model = r.model AND COALESCE(c.processor, '') = COALESCE(r.processor, '') AND COALESCE(c.generation, '') = COALESCE(r.generation, '')
+        
+        WHERE COALESCE(cu.make, c.make, sp.make, av.make) IS NOT NULL
+        GROUP BY 1, 2, 3, 4
+      )
+      SELECT
+        make,
+        model,
+        processor,
+        generation,
+        covered_count,
+        spare_count,
+        available_stock_count,
+        claims_last_6_months,
+        replacements_last_6_months,
+        CASE WHEN covered_count > 0 THEN ROUND((spare_count::numeric / covered_count::numeric) * 100, 2) ELSE 0 END as coverage_ratio,
+        ROUND(claims_last_6_months::numeric / 6.0, 2) as run_rate,
+        CASE WHEN claims_last_6_months > 0 THEN ROUND((replacements_last_6_months::numeric / claims_last_6_months::numeric) * 100, 2) ELSE 100 END as fulfillment_rate,
+        CASE
+          WHEN (CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) < 50 AND (claims_last_6_months::numeric / 6.0) >= 4 THEN 'critical'
+          WHEN (CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) < 75 AND (claims_last_6_months::numeric / 6.0) >= 2 THEN 'high'
+          WHEN ((CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) BETWEEN 75 AND 110) OR (claims_last_6_months::numeric / 6.0) >= 1 THEN 'medium'
+          ELSE 'low'
+        END as risk_level,
+        CASE
+          WHEN (CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) < 50 AND (claims_last_6_months::numeric / 6.0) >= 4 THEN 95
+          WHEN (CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) < 75 AND (claims_last_6_months::numeric / 6.0) >= 2 THEN 75
+          WHEN ((CASE WHEN covered_count > 0 THEN (spare_count::numeric / covered_count::numeric) * 100 ELSE 0 END) BETWEEN 75 AND 110) OR (claims_last_6_months::numeric / 6.0) >= 1 THEN 50
+          ELSE 20
+        END as risk_score
+      FROM combination_metrics
+      WHERE claims_last_6_months > 0 OR covered_count > 0
+      ORDER BY ${sql.raw(options?.sortBy === 'runRate' ? 'run_rate' : options?.sortBy === 'coverageRatio' ? 'coverage_ratio' : options?.sortBy === 'coveredCount' ? 'covered_count' : 'risk_score')} ${sql.raw(options?.sortOrder === 'asc' ? 'ASC' : 'DESC')}
+      LIMIT ${options?.limit || 100}
+      OFFSET ${options?.offset || 0}
+    `);
+    
+    return combinations.rows as any[];
   }
 
   async getConfiguration(): Promise<AppConfiguration> {

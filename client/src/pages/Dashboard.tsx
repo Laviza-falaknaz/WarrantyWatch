@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import MetricCard from "@/components/MetricCard";
-import PoolCoverageCard from "@/components/PoolCoverageCard";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Shield, Package } from "lucide-react";
+import RiskAnalysisTable from "@/components/RiskAnalysisTable";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Shield, Package, AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { CoveragePoolWithStats } from "@shared/schema";
 import {
   BarChart,
@@ -179,13 +181,18 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <h1 className="text-2xl font-semibold" data-testid="page-dashboard">Dashboard</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Monitor coverage and pool status across all replacement pool units
+          Monitor coverage, high-risk combinations, and pool status
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 3-Column Layout: 25% - 50% - 25% */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.25fr)_minmax(0,0.5fr)_minmax(0,0.25fr)] gap-6">
+        
+        {/* Left Column: Summary Cards & Charts */}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4">
         <MetricCard
           title="Total Warranty Stock"
           value={analytics?.totalCoveredUnits || 0}

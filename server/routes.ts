@@ -433,6 +433,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Risk combinations analysis endpoint
+  app.get("/api/risk-combinations", async (req, res) => {
+    try {
+      const sortBy = (req.query.sortBy as string) || 'riskScore';
+      const sortOrder = (req.query.sortOrder as string) || 'desc';
+      const limit = parseInt(req.query.limit as string) || 100;
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      const combinations = await storage.getRiskCombinations({
+        sortBy: sortBy as any,
+        sortOrder: sortOrder as any,
+        limit,
+        offset,
+      });
+      
+      res.json(combinations);
+    } catch (error) {
+      console.error("Error fetching risk combinations:", error);
+      res.status(500).json({ error: "Failed to fetch risk combinations" });
+    }
+  });
+
   // Combined endpoint for coverage pools with statistics
   app.get("/api/coverage-pools-with-stats", async (req, res) => {
     try {
