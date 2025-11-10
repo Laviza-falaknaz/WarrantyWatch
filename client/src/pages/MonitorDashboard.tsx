@@ -7,6 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -145,6 +154,12 @@ export default function MonitorDashboard() {
     make: "",
     model: "",
   });
+  const [selectedRiskItems, setSelectedRiskItems] = useState<Set<number>>(new Set());
+  const [excludeZeroCovered, setExcludeZeroCovered] = useState(true);
+  const [riskFilters, setRiskFilters] = useState({
+    search: "",
+    riskLevel: "",
+  });
 
   const endDate = useMemo(() => addMonths(startDate, 6), [startDate]);
 
@@ -162,9 +177,26 @@ export default function MonitorDashboard() {
       sortOrder: 'desc', 
       limit: 10,
       offset: 0,
-      excludeZeroCovered: true,
+      excludeZeroCovered: excludeZeroCovered,
     }],
   });
+
+  const filteredRiskCombinations = useMemo(() => {
+    if (!riskCombinations) return [];
+    
+    return riskCombinations.filter((combo) => {
+      const searchLower = riskFilters.search.toLowerCase();
+      const matchesSearch = !riskFilters.search || 
+        combo.make?.toLowerCase().includes(searchLower) ||
+        combo.model?.toLowerCase().includes(searchLower) ||
+        combo.processor?.toLowerCase().includes(searchLower);
+      
+      const matchesRiskLevel = !riskFilters.riskLevel || 
+        combo.risk_level === riskFilters.riskLevel;
+      
+      return matchesSearch && matchesRiskLevel;
+    });
+  }, [riskCombinations, riskFilters]);
 
   // Filter and map warranty expiration data
   const heatmapData = useMemo(() => {
@@ -304,12 +336,12 @@ export default function MonitorDashboard() {
       <div className="p-8 space-y-6">
         <Skeleton className="h-12 w-96" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 space-y-4">
+          <div className="lg:col-span-9 space-y-4">
             <Skeleton className="h-32" />
             <Skeleton className="h-96" />
             <Skeleton className="h-64" />
           </div>
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-3">
             <Skeleton className="h-96" />
           </div>
         </div>
@@ -336,8 +368,8 @@ export default function MonitorDashboard() {
 
         {/* 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: lg:col-span-8 - Insights + Heatmap + Coverage Pools */}
-          <div className="lg:col-span-8 space-y-6">
+          {/* Left Column: lg:col-span-9 - Insights + Heatmap + Coverage Pools */}
+          <div className="lg:col-span-9 space-y-6">
             {/* Insight Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="rounded-2xl">
@@ -604,14 +636,78 @@ export default function MonitorDashboard() {
             </div>
           </div>
 
-          {/* Right Column: lg:col-span-4 - High-Risk Combinations */}
-          <div className="lg:col-span-4">
+          {/* Right Column: lg:col-span-3 - High-Risk Combinations */}
+          <div className="lg:col-span-3">
             <Card className="rounded-2xl">
               <CardHeader>
-                <CardTitle className="text-lg">High-Risk Combinations</CardTitle>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">High-Risk Combinations</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                        <Switch
+                          checked={!excludeZeroCovered}
+                          onCheckedChange={(checked) => setExcludeZeroCovered(!checked)}
+                          data-testid="toggle-include-zero-covered"
+                        />
+                        Include 0 covered
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {/* Filter inputs */}
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      placeholder="Search make/model/processor..."
+                      value={riskFilters.search}
+                      onChange={(e) => setRiskFilters({ ...riskFilters, search: e.target.value })}
+                      className="text-sm"
+                      data-testid="input-risk-search"
+                    />
+                    <Select
+                      value={riskFilters.riskLevel}
+                      onValueChange={(value) => setRiskFilters({ ...riskFilters, riskLevel: value })}
+                    >
+                      <SelectTrigger className="text-sm" data-testid="select-risk-level">
+                        <SelectValue placeholder="All risk levels" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value=" ">All risk levels</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Bulk actions */}
+                  {selectedRiskItems.size > 0 && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="flex-1 gap-1"
+                        data-testid="button-send-combined-alert"
+                      >
+                        <Bell className="w-3 h-3" />
+                        Send Combined Alert ({selectedRiskItems.size})
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 gap-1"
+                        data-testid="button-create-combined-pool"
+                      >
+                        <FolderPlus className="w-3 h-3" />
+                        Create Combined Pool ({selectedRiskItems.size})
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {!riskCombinations || riskCombinations.length === 0 ? (
+                {!filteredRiskCombinations || filteredRiskCombinations.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
                     <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No high-risk combinations found</p>
@@ -619,69 +715,91 @@ export default function MonitorDashboard() {
                 ) : (
                   <div>
                     <div className="space-y-3">
-                      {riskCombinations.map((combo, index) => (
-                        <Card key={index} className="rounded-xl hover-elevate">
-                          <CardContent className="p-3">
-                            <div className="space-y-2">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">
-                                    {combo.make} {combo.model}
-                                  </p>
-                                  {combo.processor && (
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {combo.processor}
-                                    </p>
-                                  )}
-                                </div>
-                                <Badge className={riskBadgeClass(combo.risk_level)} variant="outline">
-                                  {combo.risk_level}
-                                </Badge>
-                              </div>
-                              
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div>
-                                  <p className="text-muted-foreground">Coverage</p>
-                                  <p className="font-medium">{(Number(combo.coverage_ratio) || 0).toFixed(1)}%</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Run Rate</p>
-                                  <p className="font-medium">{(Number(combo.run_rate) || 0).toFixed(1)}/mo</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Covered</p>
-                                  <p className="font-medium">{Number(combo.covered_count) || 0}</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Spare</p>
-                                  <p className="font-medium">{Number(combo.spare_count) || 0}</p>
-                                </div>
-                              </div>
+                      {filteredRiskCombinations.map((combo, index) => {
+                        const isSelected = selectedRiskItems.has(index);
+                        
+                        return (
+                          <Card key={index} className="rounded-xl hover-elevate">
+                            <CardContent className="p-3">
+                              <div className="space-y-2">
+                                <div className="flex items-start gap-2">
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={(checked) => {
+                                      const newSelected = new Set(selectedRiskItems);
+                                      if (checked) {
+                                        newSelected.add(index);
+                                      } else {
+                                        newSelected.delete(index);
+                                      }
+                                      setSelectedRiskItems(newSelected);
+                                    }}
+                                    data-testid={`checkbox-risk-${index}`}
+                                  />
+                                  
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">
+                                          {combo.make} {combo.model}
+                                        </p>
+                                        {combo.processor && (
+                                          <p className="text-xs text-muted-foreground truncate">
+                                            {combo.processor}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <Badge className={riskBadgeClass(combo.risk_level)} variant="outline">
+                                        {combo.risk_level}
+                                      </Badge>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-2 text-xs mt-2">
+                                      <div>
+                                        <p className="text-muted-foreground">Coverage</p>
+                                        <p className="font-medium">{(Number(combo.coverage_ratio) || 0).toFixed(1)}%</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Run Rate</p>
+                                        <p className="font-medium">{(Number(combo.run_rate) || 0).toFixed(1)}/mo</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Covered</p>
+                                        <p className="font-medium">{Number(combo.covered_count) || 0}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Spare</p>
+                                        <p className="font-medium">{Number(combo.spare_count) || 0}</p>
+                                      </div>
+                                    </div>
 
-                              <div className="flex items-center gap-1 mt-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="default" 
-                                  className="flex-1 gap-1"
-                                  data-testid={`button-send-alert-${index}`}
-                                >
-                                  <Bell className="w-3 h-3" />
-                                  Send Alert
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="flex-1 gap-1"
-                                  data-testid={`button-create-pool-${index}`}
-                                >
-                                  <FolderPlus className="w-3 h-3" />
-                                  Create Pool
-                                </Button>
+                                    <div className="flex items-center gap-1 mt-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="default" 
+                                        className="flex-1 gap-1"
+                                        data-testid={`button-send-alert-${index}`}
+                                      >
+                                        <Bell className="w-3 h-3" />
+                                        Send Alert
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        className="flex-1 gap-1"
+                                        data-testid={`button-create-pool-${index}`}
+                                      >
+                                        <FolderPlus className="w-3 h-3" />
+                                        Create Pool
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                     
                     <div className="mt-4 pt-4 border-t">
