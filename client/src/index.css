@@ -2,79 +2,89 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE */
+/* LIGHT MODE - Soft Pastel Theme */
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
+  --button-outline: rgba(0,0,0, .08);
+  --badge-outline: rgba(0,0,0, .04);
 
   /* Automatic computation of border around primary / danger buttons */
-  --opaque-button-border-intensity: -8; /* In terms of percentages */
+  --opaque-button-border-intensity: -6; /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-1: rgba(0,0,0, .02);
+  --elevate-2: rgba(0,0,0, .06);
 
-  --background: 210 5% 98%;
+  /* Warm, calming background */
+  --background: 30 10% 99%;
 
-  --foreground: 210 6% 12%;
+  --foreground: 220 15% 25%;
 
-  --border: 210 6% 88%;
+  --border: 220 10% 92%;
 
-  --card: 210 5% 96%;
+  /* Subtle peach-tinted cards */
+  --card: 0 0% 100%;
 
-  --card-foreground: 210 6% 12%;
+  --card-foreground: 220 15% 25%;
 
-  --card-border: 210 6% 90%;
+  --card-border: 220 10% 94%;
 
-  --sidebar: 210 5% 94%;
+  /* Soft blue-tinted sidebar */
+  --sidebar: 220 20% 96%;
 
-  --sidebar-foreground: 210 6% 12%;
+  --sidebar-foreground: 220 15% 25%;
 
-  --sidebar-border: 210 6% 86%;
+  --sidebar-border: 220 15% 90%;
 
-  --sidebar-primary: 212 92% 45%;
+  /* Lavender primary (from pastel palette) */
+  --sidebar-primary: 260 60% 72%;
 
-  --sidebar-primary-foreground: 210 5% 98%;
+  --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 210 8% 88%;
+  --sidebar-accent: 260 30% 94%;
 
-  --sidebar-accent-foreground: 210 6% 16%;
+  --sidebar-accent-foreground: 220 15% 25%;
 
-  --sidebar-ring: 212 92% 45%;
+  --sidebar-ring: 260 60% 72%;
 
-  --popover: 210 5% 92%;
+  --popover: 0 0% 100%;
 
-  --popover-foreground: 210 6% 12%;
+  --popover-foreground: 220 15% 25%;
 
-  --popover-border: 210 6% 84%;
+  --popover-border: 220 10% 92%;
 
-  --primary: 212 92% 45%;
+  /* Peach primary color */
+  --primary: 15 100% 90%;
 
-  --primary-foreground: 210 5% 98%;
+  --primary-foreground: 15 60% 40%;
 
-  --secondary: 210 8% 86%;
+  /* Lavender secondary */
+  --secondary: 260 60% 92%;
 
-  --secondary-foreground: 210 6% 16%;
+  --secondary-foreground: 260 40% 35%;
 
-  --muted: 210 10% 90%;
+  --muted: 220 15% 95%;
 
-  --muted-foreground: 210 6% 35%;
+  --muted-foreground: 220 15% 55%;
 
-  --accent: 210 12% 88%;
+  /* Mint accent */
+  --accent: 160 50% 92%;
 
-  --accent-foreground: 210 6% 16%;
+  --accent-foreground: 160 40% 35%;
 
-  --destructive: 0 84% 42%;
+  /* Rose destructive */
+  --destructive: 340 80% 88%;
 
-  --destructive-foreground: 0 5% 98%;
+  --destructive-foreground: 340 60% 40%;
 
-  --input: 210 8% 72%;
-  --ring: 212 92% 45%;
-  --chart-1: 212 92% 38%;
-  --chart-2: 173 80% 36%;
-  --chart-3: 262 75% 48%;
-  --chart-4: 32 95% 52%;
-  --chart-5: 340 82% 52%;
+  --input: 220 15% 90%;
+  --ring: 260 60% 72%;
+  
+  /* Coordinated pastel chart colors */
+  --chart-1: 15 100% 88%;  /* Soft peach */
+  --chart-2: 260 60% 88%;  /* Lavender */
+  --chart-3: 160 50% 86%;  /* Mint */
+  --chart-4: 210 80% 88%;  /* Soft blue */
+  --chart-5: 340 70% 88%;  /* Rose */
 
   --font-sans: Inter, sans-serif;
   --font-serif: Georgia, serif;
@@ -124,75 +134,85 @@
 
 .dark {
   --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
+  --badge-outline: rgba(255,255,255, .06);
 
-  --opaque-button-border-intensity: 9;  /* In terms of percentages */
+  --opaque-button-border-intensity: 8;  /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
+  --elevate-1: rgba(255,255,255, .05);
+  --elevate-2: rgba(255,255,255, .10);
 
-  --background: 210 6% 8%;
+  /* Warm dark background */
+  --background: 230 15% 12%;
 
-  --foreground: 210 5% 92%;
+  --foreground: 220 10% 92%;
 
-  --border: 210 6% 18%;
+  --border: 220 10% 22%;
 
-  --card: 210 6% 11%;
+  /* Slightly elevated cards */
+  --card: 230 15% 15%;
 
-  --card-foreground: 210 5% 92%;
+  --card-foreground: 220 10% 92%;
 
-  --card-border: 210 6% 20%;
+  --card-border: 220 10% 25%;
 
-  --sidebar: 210 6% 14%;
+  /* Sidebar with soft blue tint */
+  --sidebar: 220 20% 18%;
 
-  --sidebar-foreground: 210 5% 92%;
+  --sidebar-foreground: 220 10% 92%;
 
-  --sidebar-border: 210 6% 22%;
+  --sidebar-border: 220 15% 28%;
 
-  --sidebar-primary: 212 88% 52%;
+  /* Desaturated lavender for dark mode */
+  --sidebar-primary: 260 45% 65%;
 
-  --sidebar-primary-foreground: 210 5% 98%;
+  --sidebar-primary-foreground: 230 15% 12%;
 
-  --sidebar-accent: 210 8% 20%;
+  --sidebar-accent: 260 20% 25%;
 
-  --sidebar-accent-foreground: 210 5% 92%;
+  --sidebar-accent-foreground: 220 10% 92%;
 
-  --sidebar-ring: 212 88% 52%;
+  --sidebar-ring: 260 45% 65%;
 
-  --popover: 210 6% 16%;
+  --popover: 230 15% 18%;
 
-  --popover-foreground: 210 5% 92%;
+  --popover-foreground: 220 10% 92%;
 
-  --popover-border: 210 6% 24%;
+  --popover-border: 220 10% 28%;
 
-  --primary: 212 88% 52%;
+  /* Desaturated peach for dark mode */
+  --primary: 15 70% 68%;
 
-  --primary-foreground: 210 5% 98%;
+  --primary-foreground: 230 15% 12%;
 
-  --secondary: 210 8% 22%;
+  /* Desaturated lavender */
+  --secondary: 260 40% 62%;
 
-  --secondary-foreground: 210 5% 92%;
+  --secondary-foreground: 230 15% 12%;
 
-  --muted: 210 10% 18%;
+  --muted: 220 15% 22%;
 
-  --muted-foreground: 210 6% 68%;
+  --muted-foreground: 220 10% 68%;
 
-  --accent: 210 12% 20%;
+  /* Desaturated mint */
+  --accent: 160 35% 65%;
 
-  --accent-foreground: 210 5% 92%;
+  --accent-foreground: 230 15% 12%;
 
-  --destructive: 0 72% 50%;
+  /* Desaturated rose */
+  --destructive: 340 60% 68%;
 
-  --destructive-foreground: 0 5% 98%;
+  --destructive-foreground: 230 15% 12%;
 
-  --input: 210 8% 32%;
-  --ring: 212 88% 52%;
-  --chart-1: 212 88% 65%;
-  --chart-2: 173 75% 55%;
-  --chart-3: 262 70% 68%;
-  --chart-4: 32 90% 62%;
-  --chart-5: 340 78% 65%;
+  --input: 220 15% 28%;
+  --ring: 260 45% 65%;
+  
+  /* Coordinated pastel chart colors for dark mode */
+  --chart-1: 15 70% 75%;   /* Soft peach - lighter */
+  --chart-2: 260 50% 75%;  /* Lavender - lighter */
+  --chart-3: 160 45% 72%;  /* Mint - lighter */
+  --chart-4: 210 65% 75%;  /* Soft blue - lighter */
+  --chart-5: 340 55% 75%;  /* Rose - lighter */
 
   --shadow-2xs: 0px 1px 2px 0px hsl(210 10% 3% / 0.20);
   --shadow-xs: 0px 1px 3px 0px hsl(210 10% 3% / 0.30);
