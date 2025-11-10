@@ -11,13 +11,14 @@ Preferred communication style: Simple, everyday language.
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript and Vite.
 - **UI Component System**: shadcn/ui (New York style) built on Radix UI, utilizing Tailwind CSS for styling, adhering to Carbon Design System principles, and supporting dark/light themes.
-- **Design System**: Comprehensive pastel theme with specific color palettes for primary, secondary, accent, and destructive elements, and a 5-color coordinated pastel palette for charts. Features rounded-2xl corners for components, MetricCard variants, and soft pill-shaped risk badges.
-- **Design Principles**: Data-first presentation for enterprise dashboards, high information density, Inter and JetBrains Mono typography, consistent spacing, and soft pastel aesthetics.
+- **Design System**: Modern B2B SaaS aesthetic with vibrant pastel color palette, pure white cards on clean neutral backgrounds, comprehensive design guidelines in design_guidelines.md. Features rounded-2xl corners, border-first styling, MetricCard with color-coded variants (primary/secondary/accent), and soft pill-shaped risk badges.
+- **Color Palette**: Vibrant pastels - Primary Peach (#FF9B7A / 15° 88% 65%), Secondary Lavender (#B4A7FF / 260° 75% 70%), Accent Mint (#7EDDBA / 160° 60% 55%), Destructive Rose (#FF7A9E / 340° 75% 65%), plus Blue (#7AB8FF) for charts.
+- **Design Principles**: Data-first presentation for enterprise dashboards, sophisticated and organized layouts, high information density, Inter and JetBrains Mono typography, consistent spacing (p-8 page padding, gap-6 between cards), pure white cards (not greyish), clean neutral backgrounds.
 - **State Management**: TanStack Query for server state, local React state for UI, and Context API for theme.
 - **Routing**: wouter.
-- **Key Pages**: Dashboard (3-column layout with risk analysis), Coverage Pools, Warranty Explorer, Replacement Stock, Stock under Warranty, Available Stock, Claimed Units, Replacements Sent, Configuration (with webhook integration), and Pool Detail (full-page analytics dashboard).
+- **Key Pages**: Dashboard (4-column metric cards, 2-column layout with Coverage Trend and High-Risk Combinations), Coverage Pools, Warranty Explorer, Replacement Stock, Stock under Warranty, Available Stock, Claimed Units, Replacements Sent, Configuration (with webhook integration), and Pool Detail (full-page analytics dashboard).
 - **Navigation**: Grouped sidebar navigation with sections for Dashboard & Monitoring, Pool Management, Inventory, and Settings.
-- **UX Improvements**: Redesigned 3-column dashboard, Risk Analysis & Alerting with webhook integration and auto-pool creation, dedicated full-page pool details dashboard with KPIs, trend forecasting, and recommendations, and Excel export functionality.
+- **UX Improvements**: Modern 4-column dashboard metrics, Risk Analysis & Alerting with webhook integration and auto-pool creation, dedicated full-page pool details dashboard with KPIs, trend forecasting, recommendations, and Excel export functionality.
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript on Node.js.
