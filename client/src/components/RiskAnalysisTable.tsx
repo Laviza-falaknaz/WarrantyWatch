@@ -39,15 +39,15 @@ interface RiskCombination {
 const riskBadgeClass = (level: RiskLevel) => {
   switch (level) {
     case 'critical': 
-      return 'bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100 border-red-200 dark:border-red-800 font-semibold';
+      return 'bg-destructive/20 text-destructive-foreground border-destructive/30 dark:bg-destructive/30 dark:text-destructive-foreground dark:border-destructive/40 font-semibold rounded-full';
     case 'high': 
-      return 'bg-orange-50 text-orange-900 dark:bg-orange-950 dark:text-orange-100 border-orange-200 dark:border-orange-800 font-semibold';
+      return 'bg-primary/30 text-primary-foreground border-primary/40 dark:bg-primary/40 dark:text-primary-foreground dark:border-primary/50 font-semibold rounded-full';
     case 'medium': 
-      return 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100 border-amber-200 dark:border-amber-800 font-semibold';
+      return 'bg-secondary/30 text-secondary-foreground border-secondary/40 dark:bg-secondary/40 dark:text-secondary-foreground dark:border-secondary/50 font-medium rounded-full';
     case 'low': 
-      return 'bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-700';
+      return 'bg-accent/30 text-accent-foreground border-accent/40 dark:bg-accent/40 dark:text-accent-foreground dark:border-accent/50 rounded-full';
     default: 
-      return 'bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100';
+      return 'bg-muted text-muted-foreground border-border rounded-full';
   }
 };
 
