@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DataTable, { Column } from "@/components/DataTable";
 import FilterPanel, { FilterCategory } from "@/components/FilterPanel";
@@ -6,15 +6,16 @@ import SearchBar from "@/components/SearchBar";
 import TablePagination from "@/components/TablePagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Download, AlertCircle } from "lucide-react";
+import { Download, Package, CheckCircle2, AlertCircle, XCircle, Filter as FilterIcon } from "lucide-react";
 import type { SpareUnit } from "@shared/schema";
 
 export default function Inventory() {
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
   
   const ITEMS_PER_PAGE = 100;
 
@@ -30,7 +31,7 @@ export default function Inventory() {
     queryKey: ["/api/filters"],
   });
 
-  // Fetch stats for total count (used for pagination)
+  // Fetch stats for total count
   const { data: stats } = useQuery({
     queryKey: ["/api/spare-units/stats", selectedFilters, searchQuery],
     queryFn: async () => {
@@ -64,7 +65,6 @@ export default function Inventory() {
         params.append("search", searchQuery);
       }
       
-      // Add pagination parameters
       params.append("limit", ITEMS_PER_PAGE.toString());
       params.append("offset", ((currentPage - 1) * ITEMS_PER_PAGE).toString());
       
@@ -73,6 +73,22 @@ export default function Inventory() {
       return response.json();
     },
   });
+
+  // Calculate status breakdown
+  const statusBreakdown = useMemo(() => {
+    if (!replacementUnits) return { available: 0, reserved: 0, retired: 0 };
+    
+    return replacementUnits.reduce((acc: any, unit: SpareUnit) => {
+      if (unit.retiredOrder) {
+        acc.retired++;
+      } else if (unit.reservedForCase) {
+        acc.reserved++;
+      } else {
+        acc.available++;
+      }
+      return acc;
+    }, { available: 0, reserved: 0, retired: 0 });
+  }, [replacementUnits]);
 
   const filterCategories: FilterCategory[] = [
     {
@@ -210,17 +226,17 @@ export default function Inventory() {
       ...prev,
       [categoryId]: values,
     }));
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   };
 
   const handleClearAll = () => {
     setSelectedFilters({});
-    setCurrentPage(1); // Reset to first page when clearing filters
+    setCurrentPage(1);
   };
 
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page when search changes
+    setCurrentPage(1);
   }, []);
 
   const handlePageChange = useCallback((page: number) => {
@@ -232,14 +248,19 @@ export default function Inventory() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-8">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Replacement Pool</h1>
+            <h1 className="text-3xl font-bold">Replacement Pool</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Replacement units available in the pool to cover warranty claims on deployed units
+              Replacement units available to cover warranty claims
             </p>
           </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -247,39 +268,130 @@ export default function Inventory() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-6 p-8">
+      {/* Header Section */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold" data-testid="heading-replacement-pool">
+          <h1 className="text-3xl font-bold" data-testid="heading-replacement-pool">
             Replacement Pool
           </h1>
           <p className="text-sm text-muted-foreground mt-1" data-testid="text-replacement-pool-description">
             Replacement units available in the pool to cover warranty claims on deployed units
           </p>
         </div>
-        <Button variant="outline" data-testid="button-export-replacement-units">
+        <Button variant="outline" data-testid="button-export-replacement-units" size="lg">
           <Download className="h-4 w-4 mr-2" />
           Export
         </Button>
       </div>
 
+      {/* Summary Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="rounded-2xl border hover-elevate transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-primary/10 rounded-xl">
+                <Package className="h-6 w-6 text-primary" />
+              </div>
+              <Badge variant="outline">Total</Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Total Units</p>
+              <p className="text-4xl font-bold tracking-tight">{totalItems.toLocaleString()}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border hover-elevate transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-green-500/10 rounded-xl">
+                <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-500" />
+              </div>
+              <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
+                Available
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Available</p>
+              <p className="text-4xl font-bold tracking-tight text-green-600 dark:text-green-500">
+                {statusBreakdown.available}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border hover-elevate transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-yellow-500/10 rounded-xl">
+                <AlertCircle className="h-6 w-6 text-yellow-600 dark:text-yellow-500" />
+              </div>
+              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800">
+                Reserved
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Reserved</p>
+              <p className="text-4xl font-bold tracking-tight text-yellow-600 dark:text-yellow-500">
+                {statusBreakdown.reserved}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border hover-elevate transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-muted rounded-xl">
+                <XCircle className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <Badge variant="outline">Retired</Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Retired</p>
+              <p className="text-4xl font-bold tracking-tight">{statusBreakdown.retired}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters and Content */}
       <div className="flex gap-6">
-        <div className="w-72 flex-shrink-0">
-          <FilterPanel
-            categories={filterCategories}
-            selectedFilters={selectedFilters}
-            onFilterChange={handleFilterChange}
-            onClearAll={handleClearAll}
-          />
-        </div>
+        {showFilters && (
+          <div className="w-72 flex-shrink-0">
+            <FilterPanel
+              categories={filterCategories}
+              selectedFilters={selectedFilters}
+              onFilterChange={handleFilterChange}
+              onClearAll={handleClearAll}
+            />
+          </div>
+        )}
 
         <div className="flex-1 space-y-4">
-          <SearchBar
-            placeholder="Search by serial number, make, model..."
-            onSearch={handleSearchChange}
-            className="max-w-md"
-            data-testid="input-search-replacement-units"
-          />
+          <div className="flex items-center gap-4">
+            <Button
+              variant={showFilters ? "secondary" : "outline"}
+              onClick={() => setShowFilters(!showFilters)}
+              data-testid="button-toggle-filters"
+            >
+              <FilterIcon className="h-4 w-4 mr-2" />
+              {showFilters ? "Hide Filters" : "Show Filters"}
+              {Object.keys(selectedFilters).length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {Object.values(selectedFilters).flat().length}
+                </Badge>
+              )}
+            </Button>
+
+            <SearchBar
+              placeholder="Search by serial number, make, model..."
+              onSearch={handleSearchChange}
+              className="flex-1 max-w-md"
+              data-testid="input-search-replacement-units"
+            />
+          </div>
 
           {totalPages > 0 && (
             <TablePagination
