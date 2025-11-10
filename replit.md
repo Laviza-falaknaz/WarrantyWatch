@@ -16,9 +16,25 @@ Preferred communication style: Simple, everyday language.
 - **Design Principles**: Data-first presentation for enterprise dashboards, sophisticated and organized layouts, high information density, Inter and JetBrains Mono typography, consistent spacing (p-8 page padding, gap-6 between cards), pure white cards (not greyish), clean neutral backgrounds.
 - **State Management**: TanStack Query for server state, local React state for UI, and Context API for theme.
 - **Routing**: wouter.
-- **Key Pages**: Dashboard (4-column metric cards, 2-column layout with Coverage Trend and High-Risk Combinations), Coverage Pools, Warranty Explorer, Replacement Stock, Stock under Warranty, Available Stock, Claimed Units, Replacements Sent, Configuration (with webhook integration), and Pool Detail (full-page analytics dashboard).
+- **Key Pages** (All Redesigned November 2025):
+  - **Dashboard** (`/`) - Bento-box CSS grid layout with varied card sizes, integrated charts (pie/bar/line), reorganized pool insights, full-width risk analysis table
+  - **Configuration** (`/configuration`) - 5-tab interface (Thresholds, Timeframes, Alerts, Analytics, Integrations) with contextual icons, inline helpers, sticky action footer
+  - **Coverage Pools** (`/pools`) - Summary KPI cards (Total/Avg Coverage/Healthy/Critical), status filtering, grid/list view toggle, improved pool creation dialog
+  - **Inventory** (`/inventory`) - 4 stat cards (Total/Available/Reserved/Retired), toggleable filter panel with count badge, modern header design
+  - **Warranties** (`/warranties`) - 4 stat cards (Total/Active/Expiring/Expired) with color-coded accents (blue/orange/red), enhanced search and export
+  - **Claims** (`/claims`) - Single stat card (Total Claims) with FileWarning icon, Excel export functionality
+  - **Replacements** (`/replacements`) - Single stat card (Total Replacements) with RefreshCw icon, Excel export functionality
+  - **Available Stock** (`/available-stock`) - 3 stat cards (Total/Available/Reserved) with color-coded accents (green/amber)
+  - **Pool Detail** (`/pools/:id`) - Full-page analytics dashboard with KPIs, trend forecasting, recommendations, Excel export
+  - **Warranty Explorer** - External API integration with charts and filtering
 - **Navigation**: Grouped sidebar navigation with sections for Dashboard & Monitoring, Pool Management, Inventory, and Settings.
-- **UX Improvements**: Modern 4-column dashboard metrics, Risk Analysis & Alerting with webhook integration and auto-pool creation, dedicated full-page pool details dashboard with KPIs, trend forecasting, recommendations, and Excel export functionality.
+- **Redesign Features** (Completed November 2025):
+  - **Consistent Layout Pattern**: All pages use p-8 padding, text-3xl font-bold headers, rounded-2xl stat cards with hover-elevate transitions
+  - **Stat Cards**: text-4xl font-bold tracking-tight numbers, semantic icons with color-coded backgrounds (green/blue/orange/red/yellow/amber)
+  - **Export Buttons**: Unified size="lg" styling across all data-heavy pages
+  - **Data Flow**: Consistent search → pagination → table pattern with 100 items per page
+  - **Loading States**: Skeleton loaders matching final layout structure to prevent content jumps
+  - **Design Compliance**: rounded-2xl (not rounded-3xl), border (not border-2), white card backgrounds, no heavy gradients, proper hover interactions
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript on Node.js.
