@@ -157,62 +157,82 @@ export default function Dashboard() {
 
   if (analyticsLoading || statsLoading || stockUnderWarrantyLoading || replacementUnitsLoading) {
     return (
-      <div className="space-y-6">
+      <div className="p-8 space-y-8">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-2">
             Monitor coverage, high-risk combinations, and pool status
           </p>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.3fr)_minmax(0,0.7fr)] gap-6">
-          <div className="space-y-4">
-            <Skeleton className="h-24" />
-            <Skeleton className="h-64" />
+          <div className="space-y-6">
+            <Skeleton className="h-64 rounded-2xl" />
+            <Skeleton className="h-96 rounded-2xl" />
           </div>
-          <Skeleton className="h-96" />
+          <Skeleton className="h-full rounded-2xl" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-8 space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold" data-testid="page-dashboard">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h1 className="text-3xl font-bold tracking-tight" data-testid="page-dashboard">Dashboard</h1>
+        <p className="text-muted-foreground mt-2">
           Monitor coverage, high-risk combinations, and pool status
         </p>
       </div>
 
-      {/* 2-Column Layout: 30% - 70% */}
+      {/* Top Row: Metric Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard
+          title="Active Warranty"
+          value={analytics?.activeCoverage || 0}
+          icon={Shield}
+          subtitle="Non-expired coverage"
+          variant="primary"
+        />
+        <MetricCard
+          title="Replacement Pool"
+          value={analytics?.totalSpareUnits || 0}
+          icon={Package}
+          subtitle="All spare units"
+          variant="secondary"
+        />
+        <MetricCard
+          title="Coverage Ratio"
+          value={`${(analytics?.averageCoverageRatio || 0).toFixed(1)}%`}
+          icon={TrendingUp}
+          subtitle="Average pool coverage"
+          variant="accent"
+        />
+        <MetricCard
+          title="Expiring Soon"
+          value={analytics?.expiringCoverage || 0}
+          icon={AlertCircle}
+          subtitle={`Within ${analytics?.expiringCoverageDays || 30} days`}
+        />
+      </div>
+
+      {/* Main Content: 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.3fr)_minmax(0,0.7fr)] gap-6">
         
-        {/* Left Column: Summary Cards, Charts & Pool Cards */}
-        <div className="space-y-4">
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
-            <MetricCard
-              title="Active Warranty"
-              value={analytics?.activeCoverage || 0}
-              icon={Shield}
-              subtitle="Non-expired coverage"
-              data-testid="card-active-warranty"
-            />
-            <MetricCard
-              title="Replacement Pool"
-              value={analytics?.totalSpareUnits || 0}
-              icon={Package}
-              subtitle="All spare units"
-              data-testid="card-total-replacement-pool"
-            />
-          </div>
-
+        {/* Left Column: Charts & Pool Cards */}
+        <div className="space-y-6">
           {/* Coverage Trend Chart */}
-          <Card>
-            <CardHeader className="pb-2">
-              <h3 className="text-sm font-medium">Coverage Trend</h3>
+          <Card className="rounded-2xl border border-border">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold">Coverage Trend</CardTitle>
+              <CardDescription className="text-sm">Warranties expiring over time</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-2">
               <ResponsiveContainer width="100%" height={150}>
                 <LineChart data={coverageExpirationData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -246,61 +266,63 @@ export default function Dashboard() {
           </Card>
 
           {/* Coverage Pools Summary */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">Coverage Pools</CardTitle>
+          <Card className="rounded-2xl border border-border">
+            <CardHeader className="pb-4 border-b border-border">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg font-semibold">Coverage Pools</CardTitle>
+                  <CardDescription className="text-sm">Pool status with metrics</CardDescription>
+                </div>
                 <Link href="/coverage-pools">
-                  <Button variant="ghost" size="sm" className="h-7 text-xs">
+                  <Button variant="ghost" size="sm">
                     View All
                   </Button>
                 </Link>
               </div>
-              <CardDescription className="text-xs">Pool status with metrics</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <ScrollArea className="h-[400px]">
-                <div className="space-y-2 p-4 pt-0">
+                <div className="space-y-3 p-6 pt-4">
                   {poolCoverageStats.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <Package className="h-8 w-8 text-muted-foreground mb-2" />
-                      <p className="text-xs text-muted-foreground">No pools configured yet</p>
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Package className="h-10 w-10 text-muted-foreground mb-3" />
+                      <p className="text-sm text-muted-foreground">No pools configured yet</p>
                     </div>
                   ) : (
                     poolCoverageStats.map((pool: any) => (
                       <Link key={pool.id} href={`/pools/${pool.id}`}>
-                        <Card className="hover-elevate cursor-pointer" data-testid={`pool-card-${pool.id}`}>
-                          <CardContent className="p-3 space-y-2">
-                            <div className="flex items-start justify-between gap-2">
+                        <Card className="transition-shadow hover:shadow-sm cursor-pointer border border-border" data-testid={`pool-card-${pool.id}`}>
+                          <CardContent className="p-4 space-y-3">
+                            <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
-                                <h4 className="text-xs font-medium truncate">{pool.name}</h4>
-                                <p className="text-xs text-muted-foreground truncate">
+                                <h4 className="text-sm font-semibold truncate">{pool.name}</h4>
+                                <p className="text-xs text-muted-foreground truncate mt-1">
                                   {pool.specifications.slice(0, 2).join(' • ')}
                                 </p>
                               </div>
                               <Badge 
                                 variant={pool.coverage < 50 ? 'destructive' : pool.coverage < 75 ? 'default' : 'outline'}
-                                className="ml-1 shrink-0 text-xs h-5"
+                                className="shrink-0"
                               >
                                 {pool.coverage}%
                               </Badge>
                             </div>
-                            <div className="grid grid-cols-4 gap-2 text-xs">
+                            <div className="grid grid-cols-4 gap-3 text-center">
                               <div>
                                 <div className="text-muted-foreground text-xs">Covered</div>
-                                <div className="font-semibold">{pool.coveredCount}</div>
+                                <div className="font-semibold text-sm mt-1">{pool.coveredCount}</div>
                               </div>
                               <div>
                                 <div className="text-muted-foreground text-xs">Spare</div>
-                                <div className="font-semibold">{pool.spareCount}</div>
+                                <div className="font-semibold text-sm mt-1">{pool.spareCount}</div>
                               </div>
                               <div>
                                 <div className="text-muted-foreground text-xs">Run Rate</div>
-                                <div className="font-semibold">{pool.runRate || '0'}/mo</div>
+                                <div className="font-semibold text-sm mt-1">{pool.runRate || '0'}/mo</div>
                               </div>
                               <div>
                                 <div className="text-muted-foreground text-xs">Available</div>
-                                <div className="font-semibold">{pool.availableStockCount || '0'}</div>
+                                <div className="font-semibold text-sm mt-1">{pool.availableStockCount || '0'}</div>
                               </div>
                             </div>
                           </CardContent>

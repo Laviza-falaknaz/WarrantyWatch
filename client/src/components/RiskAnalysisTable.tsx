@@ -277,17 +277,17 @@ export default function RiskAnalysisTable() {
   const hasSelection = selectedRows.size > 0;
 
   return (
-    <Card data-testid="card-risk-analysis">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className="rounded-2xl border border-border" data-testid="card-risk-analysis">
+      <CardHeader className="pb-4 border-b border-border">
+        <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-destructive" />
           High-Risk Combinations
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-sm">
           Equipment with high claim rates and low spare coverage (last 6 months)
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6">
+      <CardContent className="p-6 pt-4">
         <div className="mb-4 space-y-3">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
