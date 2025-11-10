@@ -27,6 +27,9 @@ import {
   Package,
   Shield,
   TrendingDown,
+  X,
+  Bell,
+  FolderPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, addMonths, subMonths, eachDayOfInterval } from "date-fns";
@@ -142,7 +145,6 @@ export default function MonitorDashboard() {
     make: "",
     model: "",
   });
-  const [showFilters, setShowFilters] = useState(false);
 
   const endDate = useMemo(() => addMonths(startDate, 6), [startDate]);
 
@@ -252,6 +254,36 @@ export default function MonitorDashboard() {
     return weeks;
   }, [heatmapData]);
 
+  const monthHeaders = useMemo(() => {
+    const headers: { weekIndex: number; month: string }[] = [];
+    let lastMonth = -1;
+
+    heatmapWeeks.forEach((week, weekIndex) => {
+      const firstRealDay = week.find(cell => cell.count !== -1);
+      if (firstRealDay) {
+        const month = firstRealDay.date.getMonth();
+        if (month !== lastMonth) {
+          headers.push({
+            weekIndex,
+            month: format(firstRealDay.date, 'MMM'),
+          });
+          lastMonth = month;
+        }
+      }
+    });
+
+    return headers;
+  }, [heatmapWeeks]);
+
+  const activeFilterCount = useMemo(
+    () => Object.values(filters).filter(v => v).length,
+    [filters]
+  );
+
+  const clearFilter = (key: keyof typeof filters) => {
+    setFilters(prev => ({ ...prev, [key]: "" }));
+  };
+
   const sortedPools = useMemo(() => {
     if (!pools) return [];
     return [...pools]
@@ -271,15 +303,13 @@ export default function MonitorDashboard() {
     return (
       <div className="p-8 space-y-6">
         <Skeleton className="h-12 w-96" />
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-3 space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8 space-y-4">
             <Skeleton className="h-32" />
+            <Skeleton className="h-96" />
             <Skeleton className="h-64" />
           </div>
-          <div className="col-span-6">
-            <Skeleton className="h-96" />
-          </div>
-          <div className="col-span-3">
+          <div className="lg:col-span-4">
             <Skeleton className="h-96" />
           </div>
         </div>
@@ -296,107 +326,20 @@ export default function MonitorDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Monitor</h1>
-              <p className="text-muted-foreground">
-                Track warranty expirations and high-risk combinations
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setShowFilters(!showFilters)}
-              className="gap-2"
-              data-testid="button-toggle-filters"
-            >
-              <Filter className="w-4 h-4" />
-              Filters
-              {Object.values(filters).some(v => v) && (
-                <Badge variant="destructive" className="ml-2">
-                  {Object.values(filters).filter(v => v).length}
-                </Badge>
-              )}
-            </Button>
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Monitor</h1>
+            <p className="text-muted-foreground">
+              Track warranty expirations and high-risk combinations
+            </p>
           </div>
         </motion.div>
 
-        {/* Filters Panel */}
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-          >
-            <Card className="rounded-2xl">
-              <CardHeader>
-                <CardTitle>Filter Warranties</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="filter-order">Order Number</Label>
-                    <Input
-                      id="filter-order"
-                      placeholder="Search orders..."
-                      value={filters.orderNumber}
-                      onChange={(e) => setFilters(prev => ({ ...prev, orderNumber: e.target.value }))}
-                      data-testid="input-filter-order"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="filter-customer">Customer Name</Label>
-                    <Input
-                      id="filter-customer"
-                      placeholder="Search customers..."
-                      value={filters.customerName}
-                      onChange={(e) => setFilters(prev => ({ ...prev, customerName: e.target.value }))}
-                      data-testid="input-filter-customer"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="filter-make">Make</Label>
-                    <Input
-                      id="filter-make"
-                      placeholder="Search makes..."
-                      value={filters.make}
-                      onChange={(e) => setFilters(prev => ({ ...prev, make: e.target.value }))}
-                      data-testid="input-filter-make"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="filter-model">Model</Label>
-                    <Input
-                      id="filter-model"
-                      placeholder="Search models..."
-                      value={filters.model}
-                      onChange={(e) => setFilters(prev => ({ ...prev, model: e.target.value }))}
-                      data-testid="input-filter-model"
-                    />
-                  </div>
-                </div>
-                <div className="mt-4 flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setFilters({ orderNumber: "", customerName: "", make: "", model: "" })}
-                    data-testid="button-clear-filters"
-                  >
-                    Clear All
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* 3-Column Layout: 25-45-30 ratio */}
-        <div className="grid grid-cols-12 gap-6">
-          {/* Column 1: 25% (3/12) - Insights & Coverage Pools */}
-          <div className="col-span-3 space-y-6">
+        {/* 2-Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column: lg:col-span-8 - Insights + Heatmap + Coverage Pools */}
+          <div className="lg:col-span-8 space-y-6">
             {/* Insight Cards */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Insights</h2>
-              
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="rounded-2xl">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
@@ -443,11 +386,177 @@ export default function MonitorDashboard() {
               </Card>
             </div>
 
+            {/* Heatmap Timeline */}
+            <Card className="rounded-2xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Warranty Expiration Timeline</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => moveTimeWindow('prev')}
+                      data-testid="button-prev-month"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground min-w-[200px] text-center">
+                      {format(startDate, 'MMM yyyy')} - {format(endDate, 'MMM yyyy')}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => moveTimeWindow('next')}
+                      data-testid="button-next-month"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Inline Filter Toolbar */}
+                <div className="border-t pt-4 pb-2">
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <Input
+                      placeholder="Order #"
+                      className="max-w-[150px]"
+                      value={filters.orderNumber}
+                      onChange={(e) => setFilters(prev => ({ ...prev, orderNumber: e.target.value }))}
+                      data-testid="input-filter-order"
+                    />
+                    <Input
+                      placeholder="Customer"
+                      className="max-w-[150px]"
+                      value={filters.customerName}
+                      onChange={(e) => setFilters(prev => ({ ...prev, customerName: e.target.value }))}
+                      data-testid="input-filter-customer"
+                    />
+                    <Input
+                      placeholder="Make"
+                      className="max-w-[120px]"
+                      value={filters.make}
+                      onChange={(e) => setFilters(prev => ({ ...prev, make: e.target.value }))}
+                      data-testid="input-filter-make"
+                    />
+                    <Input
+                      placeholder="Model"
+                      className="max-w-[120px]"
+                      value={filters.model}
+                      onChange={(e) => setFilters(prev => ({ ...prev, model: e.target.value }))}
+                      data-testid="input-filter-model"
+                    />
+                  </div>
+
+                  {/* Active Filter Chips */}
+                  {activeFilterCount > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {filters.orderNumber && (
+                        <Badge variant="secondary" className="gap-1">
+                          Order: {filters.orderNumber}
+                          <X
+                            className="w-3 h-3 cursor-pointer hover-elevate"
+                            onClick={() => clearFilter('orderNumber')}
+                            data-testid="button-clear-order-filter"
+                          />
+                        </Badge>
+                      )}
+                      {filters.customerName && (
+                        <Badge variant="secondary" className="gap-1">
+                          Customer: {filters.customerName}
+                          <X
+                            className="w-3 h-3 cursor-pointer hover-elevate"
+                            onClick={() => clearFilter('customerName')}
+                            data-testid="button-clear-customer-filter"
+                          />
+                        </Badge>
+                      )}
+                      {filters.make && (
+                        <Badge variant="secondary" className="gap-1">
+                          Make: {filters.make}
+                          <X
+                            className="w-3 h-3 cursor-pointer hover-elevate"
+                            onClick={() => clearFilter('make')}
+                            data-testid="button-clear-make-filter"
+                          />
+                        </Badge>
+                      )}
+                      {filters.model && (
+                        <Badge variant="secondary" className="gap-1">
+                          Model: {filters.model}
+                          <X
+                            className="w-3 h-3 cursor-pointer hover-elevate"
+                            onClick={() => clearFilter('model')}
+                            data-testid="button-clear-model-filter"
+                          />
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFilters({ orderNumber: "", customerName: "", make: "", model: "" })}
+                        className="h-6 text-xs"
+                        data-testid="button-clear-filters"
+                      >
+                        Clear all
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="overflow-x-auto mt-4">
+                  {/* Month Headers */}
+                  <div className="flex gap-1 mb-1">
+                    {monthHeaders.map((header, index) => (
+                      <div
+                        key={index}
+                        className="text-xs font-semibold text-muted-foreground"
+                        style={{
+                          marginLeft: index === 0 ? 0 : `${(header.weekIndex - (monthHeaders[index - 1]?.weekIndex || 0)) * 16}px`,
+                        }}
+                      >
+                        {header.month}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Grid */}
+                  <div className="flex gap-1">
+                    {heatmapWeeks.map((week, weekIndex) => (
+                      <div key={weekIndex} className="flex flex-col gap-1">
+                        {week.map((cell, dayIndex) => (
+                          <div key={dayIndex}>
+                            {cell.count === -1 ? (
+                              <div className="w-3 h-3" data-testid="heatmap-padding" />
+                            ) : (
+                              <HeatmapDay cell={cell} maxCount={maxCount} />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex items-center gap-2 mt-6 text-xs text-muted-foreground">
+                    <span>Less</span>
+                    <div className="flex gap-1">
+                      <div className="w-3 h-3 rounded-sm bg-muted/10 border border-border/40" />
+                      <div className="w-3 h-3 rounded-sm bg-accent/20 border border-border/40" />
+                      <div className="w-3 h-3 rounded-sm bg-amber-400/30 border border-border/40" />
+                      <div className="w-3 h-3 rounded-sm bg-orange-500/40 border border-border/40" />
+                      <div className="w-3 h-3 rounded-sm bg-destructive/50 border border-border/40" />
+                      <div className="w-3 h-3 rounded-sm bg-destructive/70 border border-border/40" />
+                    </div>
+                    <span>More</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Coverage Pools */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Low Coverage Pools</h2>
-              </div>
+              <h2 className="text-lg font-semibold">Low Coverage Pools</h2>
               
               {sortedPools.length === 0 ? (
                 <Card className="rounded-2xl">
@@ -457,7 +566,7 @@ export default function MonitorDashboard() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {sortedPools.map((pool) => {
                     const getCoverageColor = (ratio: number) => {
                       if (ratio >= 15) return "text-green-600 dark:text-green-500";
@@ -495,82 +604,8 @@ export default function MonitorDashboard() {
             </div>
           </div>
 
-          {/* Column 2: 45% (5/12) - Heatmap Timeline */}
-          <div className="col-span-5">
-            <Card className="rounded-2xl">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Warranty Expiration Timeline</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => moveTimeWindow('prev')}
-                      data-testid="button-prev-month"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <span className="text-sm text-muted-foreground min-w-[200px] text-center">
-                      {format(startDate, 'MMM yyyy')} - {format(endDate, 'MMM yyyy')}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => moveTimeWindow('next')}
-                      data-testid="button-next-month"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
-                {/* Day labels */}
-                <div className="flex gap-1 mb-2">
-                  <div className="w-8" />
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                    <div key={day} className="text-xs text-muted-foreground w-3 text-center">
-                      {day[0]}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Grid */}
-                <div className="flex gap-1">
-                  {heatmapWeeks.map((week, weekIndex) => (
-                    <div key={weekIndex} className="flex flex-col gap-1">
-                      {week.map((cell, dayIndex) => (
-                        <div key={dayIndex}>
-                          {cell.count === -1 ? (
-                            <div className="w-3 h-3" data-testid="heatmap-padding" />
-                          ) : (
-                            <HeatmapDay cell={cell} maxCount={maxCount} />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Legend */}
-                <div className="flex items-center gap-2 mt-6 text-xs text-muted-foreground">
-                  <span>Less</span>
-                  <div className="flex gap-1">
-                    <div className="w-3 h-3 rounded-sm bg-muted/10 border border-border/40" />
-                    <div className="w-3 h-3 rounded-sm bg-accent/20 border border-border/40" />
-                    <div className="w-3 h-3 rounded-sm bg-amber-400/30 border border-border/40" />
-                    <div className="w-3 h-3 rounded-sm bg-orange-500/40 border border-border/40" />
-                    <div className="w-3 h-3 rounded-sm bg-destructive/50 border border-border/40" />
-                    <div className="w-3 h-3 rounded-sm bg-destructive/70 border border-border/40" />
-                  </div>
-                  <span>More</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Column 3: 30% (4/12) - High-Risk Combinations */}
-          <div className="col-span-4">
+          {/* Right Column: lg:col-span-4 - High-Risk Combinations */}
+          <div className="lg:col-span-4">
             <Card className="rounded-2xl">
               <CardHeader>
                 <CardTitle className="text-lg">High-Risk Combinations</CardTitle>
@@ -582,49 +617,83 @@ export default function MonitorDashboard() {
                     <p className="text-sm">No high-risk combinations found</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {riskCombinations.map((combo, index) => (
-                      <Card key={index} className="rounded-xl hover-elevate">
-                        <CardContent className="p-3">
-                          <div className="space-y-2">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">
-                                  {combo.make} {combo.model}
-                                </p>
-                                {combo.processor && (
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {combo.processor}
+                  <div>
+                    <div className="space-y-3">
+                      {riskCombinations.map((combo, index) => (
+                        <Card key={index} className="rounded-xl hover-elevate">
+                          <CardContent className="p-3">
+                            <div className="space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">
+                                    {combo.make} {combo.model}
                                   </p>
-                                )}
+                                  {combo.processor && (
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {combo.processor}
+                                    </p>
+                                  )}
+                                </div>
+                                <Badge className={riskBadgeClass(combo.risk_level)} variant="outline">
+                                  {combo.risk_level}
+                                </Badge>
                               </div>
-                              <Badge className={riskBadgeClass(combo.risk_level)} variant="outline">
-                                {combo.risk_level}
-                              </Badge>
+                              
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <p className="text-muted-foreground">Coverage</p>
+                                  <p className="font-medium">{(Number(combo.coverage_ratio) || 0).toFixed(1)}%</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Run Rate</p>
+                                  <p className="font-medium">{(Number(combo.run_rate) || 0).toFixed(1)}/mo</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Covered</p>
+                                  <p className="font-medium">{Number(combo.covered_count) || 0}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Spare</p>
+                                  <p className="font-medium">{Number(combo.spare_count) || 0}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1 mt-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="default" 
+                                  className="flex-1 gap-1"
+                                  data-testid={`button-send-alert-${index}`}
+                                >
+                                  <Bell className="w-3 h-3" />
+                                  Send Alert
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="flex-1 gap-1"
+                                  data-testid={`button-create-pool-${index}`}
+                                >
+                                  <FolderPlus className="w-3 h-3" />
+                                  Create Pool
+                                </Button>
+                              </div>
                             </div>
-                            
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div>
-                                <p className="text-muted-foreground">Coverage</p>
-                                <p className="font-medium">{(Number(combo.coverage_ratio) || 0).toFixed(1)}%</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Run Rate</p>
-                                <p className="font-medium">{(Number(combo.run_rate) || 0).toFixed(1)}/mo</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Covered</p>
-                                <p className="font-medium">{Number(combo.covered_count) || 0}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Spare</p>
-                                <p className="font-medium">{Number(combo.spare_count) || 0}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t">
+                      <Button 
+                        variant="ghost" 
+                        className="w-full gap-2"
+                        data-testid="button-view-all-risk-profiles"
+                      >
+                        View All Risk Profiles
+                        <ChevronRightIcon className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 )}
               </CardContent>
