@@ -153,15 +153,24 @@ export default function PoolGroups() {
     
     try {
       const filterCriteria = JSON.parse(pool.filterCriteria);
-      setSelectedMakes(filterCriteria.make || []);
-      setSelectedModels(filterCriteria.model || []);
-      setSelectedProcessors(filterCriteria.processor || []);
-      setSelectedRams(filterCriteria.ram || []);
-      setSelectedCategories(filterCriteria.category || []);
-      setSelectedStorageSizes(filterCriteria.hdd || []);
-      setSelectedGenerations(filterCriteria.generation || []);
+      // Ensure all values are arrays, even if undefined or not present
+      setSelectedMakes(Array.isArray(filterCriteria.make) ? filterCriteria.make : []);
+      setSelectedModels(Array.isArray(filterCriteria.model) ? filterCriteria.model : []);
+      setSelectedProcessors(Array.isArray(filterCriteria.processor) ? filterCriteria.processor : []);
+      setSelectedRams(Array.isArray(filterCriteria.ram) ? filterCriteria.ram : []);
+      setSelectedCategories(Array.isArray(filterCriteria.category) ? filterCriteria.category : []);
+      setSelectedStorageSizes(Array.isArray(filterCriteria.hdd) ? filterCriteria.hdd : []);
+      setSelectedGenerations(Array.isArray(filterCriteria.generation) ? filterCriteria.generation : []);
     } catch (error) {
       console.error("Error parsing filter criteria:", error);
+      // Reset to empty arrays on error
+      setSelectedMakes([]);
+      setSelectedModels([]);
+      setSelectedProcessors([]);
+      setSelectedRams([]);
+      setSelectedCategories([]);
+      setSelectedStorageSizes([]);
+      setSelectedGenerations([]);
       toast({
         title: "Error",
         description: "Failed to load pool filters",
