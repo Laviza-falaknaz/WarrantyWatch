@@ -69,7 +69,12 @@ Preferred communication style: Simple, everyday language.
 - **UI**: Configuration page provides form-based interface with webhook integration card for Power Automate URL configuration and password-protected updates.
 
 **High-Risk Combination Analysis System** (November 2025):
-- **Endpoint**: `GET /api/risk-combinations` with query parameters for sorting, pagination, search
+- **Endpoint**: `GET /api/risk-combinations` with query parameters for sorting, pagination, search, and advanced filtering
+- **Server-Side Filtering** (November 2025): All filters applied in SQL before pagination for scalability and security
+  - **Security**: Fully parameterized queries using `sql` template tags and `sql.join()` to prevent SQL injection
+  - **Implementation**: Filters applied within PostgreSQL CTE before final SELECT and pagination
+  - **Performance**: Queries execute on filtered dataset, reducing memory overhead
+  - **Filter Types**: Risk levels (multi-select), numeric ranges (run rate, coverage ratio, spare/rate, covered count), search (make/model/processor/generation), zero-coverage toggle
 - **Risk Scoring** (Updated November 2025): Multi-tier classification prioritizing run-rate-based spare adequacy:
   - **Critical**: Spare count < 5% of monthly run rate (insufficient buffer for high-demand models)
     - Formula: `spare_count < (run_rate × 0.05)` where `run_rate = claims_last_6_months / 6`
@@ -82,11 +87,12 @@ Preferred communication style: Simple, everyday language.
 - **UI Features** (November 2025):
   - **Table**: 8-column display with checkbox column, Equipment, Covered, Coverage, Available Stock, Run Rate, Spare/Rate, Risk, and Actions
   - **Available Stock Display**: Shows total count with regional breakdown (e.g., "45 total" / "3 UK · 42 UAE") where UK = immediately available and UAE = production pipeline (4-6 weeks)
+  - **Advanced Filtering**: Popover-based filter panel with risk level badges, numeric range inputs, and active filter count badge
   - **Search**: Debounced search (500ms) by make, model, processor, or generation with maintained input focus during loading
   - **Filter Toggle**: "Exclude 0 covered" switch to show/hide units with zero covered count
   - **Bulk Selection**: Multi-row selection with checkboxes and "Select All" functionality
   - **Bulk Actions**: When items selected, bulk action bar appears with "Send Combined Alert" and "Create Combined Pool" buttons; individual row actions hide during bulk selection
-  - **Filter Persistence**: Applied filters (search, zero-coverage toggle) retained during bulk selection operations
+  - **Filter Persistence**: Applied filters retained during bulk selection; page resets to 0 when filters change; selections cleared on filter mutation
 - **Actions**:
   - **Single-item**: Row-level "Alert" and "Pool" buttons for individual combinations
   - **Bulk operations**: Combined alert webhook and pool creation for multiple selected items
