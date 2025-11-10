@@ -26,7 +26,7 @@ import {
   appConfiguration
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, like, or, sql, desc, inArray, gte } from "drizzle-orm";
+import { eq, and, like, or, sql, desc, inArray, gte, lte } from "drizzle-orm";
 
 // Helper: Returns SQL condition to filter out expired covered units
 // Only includes units where coverageEndDate >= today
@@ -1126,8 +1126,8 @@ export class DatabaseStorage implements IStorage {
     
     // Get monthly aggregated claims
     const claimConditions = buildFilterConditions(claim);
-    claimConditions.push(sql`${claim.claimDate} >= ${startDate}`);
-    claimConditions.push(sql`${claim.claimDate} <= ${endDate}`);
+    claimConditions.push(gte(claim.claimDate, startDate));
+    claimConditions.push(lte(claim.claimDate, endDate));
     
     const monthlyClaims = await db
       .select({
@@ -1141,8 +1141,8 @@ export class DatabaseStorage implements IStorage {
     
     // Get monthly aggregated replacements
     const replacementConditions = buildFilterConditions(replacement);
-    replacementConditions.push(sql`${replacement.replacedDate} >= ${startDate}`);
-    replacementConditions.push(sql`${replacement.replacedDate} <= ${endDate}`);
+    replacementConditions.push(gte(replacement.replacedDate, startDate));
+    replacementConditions.push(lte(replacement.replacedDate, endDate));
     
     const monthlyReplacements = await db
       .select({
