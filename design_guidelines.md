@@ -3,26 +3,28 @@
 ## Design Philosophy
 
 **Approach**: Modern B2B SaaS Dashboard - Clean, Sophisticated, Data-Dense
-**Inspiration**: Contemporary enterprise tools (Linear, Notion, Stripe Dashboard)
+**Inspiration**: Contemporary enterprise tools (Linear, Notion, Stripe Dashboard, Asana)
 
 **Core Principles**:
 - **Clean & Organized**: Generous white space, clear visual hierarchy, structured layouts
 - **Sophisticated**: Refined typography, subtle interactions, professional color palette
-- **Modern**: Vibrant pastels on clean white, sharp borders, contemporary spacing
+- **Modern**: Subtle, muted colors on clean white, sharp borders, contemporary spacing
 - **Data-First**: High information density without clutter
+- **Professional**: Understated elegance, not bold or vibrant
 
 ---
 
 ## Color System
 
-### Primary Palette (Vibrant Pastels on White)
+### Primary Palette (Subtle & Professional)
 
-**Brand Colors** (More Saturated):
-- **Primary (Vibrant Peach)**: #FF9B7A - Primary actions, key metrics, active states
-- **Secondary (Vibrant Lavender)**: #B4A7FF - Secondary actions, complementary elements
-- **Accent (Vibrant Mint)**: #7EDDBA - Success, positive metrics, confirmations
-- **Info (Bright Blue)**: #7AB8FF - Informational, neutral highlights
-- **Warning (Coral Rose)**: #FF7A9E - Alerts, warnings, attention required
+**Brand Colors** (Muted & Sophisticated):
+- **Primary (Soft Slate Blue)**: #6B7FBD - Primary actions, key metrics, calm and professional
+- **Secondary (Gentle Lavender)**: #9B93D4 - Secondary actions, complementary elements
+- **Accent (Soft Teal)**: #5EBFB3 - Success, positive metrics, gentle confirmations
+- **Info (Subtle Blue)**: #6EA8DC - Informational, neutral highlights
+- **Warning (Muted Amber)**: #E89B6B - Alerts, warnings, gentle attention
+- **Error (Soft Coral)**: #E87D8F - Errors, critical items, understated urgency
 
 **Neutral Palette**:
 - **Background**: #FAFAFA - Very light neutral gray (clean, not stark white)
@@ -32,19 +34,34 @@
 - **Text Secondary**: #52525B - Medium gray for body text
 - **Text Tertiary**: #A1A1AA - Light gray for metadata
 
-**Chart Colors** (5-color coordinated palette):
-1. #FF9B7A (Peach)
-2. #B4A7FF (Lavender)
-3. #7EDDBA (Mint)
-4. #7AB8FF (Blue)
-5. #FF7A9E (Rose)
+**Chart Colors** (5-color coordinated subtle palette):
+1. #6B7FBD (Slate Blue)
+2. #9B93D4 (Lavender)
+3. #5EBFB3 (Teal)
+4. #6EA8DC (Blue)
+5. #E89B6B (Amber)
 
 ### Status Color System
 
-- **Success/Active**: Mint (#7EDDBA) on mint/10 background
-- **Warning/Pending**: Peach (#FF9B7A) on peach/10 background
-- **Error/Critical**: Rose (#FF7A9E) on rose/10 background
-- **Info/Neutral**: Blue (#7AB8FF) on blue/10 background
+- **Success/Active**: Soft Teal (#5EBFB3) on teal/10 background
+- **Warning/Pending**: Muted Amber (#E89B6B) on amber/10 background
+- **Error/Critical**: Soft Coral (#E87D8F) on coral/10 background
+- **Info/Neutral**: Subtle Blue (#6EA8DC) on blue/10 background
+- **Primary**: Soft Slate Blue (#6B7FBD) on blue/10 background
+
+### Semantic Color Usage
+
+**Status Indicators**:
+- **Available/Active Coverage**: Soft Teal (#5EBFB3) - calm, positive
+- **Reserved/Expiring Soon**: Muted Amber (#E89B6B) - gentle warning
+- **Retired/Expired**: Soft Coral (#E87D8F) - understated urgency
+- **Total/Neutral**: Soft Slate Blue (#6B7FBD) - professional, calm
+
+**Color Characteristics**:
+- **Not Bold**: All colors are muted and understated
+- **Not Vibrant**: Saturation kept below 50% for professional look
+- **Subtle**: Colors work harmoniously without competing for attention
+- **Professional**: Suitable for enterprise B2B environments
 
 ---
 
@@ -123,200 +140,268 @@
 - Border-radius: rounded-2xl (16px)
 - Padding: p-6
 - Shadow: none (rely on border)
-- Hover: shadow-sm transition-shadow
-- Icon container: w-12 h-12, rounded-xl, bg-{color}/10
-- Metric value: text-3xl font-bold text-primary
-- Label: text-sm font-medium text-secondary
-- Trend indicator: text-xs font-medium
+- Hover: hover-elevate (subtle background lift)
+- Transition: transition-all
 
-**Data Cards**:
-- Same as metric cards
-- Header: pb-4 border-b border-gray-100
-- Content: pt-4
-- Footer (if needed): pt-4 border-t border-gray-100
+**Icon Badges** (in metric cards):
+- Size: p-3 (12px padding)
+- Border-radius: rounded-xl
+- Background: color/10 opacity
+- Icon size: h-6 w-6
+- Colors match metric type (teal for available, amber for warning, etc.)
 
-**Status Cards** (Pool summary):
-- Compact design
-- Border-left: 4px solid {status-color}
-- Padding: p-4
+**Content Cards**:
 - Background: white
+- Border: 1px solid #E4E4E7
+- Border-radius: rounded-2xl
+- Padding: p-6
+- Shadow: none initially, shadow-sm on hover
+- Transition: smooth
 
-### Data Display
+### Buttons
 
-**Tables**:
-- Container: white bg, rounded-2xl, border
-- Header: bg-gray-50, rounded-t-2xl, sticky top-0
-- Header cells: px-6 py-4, text-xs font-semibold uppercase text-secondary
-- Body cells: px-6 py-4, text-sm text-primary
-- Row hover: bg-gray-50 transition-colors
-- Row borders: border-b border-gray-100 last:border-0
-- Zebra striping: NO (keep clean)
+**Primary**:
+- Background: Soft Slate Blue (#6B7FBD)
+- Text: White
+- Padding: px-4 py-2 (default), px-6 py-3 (large)
+- Border-radius: rounded-lg
+- Hover: subtle darkening via hover-elevate
+- Border: Computed darker shade
 
-**Status Badges**:
-- Size: px-2.5 py-1
-- Border-radius: rounded-full
-- Font: text-xs font-medium
-- Background: {color}/10
-- Text: {color} (darker shade)
-- Border: 1px solid {color}/20
+**Secondary**:
+- Background: Gentle Lavender (#9B93D4)
+- Text: White
+- Same spacing as primary
+- Hover: subtle darkening
 
-**Progress Bars**:
-- Height: h-2
-- Background: gray-100
-- Fill: bg-{color}
-- Border-radius: rounded-full
+**Outline**:
+- Background: transparent
+- Border: 1px solid #E4E4E7
+- Text: Primary text color
+- Hover: bg-gray-50
+
+### Status Badges
+
+**Badge Sizes**:
+- Default: text-xs px-2.5 py-0.5
+- Small: text-xs px-2 py-0.5
+- Large: text-sm px-3 py-1
+
+**Badge Variants**:
+- **Default**: Soft Slate Blue background, white text
+- **Secondary**: Gentle Lavender background, white text
+- **Outline**: Border only, no background
+- **Success**: Soft Teal background
+- **Warning**: Muted Amber background
+- **Destructive**: Soft Coral background
+
+### Tables
+
+**Table Container**:
+- Background: white
+- Border: 1px solid #E4E4E7
+- Border-radius: rounded-2xl
 - Overflow: hidden
 
-### Forms & Inputs
+**Table Headers**:
+- Background: #FAFAFA (subtle gray)
+- Text: text-sm font-semibold text-secondary
+- Padding: px-6 py-3
+- Border-bottom: 1px solid #E4E4E7
+
+**Table Rows**:
+- Padding: px-6 py-4
+- Border-bottom: 1px solid #E4E4E7
+- Hover: bg-gray-50
+- Transition: smooth
+
+### Forms
 
 **Input Fields**:
-- Height: h-10 (40px)
-- Padding: px-4
-- Border: 1.5px solid #E4E4E7
-- Border-radius: rounded-lg
-- Focus: ring-2 ring-primary/20 border-primary
 - Background: white
-- Placeholder: text-tertiary
-- Label: text-sm font-medium text-primary mb-2
+- Border: 1px solid #E4E4E7
+- Border-radius: rounded-lg
+- Padding: px-3 py-2
+- Focus: ring-2 ring-primary/20 border-primary
+- Text: text-sm
 
-**Buttons**:
-- **Primary**: bg-primary text-white rounded-lg px-4 h-10 font-medium hover:bg-primary/90
-- **Secondary**: bg-secondary text-white rounded-lg px-4 h-10 font-medium hover:bg-secondary/90
-- **Outline**: border-2 border-gray-200 text-primary rounded-lg px-4 h-10 font-medium hover:bg-gray-50
-- **Ghost**: text-primary rounded-lg px-4 h-10 font-medium hover:bg-gray-50
-- **Icon**: w-10 h-10 rounded-lg flex items-center justify-center hover:bg-gray-50
+**Labels**:
+- Text: text-sm font-medium text-primary
+- Margin: mb-2
 
-**Dropdowns & Selects**:
-- Same styling as inputs
-- Chevron icon: right-aligned, text-tertiary
-- Menu: white, rounded-xl, shadow-lg, border, mt-2
-- Menu items: px-4 py-2.5, hover:bg-gray-50, text-sm
-
-### Charts
-
-**Chart Containers**:
-- White background, rounded-2xl, border, p-6
-- Title: text-lg font-semibold mb-4
-- Height: h-80 (320px) for primary charts
-- Height: h-64 (256px) for secondary charts
-
-**Chart Styling**:
-- Grid lines: #F4F4F5 (very subtle)
-- Axis labels: text-xs text-tertiary
-- Tooltips: white bg, rounded-lg, shadow-md, px-3 py-2
-- Legend: horizontal, bottom, text-sm, color circles
-- Use coordinated pastel palette in sequence
-
-### Filtering & Actions
-
-**Filter Panel**:
-- White bg, rounded-xl, border, p-6
-- Width: 320px
-- Section headers: text-sm font-semibold mb-3
-- Sections: space-y-6
-- Checkboxes: rounded border-gray-300 text-primary
-- Apply button: primary style, full width
-
-**Action Bars**:
-- Background: white, border-b
-- Height: h-16
-- Padding: px-6
-- Flex layout: items-center justify-between
-- Search: w-80, rounded-lg
-- Buttons: gap-3
+**Helper Text**:
+- Text: text-xs text-tertiary
+- Margin: mt-1
 
 ---
 
-## Page Layouts
+## Interaction States
 
-### Dashboard
+### Hover States
+- **Cards**: Subtle background elevation (--elevate-1)
+- **Buttons**: Subtle darkening via hover-elevate
+- **Links**: Underline on hover
+- **Table Rows**: bg-gray-50
 
-**Structure**:
+### Active States
+- **Buttons**: Stronger darkening via active-elevate-2
+- **Inputs**: Blue ring with primary border
+- **Nav Items**: Primary color background at 10% opacity
+
+### Focus States
+- **All Interactive**: ring-2 ring-primary/20
+- **Keyboard Navigation**: Visible focus rings
+
+---
+
+## Iconography
+
+**Icon Set**: Lucide React (consistent, modern, professional)
+
+**Icon Sizes**:
+- Small: 16px (h-4 w-4)
+- Default: 20px (h-5 w-5)
+- Medium: 24px (h-6 w-6)
+- Large: 32px (h-8 w-8)
+
+**Icon Colors**:
+- Primary actions: text-primary
+- Secondary: text-secondary
+- Tertiary/Metadata: text-tertiary
+- Status-specific: Match status color
+
+**Common Icons**:
+- **Package**: Inventory/Stock
+- **Shield**: Warranty/Coverage
+- **CheckCircle2**: Success/Active
+- **AlertCircle**: Warning/Reserved
+- **XCircle**: Error/Expired
+- **Clock**: Time/Expiring
+- **FileWarning**: Claims
+- **RefreshCw**: Replacements
+- **Download**: Export actions
+
+---
+
+## Page Layout Patterns
+
+### Standard Page Structure
 ```
-┌─────────────────────────────────────────┐
-│  Page Header (h-16)                     │
-├─────────────────────────────────────────┤
-│  ┌────────┬────────┬────────┬────────┐  │
-│  │ KPI 1  │ KPI 2  │ KPI 3  │ KPI 4  │  │ (Metric cards)
-│  └────────┴────────┴────────┴────────┘  │
-│  ┌─────────────────────────────────────┐│
-│  │  Main Content (Data Table/Charts)   ││
-│  │  (white card, full width)           ││
-│  └─────────────────────────────────────┘│
-└─────────────────────────────────────────┘
+<div className="space-y-6 p-8">
+  {/* Header Section */}
+  <div className="flex items-start justify-between gap-4">
+    <div>
+      <h1 className="text-3xl font-bold">Page Title</h1>
+      <p className="text-sm text-muted-foreground mt-1">Description</p>
+    </div>
+    <Button variant="outline" size="lg">Action</Button>
+  </div>
+
+  {/* Summary Stats Row */}
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    {/* Metric Cards */}
+  </div>
+
+  {/* Content Section */}
+  <div className="space-y-4">
+    {/* Search, filters, table */}
+  </div>
+</div>
 ```
 
-**Spacing**:
-- Page padding: p-8
-- Section gaps: space-y-6
-- Grid gaps: gap-6
-
-### Detail Pages
-
-**Header Section**:
-- Breadcrumbs: text-sm text-tertiary, chevron separators
-- Title: text-3xl font-bold
-- Actions: right-aligned, gap-3
-- Divider: border-b, my-6
-
-**Content Tabs** (if needed):
-- Border-b border-gray-200
-- Active tab: border-b-2 border-primary text-primary font-medium
-- Inactive: text-secondary hover:text-primary
-
----
-
-## Interactions & Animations
-
-**Hover States**:
-- Cards: shadow-sm (subtle lift)
-- Buttons: opacity-90 or bg-{color}/90
-- Table rows: bg-gray-50
-- Links: text-primary/80
-
-**Transitions**:
-- All: transition-all duration-200
-- Colors: transition-colors duration-150
-- Shadows: transition-shadow duration-200
-
-**Loading States**:
-- Skeleton: bg-gray-100 animate-pulse rounded
-- Spinner: border-primary border-t-transparent animate-spin
+### Metric Card Pattern
+```
+<Card className="rounded-2xl border hover-elevate transition-all">
+  <CardContent className="p-6">
+    <div className="flex items-start justify-between mb-4">
+      <div className="p-3 bg-{color}-500/10 rounded-xl">
+        <Icon className="h-6 w-6 text-{color}-600" />
+      </div>
+      <Badge variant="outline">Label</Badge>
+    </div>
+    <div className="space-y-1">
+      <p className="text-sm font-medium text-muted-foreground">Metric Name</p>
+      <p className="text-4xl font-bold tracking-tight">Value</p>
+    </div>
+  </CardContent>
+</Card>
+```
 
 ---
 
-## Responsive Breakpoints
+## Design Principles in Practice
 
-- **Mobile**: < 768px - Stack all, full-width cards
-- **Tablet**: 768px - 1024px - 2-column grids
-- **Desktop**: 1024px - 1280px - 3-4 column grids
-- **Large**: > 1280px - Max width container with gutters
+### Visual Hierarchy
+1. **Large metrics** (text-4xl) draw attention
+2. **Section headers** (text-3xl) organize content
+3. **Subtle borders** separate without dominating
+4. **White space** prevents visual clutter
+5. **Muted colors** keep focus on data
+
+### Professional Aesthetic
+- **Understated**: Colors never compete with content
+- **Refined**: Every detail considered and intentional
+- **Consistent**: Patterns repeat across all pages
+- **Modern**: Contemporary but timeless design
+- **Trustworthy**: Instills confidence in enterprise users
+
+### Data-First Design
+- **High density**: Maximum information, minimal waste
+- **Scannable**: Clear visual patterns aid quick reading
+- **Actionable**: Key actions prominently placed
+- **Contextual**: Related information grouped logically
+- **Responsive**: Adapts gracefully to all screen sizes
 
 ---
 
 ## Accessibility
 
-- Minimum contrast: 4.5:1 for text
-- Focus indicators: ring-2 ring-primary/50 ring-offset-2
-- Keyboard navigation: full support
-- ARIA labels: all interactive elements
-- Screen reader: meaningful text, live regions for updates
+**WCAG 2.1 Level AA Compliance**:
+- Contrast ratios: 4.5:1 minimum for body text
+- Focus indicators: Visible on all interactive elements
+- Keyboard navigation: Full support
+- Screen readers: Semantic HTML, ARIA labels
+- Color independence: Never rely solely on color
+
+**Text Contrast**:
+- Primary on white: 14:1
+- Secondary on white: 7:1
+- Tertiary on white: 4.6:1
 
 ---
 
-## Implementation Notes
+## Responsive Design
 
-**DO**:
-- Use pure white (#FFFFFF) for all card backgrounds
-- Use subtle borders (1px #E4E4E7) instead of shadows
-- Maintain consistent spacing (multiples of 4px)
-- Use vibrant pastel accents on clean white backgrounds
-- Group related actions and information clearly
-- Keep generous white space between sections
+**Breakpoints** (Tailwind defaults):
+- sm: 640px
+- md: 768px
+- lg: 1024px
+- xl: 1280px
+- 2xl: 1536px
 
-**DON'T**:
-- Use gray card backgrounds (keep white)
-- Over-use shadows (rely on borders)
-- Create cluttered layouts
-- Mix border and shadow styles
-- Use dull, desaturated colors
+**Mobile-First Approach**:
+- Single column layouts on mobile
+- 2-column grids on tablets
+- 3-4 column grids on desktop
+- Collapsible sidebar on mobile
+- Touch-friendly targets (min 44px)
+
+---
+
+## Animation & Transitions
+
+**Timing**:
+- Fast: 150ms (hover states)
+- Default: 200ms (most transitions)
+- Slow: 300ms (complex animations)
+
+**Easing**:
+- Ease-in-out: Default for most
+- Ease-out: Entrances
+- Ease-in: Exits
+
+**Use Cases**:
+- hover-elevate: Subtle background lift on hover
+- active-elevate-2: Stronger lift on click
+- transition-all: Smooth property changes
+- Avoid: Excessive animation, sudden movements

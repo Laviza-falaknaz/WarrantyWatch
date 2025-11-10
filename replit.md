@@ -11,8 +11,8 @@ Preferred communication style: Simple, everyday language.
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript and Vite.
 - **UI Component System**: shadcn/ui (New York style) built on Radix UI, utilizing Tailwind CSS for styling, adhering to Carbon Design System principles, and supporting dark/light themes.
-- **Design System**: Modern B2B SaaS aesthetic with vibrant pastel color palette, pure white cards on clean neutral backgrounds, comprehensive design guidelines in design_guidelines.md. Features rounded-2xl corners, border-first styling, MetricCard with color-coded variants (primary/secondary/accent), and soft pill-shaped risk badges.
-- **Color Palette**: Vibrant pastels - Primary Peach (#FF9B7A / 15° 88% 65%), Secondary Lavender (#B4A7FF / 260° 75% 70%), Accent Mint (#7EDDBA / 160° 60% 55%), Destructive Rose (#FF7A9E / 340° 75% 65%), plus Blue (#7AB8FF) for charts.
+- **Design System**: Modern B2B SaaS aesthetic with subtle professional color palette, pure white cards on clean neutral backgrounds, comprehensive design guidelines in design_guidelines.md. Features rounded-2xl corners, border-first styling, MetricCard with color-coded variants (primary/secondary/accent), and soft pill-shaped risk badges.
+- **Color Palette**: Subtle & Professional - Primary Soft Slate Blue (#6B7FBD), Secondary Gentle Lavender (#9B93D4), Accent Soft Teal (#5EBFB3), Info Subtle Blue (#6EA8DC), Warning Muted Amber (#E89B6B), Error Soft Coral (#E87D8F). Colors are muted and understated for enterprise professionalism.
 - **Design Principles**: Data-first presentation for enterprise dashboards, sophisticated and organized layouts, high information density, Inter and JetBrains Mono typography, consistent spacing (p-8 page padding, gap-6 between cards), pure white cards (not greyish), clean neutral backgrounds.
 - **State Management**: TanStack Query for server state, local React state for UI, and Context API for theme.
 - **Routing**: wouter.

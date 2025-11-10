@@ -38,8 +38,8 @@
 
   --sidebar-border: 240 6% 90%;
 
-  /* Vibrant lavender for active states */
-  --sidebar-primary: 260 65% 70%;
+  /* Soft slate blue for active states */
+  --sidebar-primary: 224 41% 58%;
 
   --sidebar-primary-foreground: 0 0% 100%;
 
@@ -47,7 +47,7 @@
 
   --sidebar-accent-foreground: 240 10% 10%;
 
-  --sidebar-ring: 260 65% 70%;
+  --sidebar-ring: 224 41% 58%;
 
   --popover: 0 0% 100%;
 
@@ -55,13 +55,13 @@
 
   --popover-border: 240 6% 90%;
 
-  /* Vibrant Peach primary #FF9B7A */
-  --primary: 15 100% 74%;
+  /* Soft Slate Blue primary #6B7FBD */
+  --primary: 224 41% 58%;
 
   --primary-foreground: 0 0% 100%;
 
-  /* Vibrant Lavender secondary #B4A7FF */
-  --secondary: 260 100% 83%;
+  /* Gentle Lavender secondary #9B93D4 */
+  --secondary: 247 42% 70%;
 
   --secondary-foreground: 0 0% 100%;
 
@@ -70,25 +70,25 @@
 
   --muted-foreground: 240 4% 46%;
 
-  /* Vibrant Mint accent #7EDDBA */
-  --accent: 160 65% 68%;
+  /* Soft Teal accent #5EBFB3 */
+  --accent: 173 42% 56%;
 
   --accent-foreground: 0 0% 100%;
 
-  /* Vibrant Rose destructive #FF7A9E */
-  --destructive: 345 100% 74%;
+  /* Soft Coral destructive #E87D8F */
+  --destructive: 350 70% 70%;
 
   --destructive-foreground: 0 0% 100%;
 
   --input: 240 6% 90%;
-  --ring: 260 65% 70%;
+  --ring: 224 41% 58%;
   
-  /* Vibrant coordinated chart colors */
-  --chart-1: 15 100% 74%;  /* Vibrant peach #FF9B7A */
-  --chart-2: 260 100% 83%;  /* Vibrant lavender #B4A7FF */
-  --chart-3: 160 65% 68%;  /* Vibrant mint #7EDDBA */
-  --chart-4: 210 100% 74%;  /* Vibrant blue #7AB8FF */
-  --chart-5: 345 100% 74%;  /* Vibrant rose #FF7A9E */
+  /* Subtle professional chart colors */
+  --chart-1: 224 41% 58%;  /* Soft slate blue #6B7FBD */
+  --chart-2: 247 42% 70%;  /* Gentle lavender #9B93D4 */
+  --chart-3: 173 42% 56%;  /* Soft teal #5EBFB3 */
+  --chart-4: 208 62% 65%;  /* Subtle blue #6EA8DC */
+  --chart-5: 23 73% 66%;  /* Muted amber #E89B6B */
 
   --font-sans: Inter, sans-serif;
   --font-serif: Georgia, serif;
@@ -167,8 +167,8 @@
 
   --sidebar-border: 240 4% 20%;
 
-  /* Vibrant lavender for dark mode */
-  --sidebar-primary: 260 65% 70%;
+  /* Soft slate blue for dark mode */
+  --sidebar-primary: 224 41% 58%;
 
   --sidebar-primary-foreground: 0 0% 100%;
 
@@ -176,7 +176,7 @@
 
   --sidebar-accent-foreground: 0 0% 95%;
 
-  --sidebar-ring: 260 65% 70%;
+  --sidebar-ring: 224 41% 58%;
 
   --popover: 240 8% 13%;
 
@@ -184,13 +184,13 @@
 
   --popover-border: 240 4% 20%;
 
-  /* Vibrant peach for dark mode */
-  --primary: 15 95% 70%;
+  /* Soft slate blue for dark mode */
+  --primary: 224 41% 58%;
 
   --primary-foreground: 0 0% 100%;
 
-  /* Vibrant lavender for dark mode */
-  --secondary: 260 90% 80%;
+  /* Gentle lavender for dark mode */
+  --secondary: 247 42% 70%;
 
   --secondary-foreground: 0 0% 100%;
 
@@ -198,25 +198,25 @@
 
   --muted-foreground: 240 3% 60%;
 
-  /* Vibrant mint for dark mode */
-  --accent: 160 60% 65%;
+  /* Soft teal for dark mode */
+  --accent: 173 42% 56%;
 
   --accent-foreground: 0 0% 100%;
 
-  /* Vibrant rose for dark mode */
-  --destructive: 345 95% 70%;
+  /* Soft coral for dark mode */
+  --destructive: 350 70% 70%;
 
   --destructive-foreground: 0 0% 100%;
 
   --input: 240 4% 20%;
-  --ring: 260 65% 70%;
+  --ring: 224 41% 58%;
   
-  /* Vibrant chart colors for dark mode */
-  --chart-1: 15 95% 70%;   /* Vibrant peach */
-  --chart-2: 260 90% 80%;  /* Vibrant lavender */
-  --chart-3: 160 60% 65%;  /* Vibrant mint */
-  --chart-4: 210 95% 70%;  /* Vibrant blue */
-  --chart-5: 345 95% 70%;  /* Vibrant rose */
+  /* Subtle professional chart colors for dark mode */
+  --chart-1: 224 41% 58%;  /* Soft slate blue */
+  --chart-2: 247 42% 70%;  /* Gentle lavender */
+  --chart-3: 173 42% 56%;  /* Soft teal */
+  --chart-4: 208 62% 65%;  /* Subtle blue */
+  --chart-5: 23 73% 66%;   /* Muted amber */
 
   --shadow-2xs: 0px 1px 2px 0px hsl(210 10% 3% / 0.20);
   --shadow-xs: 0px 1px 3px 0px hsl(210 10% 3% / 0.30);
