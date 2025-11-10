@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { AlertTriangle, Bell, Plus, ArrowUpDown, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type RiskLevel = 'critical' | 'high' | 'medium' | 'low';
 
@@ -51,6 +54,8 @@ export default function RiskAnalysisTable() {
   const [page, setPage] = useState(0);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [excludeZeroCovered, setExcludeZeroCovered] = useState(false);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const limit = 20;
   const { toast } = useToast();
 
@@ -63,19 +68,26 @@ export default function RiskAnalysisTable() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const { data: combinations, isLoading } = useQuery<RiskCombination[]>({
+  const { data: allCombinations, isLoading } = useQuery<RiskCombination[]>({
     queryKey: ['/api/risk-combinations', { sortBy, sortOrder, limit, offset: page * limit, search: debouncedSearch }],
   });
 
+  const combinations = useMemo(() => {
+    if (!allCombinations) return allCombinations;
+    if (!excludeZeroCovered) return allCombinations;
+    return allCombinations.filter(combo => combo.covered_count > 0);
+  }, [allCombinations, excludeZeroCovered]);
+
   const sendAlertMutation = useMutation({
-    mutationFn: async (combination: RiskCombination) => {
-      return apiRequest('POST', '/api/risk-combinations/send-alert', combination);
+    mutationFn: async (combinationsArray: RiskCombination[]) => {
+      return apiRequest('POST', '/api/risk-combinations/send-alert', { combinations: combinationsArray });
     },
     onSuccess: () => {
       toast({
         title: "Alert sent",
-        description: "Risk combination alert sent to Power Automate successfully",
+        description: `Alert sent to Power Automate successfully`,
       });
+      setSelectedRows(new Set());
     },
     onError: (error: Error) => {
       toast({
@@ -87,23 +99,41 @@ export default function RiskAnalysisTable() {
   });
 
   const createPoolMutation = useMutation({
-    mutationFn: async (combination: RiskCombination) => {
-      const poolData = {
-        name: `${combination.make} ${combination.model} Pool`,
-        filterCriteria: JSON.stringify({
-          make: combination.make,
-          model: combination.model,
-          processor: combination.processor || undefined,
-          generation: combination.generation || undefined,
-        }),
-      };
-      return apiRequest('POST', '/api/coverage-pools', poolData);
+    mutationFn: async (data: { name: string; combinations: RiskCombination[] }) => {
+      if (data.combinations.length === 1) {
+        const combo = data.combinations[0];
+        const poolData = {
+          name: `${combo.make} ${combo.model} Pool`,
+          filterCriteria: JSON.stringify({
+            make: combo.make,
+            model: combo.model,
+            processor: combo.processor || undefined,
+            generation: combo.generation || undefined,
+          }),
+        };
+        return apiRequest('POST', '/api/coverage-pools', poolData);
+      } else {
+        const poolData = {
+          name: data.name || `Combined Risk Pool (${data.combinations.length} items)`,
+          filterCriteria: JSON.stringify({
+            combinations: data.combinations.map(c => ({
+              make: c.make,
+              model: c.model,
+              processor: c.processor || undefined,
+              generation: c.generation || undefined,
+            })),
+          }),
+        };
+        return apiRequest('POST', '/api/coverage-pools', poolData);
+      }
     },
     onSuccess: () => {
       toast({
         title: "Pool created",
-        description: "Coverage pool created successfully from risk combination",
+        description: "Coverage pool created successfully",
       });
+      setSelectedRows(new Set());
+      queryClient.invalidateQueries({ queryKey: ['/api/coverage-pools'] });
     },
     onError: (error: Error) => {
       toast({
@@ -124,12 +154,48 @@ export default function RiskAnalysisTable() {
   };
 
   const handleSendAlert = async (combination: RiskCombination) => {
-    sendAlertMutation.mutate(combination);
+    sendAlertMutation.mutate([combination]);
   };
 
   const handleCreatePool = async (combination: RiskCombination) => {
-    createPoolMutation.mutate(combination);
+    createPoolMutation.mutate({ name: '', combinations: [combination] });
   };
+
+  const handleBulkSendAlert = () => {
+    if (!combinations || selectedRows.size === 0) return;
+    const selectedCombinations = Array.from(selectedRows).map(idx => combinations[idx]);
+    sendAlertMutation.mutate(selectedCombinations);
+  };
+
+  const handleBulkCreatePool = () => {
+    if (!combinations || selectedRows.size === 0) return;
+    const selectedCombinations = Array.from(selectedRows).map(idx => combinations[idx]);
+    createPoolMutation.mutate({ 
+      name: `Combined Risk Pool (${selectedCombinations.length} items)`,
+      combinations: selectedCombinations 
+    });
+  };
+
+  const toggleRowSelection = (idx: number) => {
+    const newSelected = new Set(selectedRows);
+    if (newSelected.has(idx)) {
+      newSelected.delete(idx);
+    } else {
+      newSelected.add(idx);
+    }
+    setSelectedRows(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (!combinations) return;
+    if (selectedRows.size === combinations.length) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(combinations.map((_, idx) => idx)));
+    }
+  };
+
+  const hasSelection = selectedRows.size > 0;
 
   return (
     <Card data-testid="card-risk-analysis">
@@ -143,17 +209,58 @@ export default function RiskAnalysisTable() {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6">
-        <div className="mb-4 flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by make, model, processor, or generation..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-8"
-              data-testid="input-search-risk"
-            />
+        <div className="mb-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by make, model, processor, or generation..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-8"
+                data-testid="input-search-risk"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="exclude-zero"
+                checked={excludeZeroCovered}
+                onCheckedChange={setExcludeZeroCovered}
+                data-testid="switch-exclude-zero"
+              />
+              <Label htmlFor="exclude-zero" className="text-sm whitespace-nowrap">
+                Exclude 0 covered
+              </Label>
+            </div>
           </div>
+          {hasSelection && (
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+              <span className="text-sm font-medium">
+                {selectedRows.size} item{selectedRows.size !== 1 ? 's' : ''} selected
+              </span>
+              <div className="flex-1" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkSendAlert}
+                disabled={sendAlertMutation.isPending}
+                data-testid="button-bulk-alert"
+              >
+                <Bell className="h-3 w-3 mr-1" />
+                Send Combined Alert
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkCreatePool}
+                disabled={createPoolMutation.isPending}
+                data-testid="button-bulk-pool"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Create Combined Pool
+              </Button>
+            </div>
+          )}
         </div>
         <div className="rounded-md border overflow-x-auto -mx-6 px-6 relative">
           {isLoading && (
@@ -164,6 +271,14 @@ export default function RiskAnalysisTable() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={combinations && combinations.length > 0 && selectedRows.size === combinations.length}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Select all"
+                    data-testid="checkbox-select-all"
+                  />
+                </TableHead>
                 <TableHead>Equipment</TableHead>
                 <TableHead>
                   <Button variant="ghost" size="sm" onClick={() => handleSort('coveredCount')} className="h-8 px-2">
@@ -198,6 +313,14 @@ export default function RiskAnalysisTable() {
               {combinations && combinations.length > 0 ? (
                 combinations.map((combo, idx) => (
                   <TableRow key={idx} data-testid={`risk-row-${idx}`}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedRows.has(idx)}
+                        onCheckedChange={() => toggleRowSelection(idx)}
+                        aria-label={`Select ${combo.make} ${combo.model}`}
+                        data-testid={`checkbox-row-${idx}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="font-medium">{combo.make} {combo.model}</div>
                       <div className="text-xs text-muted-foreground">
@@ -238,39 +361,45 @@ export default function RiskAnalysisTable() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSendAlert(combo)}
-                          data-testid={`button-send-alert-${idx}`}
-                        >
-                          <Bell className="h-3 w-3 mr-1" />
-                          Alert
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCreatePool(combo)}
-                          data-testid={`button-create-pool-${idx}`}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Pool
-                        </Button>
-                      </div>
+                      {!hasSelection ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSendAlert(combo)}
+                            data-testid={`button-send-alert-${idx}`}
+                          >
+                            <Bell className="h-3 w-3 mr-1" />
+                            Alert
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCreatePool(combo)}
+                            data-testid={`button-create-pool-${idx}`}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Pool
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          {selectedRows.has(idx) ? 'Selected' : ''}
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
               ) : !isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     No high-risk combinations found
                   </TableCell>
                 </TableRow>
               ) : (
                 [...Array(5)].map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={8}>
+                    <TableCell colSpan={9}>
                       <Skeleton className="h-12 w-full" />
                     </TableCell>
                   </TableRow>

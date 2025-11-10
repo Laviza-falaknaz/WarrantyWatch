@@ -457,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Send alert for high-risk combination to Power Automate webhook
+  // Send alert for high-risk combination(s) to Power Automate webhook
   app.post("/api/risk-combinations/send-alert", async (req, res) => {
     try {
       const config = await storage.getConfiguration();
@@ -466,21 +466,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Alert webhook URL not configured" });
       }
 
+      // Always expect an array in req.body.combinations
+      const combinations = req.body.combinations;
+      
+      if (!Array.isArray(combinations) || combinations.length === 0) {
+        return res.status(400).json({ error: "Invalid request: combinations array required" });
+      }
+
+      // Transform to webhook format - always send as array
       const alertData = {
-        make: req.body.make,
-        model: req.body.model,
-        processor: req.body.processor,
-        generation: req.body.generation,
-        coveredCount: req.body.covered_count,
-        spareCount: req.body.spare_count,
-        availableStockCount: req.body.available_stock_count,
-        claimsLast6Months: req.body.claims_last_6_months,
-        replacementsLast6Months: req.body.replacements_last_6_months,
-        coverageRatio: req.body.coverage_ratio,
-        runRate: req.body.run_rate,
-        fulfillmentRate: req.body.fulfillment_rate,
-        riskLevel: req.body.risk_level,
-        riskScore: req.body.risk_score,
+        combinations: combinations.map(combo => ({
+          make: combo.make,
+          model: combo.model,
+          processor: combo.processor,
+          generation: combo.generation,
+          coveredCount: combo.covered_count,
+          spareCount: combo.spare_count,
+          availableStockCount: combo.available_stock_count,
+          claimsLast6Months: combo.claims_last_6_months,
+          replacementsLast6Months: combo.replacements_last_6_months,
+          coverageRatio: combo.coverage_ratio,
+          runRate: combo.run_rate,
+          fulfillmentRate: combo.fulfillment_rate,
+          coverageOfRunRate: combo.coverage_of_run_rate,
+          riskLevel: combo.risk_level,
+          riskScore: combo.risk_score,
+        })),
+        count: combinations.length,
         timestamp: new Date().toISOString(),
       };
 
@@ -497,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error(`Webhook responded with status ${response.status}`);
       }
 
-      res.json({ success: true, message: "Alert sent successfully" });
+      res.json({ success: true, message: `Alert sent successfully for ${combinations.length} item(s)` });
     } catch (error) {
       console.error("Error sending alert:", error);
       res.status(500).json({ error: "Failed to send alert to webhook" });
