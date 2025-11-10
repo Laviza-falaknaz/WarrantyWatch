@@ -107,23 +107,27 @@ export default function RiskAnalysisTable() {
         const poolData = {
           name: `${combo.make} ${combo.model} Pool`,
           filterCriteria: JSON.stringify({
-            make: combo.make,
-            model: combo.model,
-            processor: combo.processor || undefined,
-            generation: combo.generation || undefined,
+            make: [combo.make],
+            model: [combo.model],
+            processor: combo.processor ? [combo.processor] : undefined,
+            generation: combo.generation ? [combo.generation] : undefined,
           }),
         };
         return apiRequest('POST', '/api/coverage-pools', poolData);
       } else {
+        // Extract unique values for each filter field from all combinations
+        const makes = Array.from(new Set(data.combinations.map(c => c.make)));
+        const models = Array.from(new Set(data.combinations.map(c => c.model)));
+        const processors = Array.from(new Set(data.combinations.map(c => c.processor).filter(Boolean))) as string[];
+        const generations = Array.from(new Set(data.combinations.map(c => c.generation).filter(Boolean))) as string[];
+        
         const poolData = {
           name: data.name || `Combined Risk Pool (${data.combinations.length} items)`,
           filterCriteria: JSON.stringify({
-            combinations: data.combinations.map(c => ({
-              make: c.make,
-              model: c.model,
-              processor: c.processor || undefined,
-              generation: c.generation || undefined,
-            })),
+            make: makes.length > 0 ? makes : undefined,
+            model: models.length > 0 ? models : undefined,
+            processor: processors.length > 0 ? processors : undefined,
+            generation: generations.length > 0 ? generations : undefined,
           }),
         };
         return apiRequest('POST', '/api/coverage-pools', poolData);
