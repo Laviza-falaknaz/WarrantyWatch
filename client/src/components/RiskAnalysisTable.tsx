@@ -131,24 +131,6 @@ export default function RiskAnalysisTable() {
     createPoolMutation.mutate(combination);
   };
 
-  if (isLoading) {
-    return (
-      <Card data-testid="card-risk-analysis">
-        <CardHeader>
-          <CardTitle>High-Risk Combinations</CardTitle>
-          <CardDescription>Equipment with high claim rates and low coverage (last 6 months)</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card data-testid="card-risk-analysis">
       <CardHeader>
@@ -173,7 +155,12 @@ export default function RiskAnalysisTable() {
             />
           </div>
         </div>
-        <div className="rounded-md border overflow-x-auto -mx-6 px-6">
+        <div className="rounded-md border overflow-x-auto -mx-6 px-6 relative">
+          {isLoading && (
+            <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10" data-testid="table-loading-overlay">
+              <div className="text-sm text-muted-foreground">Loading...</div>
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
@@ -274,12 +261,20 @@ export default function RiskAnalysisTable() {
                     </TableCell>
                   </TableRow>
                 ))
-              ) : (
+              ) : !isLoading ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     No high-risk combinations found
                   </TableCell>
                 </TableRow>
+              ) : (
+                [...Array(5)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={8}>
+                      <Skeleton className="h-12 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
