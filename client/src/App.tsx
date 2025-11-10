@@ -8,6 +8,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/hooks/use-theme";
 import ThemeToggle from "@/components/ThemeToggle";
 import Dashboard from "@/pages/Dashboard";
+import MonitorWarranties from "@/pages/MonitorWarranties";
+import ExploreWarranties from "@/pages/ExploreWarranties";
 import Inventory from "@/pages/Inventory";
 import Warranties from "@/pages/Warranties";
 import PoolGroups from "@/pages/PoolGroups";
@@ -23,19 +25,17 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
-      <Route path="/spare-pool" component={Inventory} />
-      <Route path="/covered-units" component={Warranties} />
+      <Route path="/monitor-warranties" component={MonitorWarranties} />
+      <Route path="/explore-warranties" component={ExploreWarranties} />
       <Route path="/coverage-pools" component={PoolGroups} />
       <Route path="/pools/:poolId" component={PoolDetail} />
+      <Route path="/warranty-explorer" component={WarrantyExplorer} />
+      <Route path="/spare-pool" component={Inventory} />
+      <Route path="/covered-units" component={Warranties} />
+      <Route path="/available-stock" component={AvailableStockPage} />
       <Route path="/claims" component={Claims} />
       <Route path="/replacements" component={Replacements} />
-      <Route path="/available-stock" component={AvailableStockPage} />
       <Route path="/configuration" component={Configuration} />
-      <Route path="/warranty-explorer" component={WarrantyExplorer} />
-      {/* Legacy routes for compatibility */}
-      <Route path="/inventory" component={Inventory} />
-      <Route path="/warranties" component={Warranties} />
-      <Route path="/pool-groups" component={PoolGroups} />
       <Route component={NotFound} />
     </Switch>
   );
