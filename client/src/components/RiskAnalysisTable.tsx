@@ -23,6 +23,8 @@ interface RiskCombination {
   covered_count: number;
   spare_count: number;
   available_stock_count: number;
+  uk_available_count: number;
+  uae_available_count: number;
   claims_last_6_months: number;
   replacements_last_6_months: number;
   coverage_ratio: number;
@@ -339,9 +341,9 @@ export default function RiskAnalysisTable() {
                       </div>
                     </TableCell>
                     <TableCell data-testid={`cell-available-${idx}`}>
-                      <div className="text-sm font-medium">{combo.available_stock_count}</div>
+                      <div className="text-sm font-medium">{combo.available_stock_count} total</div>
                       <div className="text-xs text-muted-foreground">
-                        all stock
+                        {combo.uk_available_count} UK · {combo.uae_available_count} UAE
                       </div>
                     </TableCell>
                     <TableCell>

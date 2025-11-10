@@ -17,7 +17,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
-import { eq, and, inArray, sql as drizzleSql } from "drizzle-orm";
+import { eq, and, inArray, gte, sql as drizzleSql } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Spare Unit routes (units in pool available to cover warranties)
@@ -483,6 +483,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           coveredCount: combo.covered_count,
           spareCount: combo.spare_count,
           availableStockCount: combo.available_stock_count,
+          ukAvailableCount: combo.uk_available_count,
+          uaeAvailableCount: combo.uae_available_count,
           claimsLast6Months: combo.claims_last_6_months,
           replacementsLast6Months: combo.replacements_last_6_months,
           coverageRatio: combo.coverage_ratio,
@@ -581,21 +583,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const [spareResult] = await spareQuery;
         const spareCount = spareResult?.count || 0;
         
-        // Count covered units matching filter
+        // Count covered units matching filter (only active warranties)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const coveredDateConditions = [...coveredConditions, gte(coveredUnit.coverageEndDate, today)];
         let coveredQuery = db.select({ count: drizzleSql<number>`count(*)::int` }).from(coveredUnit);
-        if (coveredConditions.length > 0) {
-          coveredQuery = coveredQuery.where(and(...coveredConditions)) as any;
+        if (coveredDateConditions.length > 0) {
+          coveredQuery = coveredQuery.where(and(...coveredDateConditions)) as any;
         }
         const [coveredResult] = await coveredQuery;
         const coveredCount = coveredResult?.count || 0;
         
-        // Count available stock matching filter
-        let availableStockQuery = db.select({ count: drizzleSql<number>`count(*)::int` }).from(availableStock);
-        if (availableStockConditions.length > 0) {
-          availableStockQuery = availableStockQuery.where(and(...availableStockConditions)) as any;
+        // Count available stock matching filter - separate UK (immediate) and UAE (pipeline)
+        const ukConditions = [...availableStockConditions, drizzleSql`UPPER(${availableStock.areaId}) = 'UK'`];
+        let ukStockQuery = db.select({ count: drizzleSql<number>`count(*)::int` }).from(availableStock);
+        if (ukConditions.length > 0) {
+          ukStockQuery = ukStockQuery.where(and(...ukConditions)) as any;
         }
-        const [availableStockResult] = await availableStockQuery;
-        const availableStockCount = availableStockResult?.count || 0;
+        const [ukStockResult] = await ukStockQuery;
+        const ukAvailableCount = ukStockResult?.count || 0;
+
+        const uaeConditions = [...availableStockConditions, drizzleSql`UPPER(${availableStock.areaId}) = 'UAE'`];
+        let uaeStockQuery = db.select({ count: drizzleSql<number>`count(*)::int` }).from(availableStock);
+        if (uaeConditions.length > 0) {
+          uaeStockQuery = uaeStockQuery.where(and(...uaeConditions)) as any;
+        }
+        const [uaeStockResult] = await uaeStockQuery;
+        const uaeAvailableCount = uaeStockResult?.count || 0;
+        
+        const availableStockCount = ukAvailableCount + uaeAvailableCount;
         
         // Count claims in run rate period matching filter
         const claimDateConditions = [...claimConditions, drizzleSql`${claim.claimDate} >= ${runRateStartDate}`];
@@ -617,6 +633,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           coveredCount,
           coverageRatio,
           availableStockCount,
+          ukAvailableCount,
+          uaeAvailableCount,
           claimsLast6Months: claimsInPeriod, // Actually uses configured period
           runRate: Number(runRate.toFixed(2)),
         };

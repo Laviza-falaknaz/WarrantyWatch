@@ -1151,6 +1151,8 @@ export class DatabaseStorage implements IStorage {
       .where(spareConditions.length > 0 ? and(...spareConditions) : undefined);
     
     const coveredConditions = buildFilterConditions(coveredUnit);
+    // Add active warranty filter (coverageEndDate >= today)
+    coveredConditions.push(nonExpiredCoveredUnitsCondition());
     const [currentCoveredResult] = await db
       .select({ count: sql<number>`cast(count(*) as int)` })
       .from(coveredUnit)
@@ -1365,7 +1367,9 @@ export class DatabaseStorage implements IStorage {
       available_metrics AS (
         SELECT 
           make, model, processor, generation,
-          COUNT(*) as available_count
+          COUNT(*) as available_count,
+          COUNT(*) FILTER (WHERE UPPER(area_id) = 'UK') as uk_available_count,
+          COUNT(*) FILTER (WHERE UPPER(area_id) = 'UAE') as uae_available_count
         FROM ${availableStock}
         GROUP BY make, model, processor, generation
       ),
@@ -1393,6 +1397,8 @@ export class DatabaseStorage implements IStorage {
         COALESCE(cov.covered_count, 0)::int as covered_count,
         COALESCE(sp.spare_count, 0)::int as spare_count,
         COALESCE(av.available_count, 0)::int as available_stock_count,
+        COALESCE(av.uk_available_count, 0)::int as uk_available_count,
+        COALESCE(av.uae_available_count, 0)::int as uae_available_count,
         COALESCE(cl.claims_count, 0)::int as claims_last_6_months,
         COALESCE(rep.replacement_count, 0)::int as replacements_last_6_months,
         CASE 
