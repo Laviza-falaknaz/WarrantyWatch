@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -136,6 +136,8 @@ function HeatmapCell({
 }
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
+  
   const { data: analytics, isLoading: analyticsLoading } = useQuery<{
     totalSpareUnits: number;
     totalCoveredUnits: number;
@@ -162,7 +164,7 @@ export default function Dashboard() {
       { label: "31-60 days", start: 31, end: 60 },
       { label: "61-90 days", start: 61, end: 90 },
       { label: "91-180 days", start: 91, end: 180 },
-      { label: "181-365 days", start: 181, end: 365 },
+      { label: "181-365 days", start: 181, end: 364 },
       { label: "365+ days", start: 365, end: Infinity },
     ];
 
@@ -294,10 +296,7 @@ export default function Dashboard() {
                     label={cell.label}
                     value={cell.value}
                     maxValue={maxHeatmapValue}
-                    onClick={() => {
-                      // Navigate to warranties page with filter
-                      window.location.href = "/warranties";
-                    }}
+                    onClick={() => setLocation("/warranties")}
                   />
                 ))}
               </div>
@@ -333,7 +332,7 @@ export default function Dashboard() {
           transition={{ duration: 0.3, delay: 0.3 }}
         >
           <Link href="/pools">
-            <Card className="rounded-2xl hover-elevate active-elevate-2 transition-all cursor-pointer border-2 hover:border-primary/50">
+            <Card className="rounded-2xl hover-elevate active-elevate-2 transition-all cursor-pointer border-2 hover:border-primary/50" data-testid="card-quick-action-pools">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="p-3 bg-primary/10 rounded-xl">
@@ -346,7 +345,7 @@ export default function Dashboard() {
                   Manage warranty pools and allocations
                 </p>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" data-testid="badge-pools-count">
                     {analytics?.totalCoveredUnits || 0} pools
                   </Badge>
                 </div>
@@ -361,7 +360,7 @@ export default function Dashboard() {
           transition={{ duration: 0.3, delay: 0.4 }}
         >
           <Link href="/inventory">
-            <Card className="rounded-2xl hover-elevate active-elevate-2 transition-all cursor-pointer border-2 hover:border-accent/50">
+            <Card className="rounded-2xl hover-elevate active-elevate-2 transition-all cursor-pointer border-2 hover:border-accent/50" data-testid="card-quick-action-inventory">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="p-3 bg-accent/10 rounded-xl">
@@ -374,7 +373,7 @@ export default function Dashboard() {
                   View and manage spare inventory
                 </p>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{spareUnits} units</Badge>
+                  <Badge variant="secondary" data-testid="badge-spare-units">{spareUnits} units</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -387,7 +386,7 @@ export default function Dashboard() {
           transition={{ duration: 0.3, delay: 0.5 }}
         >
           <Link href="/warranties">
-            <Card className="rounded-2xl hover-elevate active-elevate-2 transition-all cursor-pointer border-2 hover:border-amber-500/50">
+            <Card className="rounded-2xl hover-elevate active-elevate-2 transition-all cursor-pointer border-2 hover:border-amber-500/50" data-testid="card-quick-action-warranties">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="p-3 bg-amber-500/10 rounded-xl">
@@ -400,7 +399,7 @@ export default function Dashboard() {
                   Monitor expiring warranties
                 </p>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{expiringUnits} expiring</Badge>
+                  <Badge variant="secondary" data-testid="badge-expiring-units">{expiringUnits} expiring</Badge>
                 </div>
               </CardContent>
             </Card>
