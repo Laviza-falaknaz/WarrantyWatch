@@ -1,29 +1,139 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Package, TrendingUp, AlertCircle, ArrowRight, BarChart3, Layers, Activity } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import type { CoveragePoolWithStats } from "@shared/schema";
-import RiskAnalysisTable from "@/components/RiskAnalysisTable";
 import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+  Shield,
+  Package,
+  TrendingUp,
+  AlertTriangle,
+  ArrowRight,
+  Activity,
+  Clock,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
+// Circular Progress Ring Component
+function ProgressRing({
+  value,
+  max = 100,
+  size = 120,
+  strokeWidth = 12,
+  label,
+  sublabel,
+  color = "primary",
+}: {
+  value: number;
+  max?: number;
+  size?: number;
+  strokeWidth?: number;
+  label: string;
+  sublabel?: string;
+  color?: "primary" | "accent" | "warning" | "destructive";
+}) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progress = (value / max) * 100;
+  const offset = circumference - (progress / 100) * circumference;
+
+  const colorClasses = {
+    primary: "stroke-primary",
+    accent: "stroke-accent",
+    warning: "stroke-amber-500",
+    destructive: "stroke-destructive",
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg className="transform -rotate-90" width={size} height={size}>
+          {/* Background circle */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={strokeWidth}
+            className="text-muted/20"
+          />
+          {/* Progress circle */}
+          <motion.circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            className={colorClasses[color]}
+            initial={{ strokeDashoffset: circumference }}
+            animate={{ strokeDashoffset: offset }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            style={{
+              strokeDasharray: circumference,
+            }}
+          />
+        </svg>
+        {/* Center text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-2xl font-bold">{Math.round(progress)}%</span>
+        </div>
+      </div>
+      <div className="text-center">
+        <p className="text-sm font-medium">{label}</p>
+        {sublabel && <p className="text-xs text-muted-foreground">{sublabel}</p>}
+      </div>
+    </div>
+  );
+}
+
+// Heatmap Cell Component
+function HeatmapCell({
+  label,
+  value,
+  maxValue,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  maxValue: number;
+  onClick?: () => void;
+}) {
+  const intensity = maxValue > 0 ? (value / maxValue) * 100 : 0;
+
+  const getBgColor = () => {
+    if (intensity === 0) return "bg-muted/20";
+    if (intensity < 25) return "bg-accent/20";
+    if (intensity < 50) return "bg-amber-500/30";
+    if (intensity < 75) return "bg-orange-500/40";
+    return "bg-destructive/50";
+  };
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.05, zIndex: 10 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      className={cn(
+        "relative p-4 rounded-xl cursor-pointer transition-all border",
+        getBgColor(),
+        onClick && "hover:shadow-lg"
+      )}
+      data-testid={`heatmap-cell-${label}`}
+    >
+      <div className="text-xs font-medium text-foreground/70">{label}</div>
+      <div className="text-2xl font-bold mt-1">{value}</div>
+      {intensity > 50 && (
+        <AlertTriangle className="absolute top-2 right-2 w-4 h-4 text-destructive" />
+      )}
+    </motion.div>
+  );
+}
 
 export default function Dashboard() {
   const { data: analytics, isLoading: analyticsLoading } = useQuery<{
@@ -39,450 +149,346 @@ export default function Dashboard() {
     queryKey: ["/api/analytics"],
   });
 
-  const { data: coveragePoolsWithStats, isLoading: statsLoading } = useQuery<CoveragePoolWithStats[]>({
-    queryKey: ["/api/coverage-pools-with-stats"],
-  });
-
-  const { data: stockUnderWarranty, isLoading: stockUnderWarrantyLoading } = useQuery({
+  const { data: stockUnderWarranty, isLoading: stockLoading } = useQuery({
     queryKey: ["/api/covered-units"],
   });
 
-  const { data: replacementUnits, isLoading: replacementUnitsLoading } = useQuery({
-    queryKey: ["/api/spare-units"],
-  });
-
-  // Map coverage pool stats for display
-  const poolCoverageStats = coveragePoolsWithStats?.map((pool: any) => {
-    try {
-      const criteria = JSON.parse(pool.filterCriteria || "{}");
-      
-      return {
-        ...pool,
-        inventoryRequired: pool.coveredCount,
-        poolUnits: pool.spareCount,
-        coverage: pool.coverageRatio,
-        specifications: [
-          criteria.make,
-          criteria.model,
-          criteria.processor,
-          criteria.ram,
-        ].filter(Boolean),
-      };
-    } catch {
-      return null;
-    }
-  }).filter(Boolean) || [];
-
-  // Generate coverage expiration trend data
-  const coverageExpirationData = (() => {
+  // Calculate warranty expiration heatmap data
+  const getWarrantyExpirationHeatmap = () => {
     if (!stockUnderWarranty || !Array.isArray(stockUnderWarranty)) return [];
-    
-    const months = ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr"];
-    const now = new Date();
-    
-    return months.map((month, index) => {
-      const targetDate = new Date(now);
-      targetDate.setMonth(targetDate.getMonth() + index);
-      targetDate.setDate(1);
-      
-      const nextMonth = new Date(targetDate);
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-      
-      const expiring = stockUnderWarranty.filter((c: any) => {
-        const endDate = new Date(c.coverageEndDate);
-        return endDate >= targetDate && endDate < nextMonth && c.isCoverageActive;
-      }).length;
-      
-      return { month, expiring };
-    });
-  })();
 
-  // Generate coverage ratio by make data
-  const coverageRatioByMake = (() => {
-    if (!replacementUnits || !stockUnderWarranty || !Array.isArray(replacementUnits) || !Array.isArray(stockUnderWarranty)) return [];
-    
-    const makeGroups: any = {};
-    
-    replacementUnits.forEach((unit: any) => {
-      if (!makeGroups[unit.make]) {
-        makeGroups[unit.make] = { replacementCount: 0, warrantyStockCount: 0 };
-      }
-      if (!unit.retiredOrder && !unit.reservedForCase) {
-        makeGroups[unit.make].replacementCount++;
-      }
-    });
-    
-    stockUnderWarranty.forEach((unit: any) => {
-      if (!makeGroups[unit.make]) {
-        makeGroups[unit.make] = { replacementCount: 0, warrantyStockCount: 0 };
-      }
-      if (unit.isCoverageActive) {
-        makeGroups[unit.make].warrantyStockCount++;
-      }
-    });
-    
-    return Object.entries(makeGroups)
-      .map(([make, data]: [string, any]) => ({
-        make,
-        coverageRatio: data.warrantyStockCount > 0 ? ((data.replacementCount / data.warrantyStockCount) * 100) : 0,
-        replacementCount: data.replacementCount,
-        warrantyStockCount: data.warrantyStockCount,
-      }))
-      .slice(0, 5);
-  })();
-
-  // Generate coverage status distribution
-  const statusDistribution = (() => {
-    if (!stockUnderWarranty || !Array.isArray(stockUnderWarranty)) return [];
-    
-    return [
-      { 
-        name: "Active", 
-        value: stockUnderWarranty.filter((c: any) => c.isCoverageActive).length, 
-        color: "hsl(var(--primary))" 
-      },
-      { 
-        name: "Expiring", 
-        value: stockUnderWarranty.filter((c: any) => {
-          if (!c.isCoverageActive) return false;
-          const daysRemaining = Math.floor((new Date(c.coverageEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-          return daysRemaining < 30;
-        }).length, 
-        color: "hsl(var(--destructive))" 
-      },
-      { 
-        name: "Inactive", 
-        value: stockUnderWarranty.filter((c: any) => !c.isCoverageActive).length, 
-        color: "hsl(var(--muted-foreground))" 
-      },
+    const periods = [
+      { label: "0-30 days", start: 0, end: 30 },
+      { label: "31-60 days", start: 31, end: 60 },
+      { label: "61-90 days", start: 61, end: 90 },
+      { label: "91-180 days", start: 91, end: 180 },
+      { label: "181-365 days", start: 181, end: 365 },
+      { label: "365+ days", start: 365, end: Infinity },
     ];
-  })();
 
-  if (analyticsLoading || statsLoading || stockUnderWarrantyLoading || replacementUnitsLoading) {
+    const now = new Date();
+
+    return periods.map((period) => {
+      const count = stockUnderWarranty.filter((item: any) => {
+        if (!item.isCoverageActive) return false;
+        const endDate = new Date(item.coverageEndDate);
+        const daysUntilExpiry = Math.floor((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return daysUntilExpiry >= period.start && daysUntilExpiry <= period.end;
+      }).length;
+
+      return {
+        label: period.label,
+        value: count,
+      };
+    });
+  };
+
+  const heatmapData = getWarrantyExpirationHeatmap();
+  const maxHeatmapValue = Math.max(...heatmapData.map((d) => d.value), 1);
+
+  if (analyticsLoading) {
     return (
-      <div className="h-full flex flex-col">
-        <div className="border-b bg-background px-8 py-6">
-          <Skeleton className="h-10 w-64 mb-2" />
-          <Skeleton className="h-4 w-96" />
-        </div>
-        <div className="flex-1 p-8">
-          <div className="grid grid-cols-12 gap-6 h-full">
-            <Skeleton className="col-span-3 h-48" />
-            <Skeleton className="col-span-3 h-48" />
-            <Skeleton className="col-span-6 row-span-2 h-96" />
-            <Skeleton className="col-span-6 row-span-2 h-96" />
-            <Skeleton className="col-span-6 h-96" />
-          </div>
+      <div className="p-8 space-y-6">
+        <Skeleton className="h-12 w-64" />
+        <div className="grid grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
         </div>
       </div>
     );
   }
 
+  const coveragePercentage = analytics?.averageCoverageRatio || 0;
+  const activeUnits = analytics?.activeCoverage || 0;
+  const expiringUnits = analytics?.expiringCoverage || 0;
+  const spareUnits = analytics?.totalSpareUnits || 0;
+
   return (
-    <div className="h-full flex flex-col">
+    <div className="p-8 space-y-8">
       {/* Header */}
-      <div className="border-b bg-gradient-to-r from-background to-muted/20 px-8 py-6">
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight flex items-center gap-3" data-testid="page-dashboard">
-            <Activity className="h-9 w-9 text-primary" />
-            Coverage Overview
-          </h1>
-          <p className="text-muted-foreground mt-2 text-lg">
-            Real-time monitoring of warranty coverage, pool performance, and risk indicators
-          </p>
-        </div>
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <h1 className="text-4xl font-bold mb-2">Mission Control</h1>
+        <p className="text-muted-foreground">
+          Real-time coverage analytics and risk monitoring
+        </p>
+      </motion.div>
+
+      {/* Hero KPI Section with Progress Rings */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
+        <Card className="rounded-2xl border-2 overflow-hidden bg-gradient-to-br from-card via-card to-primary/5">
+          <CardContent className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <ProgressRing
+                value={coveragePercentage}
+                label="Average Coverage"
+                sublabel="Target: 80%+"
+                color="primary"
+              />
+              <ProgressRing
+                value={activeUnits}
+                max={analytics?.totalCoveredUnits || 100}
+                label="Active Coverage"
+                sublabel={`${activeUnits} of ${analytics?.totalCoveredUnits || 0} units`}
+                color="accent"
+              />
+              <ProgressRing
+                value={expiringUnits}
+                max={100}
+                label="Expiring Soon"
+                sublabel={`${expiringUnits} units`}
+                color="warning"
+              />
+              <ProgressRing
+                value={spareUnits}
+                max={analytics?.totalCoveredUnits || 100}
+                label="Spare Units"
+                sublabel={`${spareUnits} available`}
+                color="accent"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Warranty Expiration Heatmap */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
+        <Card className="rounded-2xl">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">Warranty Expiration Timeline</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Click any period to view detailed inventory
+                </p>
+              </div>
+              <Badge variant="outline" className="gap-2">
+                <Activity className="w-4 h-4" />
+                {stockUnderWarranty?.length || 0} Total Units
+              </Badge>
+            </div>
+
+            {stockLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-24" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {heatmapData.map((cell, index) => (
+                  <HeatmapCell
+                    key={index}
+                    label={cell.label}
+                    value={cell.value}
+                    maxValue={maxHeatmapValue}
+                    onClick={() => {
+                      // Navigate to warranties page with filter
+                      window.location.href = "/warranties";
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="mt-6 flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-muted/20"></div>
+                <span className="text-muted-foreground">None</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-accent/20"></div>
+                <span className="text-muted-foreground">Low</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-amber-500/30"></div>
+                <span className="text-muted-foreground">Medium</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-destructive/50"></div>
+                <span className="text-muted-foreground">High</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+        >
+          <Link href="/pools">
+            <Card className="rounded-2xl hover-elevate active-elevate-2 transition-all cursor-pointer border-2 hover:border-primary/50">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-3 bg-primary/10 rounded-xl">
+                    <Shield className="w-6 h-6 text-primary" />
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Coverage Pools</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Manage warranty pools and allocations
+                </p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">
+                    {analytics?.totalCoveredUnits || 0} pools
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.4 }}
+        >
+          <Link href="/inventory">
+            <Card className="rounded-2xl hover-elevate active-elevate-2 transition-all cursor-pointer border-2 hover:border-accent/50">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-3 bg-accent/10 rounded-xl">
+                    <Package className="w-6 h-6 text-accent" />
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Replacement Pool</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  View and manage spare inventory
+                </p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{spareUnits} units</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+        >
+          <Link href="/warranties">
+            <Card className="rounded-2xl hover-elevate active-elevate-2 transition-all cursor-pointer border-2 hover:border-amber-500/50">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-3 bg-amber-500/10 rounded-xl">
+                    <Clock className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Warranty Status</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Monitor expiring warranties
+                </p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{expiringUnits} expiring</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </motion.div>
       </div>
 
-      {/* Bento Box Grid Layout */}
-      <div className="flex-1 overflow-auto p-8">
-        <div className="grid grid-cols-12 gap-6 auto-rows-fr">
-          
-          {/* Active Warranty - Large Stat Card */}
-          <Card className="col-span-12 md:col-span-6 lg:col-span-3 rounded-2xl border hover-elevate transition-all">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-primary/10 rounded-xl">
-                  <Shield className="h-7 w-7 text-primary" />
+      {/* Status Summary Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: 0.6 }}
+        >
+          <Card className="rounded-xl">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-accent/10 rounded-lg">
+                  <CheckCircle2 className="w-5 h-5 text-accent" />
                 </div>
-                <Badge variant="outline">Active</Badge>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Active Warranties</p>
-                <p className="text-5xl font-bold tracking-tight">{analytics?.activeCoverage?.toLocaleString() || 0}</p>
-                <p className="text-xs text-muted-foreground">Non-expired coverage units</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Replacement Pool - Large Stat Card */}
-          <Card className="col-span-12 md:col-span-6 lg:col-span-3 rounded-2xl border hover-elevate transition-all">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-secondary/10 rounded-xl">
-                  <Package className="h-7 w-7 text-secondary" />
-                </div>
-                <Badge variant="outline">Inventory</Badge>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Spare Units</p>
-                <p className="text-5xl font-bold tracking-tight">{analytics?.totalSpareUnits?.toLocaleString() || 0}</p>
-                <p className="text-xs text-muted-foreground">Available replacement pool</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Coverage Distribution Pie Chart - Wider Card */}
-          <Card className="col-span-12 md:col-span-6 lg:col-span-6 lg:row-span-2 rounded-2xl border">
-            <CardHeader className="border-b">
-              <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <Layers className="h-6 w-6 text-primary" />
-                    Coverage Status Distribution
-                  </CardTitle>
-                  <CardDescription className="mt-1">Breakdown by warranty status</CardDescription>
+                  <p className="text-xs text-muted-foreground">Active Coverage</p>
+                  <p className="text-2xl font-bold">{activeUnits}</p>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid md:grid-cols-2 gap-6 items-center">
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: 0.7 }}
+        >
+          <Card className="rounded-xl">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-500/10 rounded-lg">
+                  <Clock className="w-5 h-5 text-amber-600" />
+                </div>
                 <div>
-                  <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
-                      <Pie
-                        data={statusDistribution}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {statusDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--popover))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="space-y-4">
-                  {statusDistribution.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
-                      <div className="flex items-center gap-3">
-                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span className="font-medium">{item.name}</span>
-                      </div>
-                      <span className="text-2xl font-bold">{item.value}</span>
-                    </div>
-                  ))}
+                  <p className="text-xs text-muted-foreground">Expiring Soon</p>
+                  <p className="text-2xl font-bold">{expiringUnits}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
+        </motion.div>
 
-          {/* Coverage Ratio - Large Stat Card */}
-          <Card className="col-span-12 md:col-span-6 lg:col-span-3 rounded-2xl border hover-elevate transition-all ">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-accent/10 rounded-2xl">
-                  <TrendingUp className="h-7 w-7 text-accent" />
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: 0.8 }}
+        >
+          <Card className="rounded-xl">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Package className="w-5 h-5 text-primary" />
                 </div>
-                <Badge variant="outline" className="bg-background/80">Avg Ratio</Badge>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Coverage Ratio</p>
-                <p className="text-5xl font-bold tracking-tight">{(analytics?.averageCoverageRatio || 0).toFixed(1)}%</p>
-                <p className="text-xs text-muted-foreground">Average pool coverage</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Expiring Soon - Alert Card */}
-          <Card className="col-span-12 md:col-span-6 lg:col-span-3 rounded-2xl border border-destructive/20 hover-elevate transition-all ">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-destructive/10 rounded-2xl">
-                  <AlertCircle className="h-7 w-7 text-destructive" />
-                </div>
-                <Badge variant="destructive" className="bg-destructive/80">Alert</Badge>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Expiring Soon</p>
-                <p className="text-5xl font-bold tracking-tight text-destructive">{analytics?.expiringCoverage || 0}</p>
-                <p className="text-xs text-muted-foreground">Within {analytics?.expiringCoverageDays || 30} days</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Coverage Pools - Scrollable List */}
-          <Card className="col-span-12 lg:col-span-6 lg:row-span-2 rounded-2xl border">
-            <CardHeader className="border-b">
-              <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <Package className="h-6 w-6 text-primary" />
-                    Coverage Pools
-                  </CardTitle>
-                  <CardDescription className="mt-1">Active pool configurations</CardDescription>
+                  <p className="text-xs text-muted-foreground">Spare Units</p>
+                  <p className="text-2xl font-bold">{spareUnits}</p>
                 </div>
-                <Link href="/coverage-pools">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    View All
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[440px]">
-                <div className="p-6 space-y-3">
-                  {poolCoverageStats.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                      <div className="p-4 bg-muted rounded-full mb-4">
-                        <Package className="h-10 w-10 text-muted-foreground" />
-                      </div>
-                      <p className="text-muted-foreground font-medium">No pools configured</p>
-                      <p className="text-sm text-muted-foreground mt-1">Create a pool to start tracking coverage</p>
-                    </div>
-                  ) : (
-                    poolCoverageStats.map((pool: any) => (
-                      <Link key={pool.id} href={`/pools/${pool.id}`}>
-                        <Card className="hover-elevate active-elevate-2 transition-all cursor-pointer border" data-testid={`pool-card-${pool.id}`}>
-                          <CardContent className="p-5">
-                            <div className="flex items-start justify-between gap-4 mb-4">
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-base truncate mb-1">{pool.name}</h4>
-                                <p className="text-sm text-muted-foreground truncate">
-                                  {pool.specifications.slice(0, 2).join(' • ')}
-                                </p>
-                              </div>
-                              <Badge 
-                                variant={pool.coverage < 50 ? 'destructive' : 'default'}
-                                className="text-lg px-3 py-1 shrink-0"
-                              >
-                                {pool.coverage}%
-                              </Badge>
-                            </div>
-                            <div className="grid grid-cols-4 gap-2">
-                              <div className="text-center p-2 rounded-lg bg-muted/50">
-                                <div className="text-xs text-muted-foreground mb-1">Covered</div>
-                                <div className="font-bold text-base">{pool.coveredCount}</div>
-                              </div>
-                              <div className="text-center p-2 rounded-lg bg-muted/50">
-                                <div className="text-xs text-muted-foreground mb-1">Spare</div>
-                                <div className="font-bold text-base">{pool.spareCount}</div>
-                              </div>
-                              <div className="text-center p-2 rounded-lg bg-muted/50">
-                                <div className="text-xs text-muted-foreground mb-1">Run Rate</div>
-                                <div className="font-bold text-base">{pool.runRate || '0'}/mo</div>
-                              </div>
-                              <div className="text-center p-2 rounded-lg bg-muted/50">
-                                <div className="text-xs text-muted-foreground mb-1">Stock</div>
-                                <div className="font-bold text-base">{pool.availableStockCount || '0'}</div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    ))
-                  )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: 0.9 }}
+        >
+          <Card className="rounded-xl">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-secondary/10 rounded-lg">
+                  <TrendingUp className="w-5 h-5 text-secondary" />
                 </div>
-              </ScrollArea>
+                <div>
+                  <p className="text-xs text-muted-foreground">Coverage Ratio</p>
+                  <p className="text-2xl font-bold">{Math.round(coveragePercentage)}%</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
-
-          {/* Coverage by Manufacturer - Bar Chart */}
-          <Card className="col-span-12 lg:col-span-6 rounded-2xl border">
-            <CardHeader className="border-b">
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <BarChart3 className="h-6 w-6 text-primary" />
-                Coverage by Manufacturer
-              </CardTitle>
-              <CardDescription>Top 5 makes by coverage ratio</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={coverageRatioByMake}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis 
-                    dataKey="make" 
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  />
-                  <YAxis 
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                    label={{ value: 'Coverage %', angle: -90, position: 'insideLeft', style: { fill: 'hsl(var(--muted-foreground))' } }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--popover))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                    formatter={(value: any) => [`${Number(value).toFixed(1)}%`, 'Coverage Ratio']}
-                  />
-                  <Bar 
-                    dataKey="coverageRatio" 
-                    fill="hsl(var(--primary))" 
-                    radius={[8, 8, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Expiration Trend - Line Chart */}
-          <Card className="col-span-12 lg:col-span-6 rounded-2xl border">
-            <CardHeader className="border-b">
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <TrendingUp className="h-6 w-6 text-primary" />
-                Expiration Forecast
-              </CardTitle>
-              <CardDescription>Warranties expiring over next 6 months</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={coverageExpirationData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  />
-                  <YAxis
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                    label={{ value: 'Units', angle: -90, position: 'insideLeft', style: { fill: 'hsl(var(--muted-foreground))' } }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--popover))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="expiring"
-                    stroke="hsl(var(--destructive))"
-                    strokeWidth={3}
-                    dot={{ fill: "hsl(var(--destructive))", r: 5 }}
-                    activeDot={{ r: 7 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* High-Risk Combinations - Full Width */}
-          <div className="col-span-12">
-            <RiskAnalysisTable />
-          </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
