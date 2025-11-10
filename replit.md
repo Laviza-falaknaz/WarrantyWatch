@@ -22,8 +22,8 @@ Preferred communication style: Simple, everyday language.
 - **Design Principles**: Data-first presentation for enterprise dashboards, high information density, Inter and JetBrains Mono typography, consistent spacing.
 - **State Management**: TanStack Query for server state, local React state for UI, Context API for theme.
 - **Routing**: wouter.
-- **Key Pages**: Dashboard (redesigned 3-column layout with risk analysis), Replacement Pool, Stock under Warranty, Coverage Pools, Pool Detail (full-page analytics dashboard at /pools/:poolId), Warranty Explorer, Configuration (with webhook integration), Claims History, Replacements, Available Stock.
-- **Navigation**: Sidebar organized into logical groups: Overview, Core Inventory, Inventory Tracking, Management & Tools. Pool detail view uses breadcrumb navigation with direct links back to Coverage Pools page.
+- **Key Pages**: Dashboard (redesigned 3-column layout with risk analysis), Monitor Warranties (placeholder), Explore Warranties (placeholder), Coverage Pools, Warranty Explorer, Replacement Stock, Stock under Warranty, Available Stock, Claimed Units, Replacements Sent, Configuration (with webhook integration), Pool Detail (full-page analytics dashboard at /pools/:poolId).
+- **Navigation** (Updated November 2025): Flat sidebar menu with 11 pages in priority sequence. Removed grouped navigation for cleaner UX. Pool detail view uses breadcrumb navigation with direct links back to Coverage Pools page.
 - **UX Improvements**: 
   - **Dashboard Redesign** (November 2025): 3-column responsive layout (25%-50%-25%) with left column for KPI cards and compact charts, center column for high-risk combinations table with sortable columns and color-coded risk badges, right column for scrollable pool summary cards
   - **Risk Analysis & Alerting** (November 2025): RiskAnalysisTable component with Send Alert (webhook integration) and Create Pool (auto-pool creation) actions, real-time toast notifications
