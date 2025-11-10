@@ -171,10 +171,21 @@ export interface IStorage {
   
   // Risk Analysis
   getRiskCombinations(options?: {
-    sortBy?: 'riskScore' | 'runRate' | 'coverageRatio' | 'coveredCount';
+    sortBy?: 'riskScore' | 'riskLevel' | 'runRate' | 'coverageRatio' | 'coveredCount' | 'coverageOfRunRate';
     sortOrder?: 'asc' | 'desc';
     limit?: number;
     offset?: number;
+    search?: string;
+    excludeZeroCovered?: boolean;
+    riskLevels?: string[];
+    runRateMin?: number;
+    runRateMax?: number;
+    coverageRatioMin?: number;
+    coverageRatioMax?: number;
+    spareRateMin?: number;
+    spareRateMax?: number;
+    coveredCountMin?: number;
+    coveredCountMax?: number;
   }): Promise<any[]>; // Using any[] for now, will add proper type
   
   // Configuration
@@ -1332,6 +1343,16 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
     offset?: number;
     search?: string;
+    excludeZeroCovered?: boolean;
+    riskLevels?: string[];
+    runRateMin?: number;
+    runRateMax?: number;
+    coverageRatioMin?: number;
+    coverageRatioMax?: number;
+    spareRateMin?: number;
+    spareRateMax?: number;
+    coveredCountMin?: number;
+    coveredCountMax?: number;
   }): Promise<any[]> {
     // Calculate date 6 months ago
     const sixMonthsAgo = new Date();
@@ -1339,7 +1360,8 @@ export class DatabaseStorage implements IStorage {
     
     // Optimized query - get each metric separately and join, avoiding cartesian product
     const combinations = await db.execute(sql`
-      WITH all_combinations AS (
+      WITH base_combinations AS (
+        WITH all_combinations AS (
         -- Get all unique combinations from covered units, claims, spares, and available stock
         SELECT DISTINCT make, model, processor, generation FROM ${coveredUnit}
         UNION
@@ -1457,19 +1479,50 @@ export class DatabaseStorage implements IStorage {
           THEN 50
           ELSE 20
         END as risk_score
-      FROM all_combinations c
-      LEFT JOIN covered_metrics cov USING (make, model, processor, generation)
-      LEFT JOIN spare_metrics sp USING (make, model, processor, generation)
-      LEFT JOIN available_metrics av USING (make, model, processor, generation)
-      LEFT JOIN claims_metrics cl USING (make, model, processor, generation)
-      LEFT JOIN replacement_metrics rep USING (make, model, processor, generation)
-      WHERE (COALESCE(cl.claims_count, 0) > 0 OR COALESCE(cov.covered_count, 0) > 0)
-        ${options?.search ? sql.raw(`AND (
-          LOWER(c.make) LIKE LOWER('%${options.search}%') OR
-          LOWER(c.model) LIKE LOWER('%${options.search}%') OR
-          LOWER(COALESCE(c.processor, '')) LIKE LOWER('%${options.search}%') OR
-          LOWER(COALESCE(c.generation, '')) LIKE LOWER('%${options.search}%')
-        )`) : sql``}
+        FROM all_combinations c
+        LEFT JOIN covered_metrics cov USING (make, model, processor, generation)
+        LEFT JOIN spare_metrics sp USING (make, model, processor, generation)
+        LEFT JOIN available_metrics av USING (make, model, processor, generation)
+        LEFT JOIN claims_metrics cl USING (make, model, processor, generation)
+        LEFT JOIN replacement_metrics rep USING (make, model, processor, generation)
+        WHERE (COALESCE(cl.claims_count, 0) > 0 OR COALESCE(cov.covered_count, 0) > 0)
+          ${options?.excludeZeroCovered ? sql`AND COALESCE(cov.covered_count, 0) > 0` : sql``}
+          ${options?.search ? sql`AND (
+            LOWER(c.make) LIKE LOWER(${'%' + options.search + '%'}) OR
+            LOWER(c.model) LIKE LOWER(${'%' + options.search + '%'}) OR
+            LOWER(COALESCE(c.processor, '')) LIKE LOWER(${'%' + options.search + '%'}) OR
+            LOWER(COALESCE(c.generation, '')) LIKE LOWER(${'%' + options.search + '%'})
+          )` : sql``}
+      )
+      SELECT * FROM base_combinations
+      WHERE 1=1
+        ${options?.riskLevels && options.riskLevels.length > 0 ? 
+          sql`AND risk_level IN (${sql.join(options.riskLevels.map(level => sql`${level}`), sql`, `)})` 
+        : sql``}
+        ${options?.runRateMin !== undefined && !isNaN(options.runRateMin) ? 
+          sql`AND run_rate >= ${options.runRateMin}` 
+        : sql``}
+        ${options?.runRateMax !== undefined && !isNaN(options.runRateMax) ? 
+          sql`AND run_rate <= ${options.runRateMax}` 
+        : sql``}
+        ${options?.coverageRatioMin !== undefined && !isNaN(options.coverageRatioMin) ? 
+          sql`AND coverage_ratio >= ${options.coverageRatioMin}` 
+        : sql``}
+        ${options?.coverageRatioMax !== undefined && !isNaN(options.coverageRatioMax) ? 
+          sql`AND coverage_ratio <= ${options.coverageRatioMax}` 
+        : sql``}
+        ${options?.spareRateMin !== undefined && !isNaN(options.spareRateMin) ? 
+          sql`AND coverage_of_run_rate >= ${options.spareRateMin}` 
+        : sql``}
+        ${options?.spareRateMax !== undefined && !isNaN(options.spareRateMax) ? 
+          sql`AND coverage_of_run_rate <= ${options.spareRateMax}` 
+        : sql``}
+        ${options?.coveredCountMin !== undefined && !isNaN(options.coveredCountMin) ? 
+          sql`AND covered_count >= ${options.coveredCountMin}` 
+        : sql``}
+        ${options?.coveredCountMax !== undefined && !isNaN(options.coveredCountMax) ? 
+          sql`AND covered_count <= ${options.coveredCountMax}` 
+        : sql``}
       ORDER BY ${sql.raw(
         options?.sortBy === 'runRate' ? 'run_rate' : 
         options?.sortBy === 'coverageRatio' ? 'coverage_ratio' : 

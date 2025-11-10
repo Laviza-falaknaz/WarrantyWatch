@@ -442,12 +442,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const offset = parseInt(req.query.offset as string) || 0;
       const search = (req.query.search as string) || '';
       
+      // Parse filter parameters
+      const excludeZeroCovered = req.query.excludeZeroCovered === 'true';
+      const riskLevels = req.query.riskLevels 
+        ? (Array.isArray(req.query.riskLevels) ? req.query.riskLevels as string[] : [req.query.riskLevels as string])
+        : undefined;
+      const runRateMin = req.query.runRateMin ? parseFloat(req.query.runRateMin as string) : undefined;
+      const runRateMax = req.query.runRateMax ? parseFloat(req.query.runRateMax as string) : undefined;
+      const coverageRatioMin = req.query.coverageRatioMin ? parseFloat(req.query.coverageRatioMin as string) : undefined;
+      const coverageRatioMax = req.query.coverageRatioMax ? parseFloat(req.query.coverageRatioMax as string) : undefined;
+      const spareRateMin = req.query.spareRateMin ? parseFloat(req.query.spareRateMin as string) : undefined;
+      const spareRateMax = req.query.spareRateMax ? parseFloat(req.query.spareRateMax as string) : undefined;
+      const coveredCountMin = req.query.coveredCountMin ? parseFloat(req.query.coveredCountMin as string) : undefined;
+      const coveredCountMax = req.query.coveredCountMax ? parseFloat(req.query.coveredCountMax as string) : undefined;
+      
       const combinations = await storage.getRiskCombinations({
         sortBy: sortBy as any,
         sortOrder: sortOrder as any,
         limit,
         offset,
         search,
+        excludeZeroCovered,
+        riskLevels,
+        runRateMin,
+        runRateMax,
+        coverageRatioMin,
+        coverageRatioMax,
+        spareRateMin,
+        spareRateMax,
+        coveredCountMin,
+        coveredCountMax,
       });
       
       res.json(combinations);

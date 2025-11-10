@@ -83,72 +83,12 @@ export default function RiskAnalysisTable() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const { data: allCombinations, isLoading } = useQuery<RiskCombination[]>({
-    queryKey: ['/api/risk-combinations', { sortBy, sortOrder, limit, offset: page * limit, search: debouncedSearch }],
-  });
-
-  const combinations = useMemo(() => {
-    if (!allCombinations) return allCombinations;
-    
-    // Clear selections when filters change to prevent accidental bulk actions
+  // Reset page and clear selections when filters change
+  useEffect(() => {
+    setPage(0);
     setSelectedRows(new Set());
-    
-    let filtered = allCombinations;
-    
-    // Exclude zero covered
-    if (excludeZeroCovered) {
-      filtered = filtered.filter(combo => combo.covered_count > 0);
-    }
-    
-    // Risk level filter
-    if (selectedRiskLevels.length > 0) {
-      filtered = filtered.filter(combo => selectedRiskLevels.includes(combo.risk_level));
-    }
-    
-    // Run rate filters
-    const runRateMinVal = parseFloat(runRateMin);
-    const runRateMaxVal = parseFloat(runRateMax);
-    if (!isNaN(runRateMinVal)) {
-      filtered = filtered.filter(combo => combo.run_rate >= runRateMinVal);
-    }
-    if (!isNaN(runRateMaxVal)) {
-      filtered = filtered.filter(combo => combo.run_rate <= runRateMaxVal);
-    }
-    
-    // Coverage ratio filters
-    const coverageRatioMinVal = parseFloat(coverageRatioMin);
-    const coverageRatioMaxVal = parseFloat(coverageRatioMax);
-    if (!isNaN(coverageRatioMinVal)) {
-      filtered = filtered.filter(combo => combo.coverage_ratio >= coverageRatioMinVal);
-    }
-    if (!isNaN(coverageRatioMaxVal)) {
-      filtered = filtered.filter(combo => combo.coverage_ratio <= coverageRatioMaxVal);
-    }
-    
-    // Spare/Rate filters
-    const spareRateMinVal = parseFloat(spareRateMin);
-    const spareRateMaxVal = parseFloat(spareRateMax);
-    if (!isNaN(spareRateMinVal)) {
-      filtered = filtered.filter(combo => combo.coverage_of_run_rate >= spareRateMinVal);
-    }
-    if (!isNaN(spareRateMaxVal)) {
-      filtered = filtered.filter(combo => combo.coverage_of_run_rate <= spareRateMaxVal);
-    }
-    
-    // Covered count filters
-    const coveredCountMinVal = parseFloat(coveredCountMin);
-    const coveredCountMaxVal = parseFloat(coveredCountMax);
-    if (!isNaN(coveredCountMinVal)) {
-      filtered = filtered.filter(combo => combo.covered_count >= coveredCountMinVal);
-    }
-    if (!isNaN(coveredCountMaxVal)) {
-      filtered = filtered.filter(combo => combo.covered_count <= coveredCountMaxVal);
-    }
-    
-    return filtered;
   }, [
-    allCombinations, 
-    excludeZeroCovered, 
+    excludeZeroCovered,
     selectedRiskLevels,
     runRateMin,
     runRateMax,
@@ -159,6 +99,28 @@ export default function RiskAnalysisTable() {
     coveredCountMin,
     coveredCountMax
   ]);
+
+  const { data: allCombinations, isLoading } = useQuery<RiskCombination[]>({
+    queryKey: ['/api/risk-combinations', { 
+      sortBy, 
+      sortOrder, 
+      limit, 
+      offset: page * limit, 
+      search: debouncedSearch,
+      excludeZeroCovered,
+      riskLevels: selectedRiskLevels,
+      runRateMin,
+      runRateMax,
+      coverageRatioMin,
+      coverageRatioMax,
+      spareRateMin,
+      spareRateMax,
+      coveredCountMin,
+      coveredCountMax
+    }],
+  });
+
+  const combinations = allCombinations;
 
   const sendAlertMutation = useMutation({
     mutationFn: async (combinationsArray: RiskCombination[]) => {
