@@ -147,20 +147,26 @@ export default function PoolGroups() {
     setActivePool(null);
   };
 
+  const normalizeToArray = (value: any): string[] => {
+    if (Array.isArray(value)) return value;
+    if (value != null && value !== "") return [String(value)];
+    return [];
+  };
+
   const populateFormForEdit = (pool: CoveragePoolWithStats) => {
     setPoolName(pool.name);
     setDescription(pool.description || "");
     
     try {
       const filterCriteria = JSON.parse(pool.filterCriteria);
-      // Ensure all values are arrays, even if undefined or not present
-      setSelectedMakes(Array.isArray(filterCriteria.make) ? filterCriteria.make : []);
-      setSelectedModels(Array.isArray(filterCriteria.model) ? filterCriteria.model : []);
-      setSelectedProcessors(Array.isArray(filterCriteria.processor) ? filterCriteria.processor : []);
-      setSelectedRams(Array.isArray(filterCriteria.ram) ? filterCriteria.ram : []);
-      setSelectedCategories(Array.isArray(filterCriteria.category) ? filterCriteria.category : []);
-      setSelectedStorageSizes(Array.isArray(filterCriteria.hdd) ? filterCriteria.hdd : []);
-      setSelectedGenerations(Array.isArray(filterCriteria.generation) ? filterCriteria.generation : []);
+      // Normalize all filter values to arrays (handles scalars, undefined, null)
+      setSelectedMakes(normalizeToArray(filterCriteria.make));
+      setSelectedModels(normalizeToArray(filterCriteria.model));
+      setSelectedProcessors(normalizeToArray(filterCriteria.processor));
+      setSelectedRams(normalizeToArray(filterCriteria.ram));
+      setSelectedCategories(normalizeToArray(filterCriteria.category));
+      setSelectedStorageSizes(normalizeToArray(filterCriteria.hdd));
+      setSelectedGenerations(normalizeToArray(filterCriteria.generation));
     } catch (error) {
       console.error("Error parsing filter criteria:", error);
       // Reset to empty arrays on error
@@ -263,7 +269,12 @@ export default function PoolGroups() {
             Track coverage ratios showing spare units available to cover deployed units with matching specifications
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            resetForm();
+          }
+        }}>
           <DialogTrigger asChild>
             <Button 
               data-testid="button-create-coverage-pool"
