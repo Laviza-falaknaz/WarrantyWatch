@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { Download } from "lucide-react";
+import { Download, Package2, CheckCircle2, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import type { AvailableStock } from "@shared/schema";
@@ -196,14 +196,36 @@ export default function AvailableStockPage() {
   const reservedStock = stats?.reserved || 0;
   const availableCount = stats?.available || 0;
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-8">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Available Stock Inventory</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              All stock available for allocation or replacement
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-8">
+      {/* Header Section */}
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold" data-testid="available-stock-heading">
             Available Stock Inventory
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             All stock available for allocation or replacement
           </p>
         </div>
@@ -211,68 +233,93 @@ export default function AvailableStockPage() {
           onClick={handleExportToExcel}
           disabled={!availableStock || availableStock.length === 0}
           data-testid="button-export-available-stock"
+          size="lg"
         >
           <Download className="h-4 w-4 mr-2" />
           Export to Excel
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Total Stock</p>
-              <p className="text-3xl font-bold" data-testid="text-total-available-stock">
+      {/* Summary Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="rounded-2xl border hover-elevate transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-primary/10 rounded-xl">
+                <Package2 className="h-6 w-6 text-primary" />
+              </div>
+              <Badge variant="outline">Total</Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Total Stock</p>
+              <p className="text-4xl font-bold tracking-tight" data-testid="text-total-available-stock">
                 {totalStock.toLocaleString()}
               </p>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Available</p>
-              <p className="text-3xl font-bold text-green-600" data-testid="text-available-stock">
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border hover-elevate transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-green-500/10 rounded-xl">
+                <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-500" />
+              </div>
+              <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
+                Available
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Available Now</p>
+              <p className="text-4xl font-bold tracking-tight text-green-600 dark:text-green-500" data-testid="text-available-stock">
                 {availableCount.toLocaleString()}
               </p>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Reserved</p>
-              <p className="text-3xl font-bold text-amber-600" data-testid="text-reserved-stock">
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border hover-elevate transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-amber-500/10 rounded-xl">
+                <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-500" />
+              </div>
+              <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800">
+                Reserved
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Reserved Units</p>
+              <p className="text-4xl font-bold tracking-tight text-amber-600 dark:text-amber-500" data-testid="text-reserved-stock">
                 {reservedStock.toLocaleString()}
               </p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <SearchBar
-            onSearch={handleSearchChange}
-            placeholder="Search by serial number, make, or model..."
-          />
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {totalPages > 1 && (
-        <TablePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          totalItems={totalStock}
-          itemsPerPage={ITEMS_PER_PAGE}
+      {/* Search and Table */}
+      <div className="space-y-4">
+        <SearchBar
+          onSearch={handleSearchChange}
+          placeholder="Search by serial number, make, or model..."
         />
-      )}
 
-      {isLoading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
-      ) : (
+        {totalPages > 1 && (
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            totalItems={totalStock}
+            itemsPerPage={ITEMS_PER_PAGE}
+          />
+        )}
+
         <DataTable
           data={availableStock || []}
           columns={columns}
         />
-      )}
+      </div>
     </div>
   );
 }

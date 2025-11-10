@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DataTable, { Column } from "@/components/DataTable";
 import SearchBar from "@/components/SearchBar";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { Download } from "lucide-react";
+import { Download, Shield, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import type { CoveredUnit, AppConfiguration } from "@shared/schema";
 
@@ -17,14 +17,12 @@ export default function Warranties() {
   
   const ITEMS_PER_PAGE = 100;
 
-  // Get configuration for expiring days threshold
   const { data: configuration } = useQuery<AppConfiguration>({
     queryKey: ["/api/configuration"],
   });
 
   const expiringThresholdDays = configuration?.expiringCoverageDays || 30;
 
-  // Fetch stats for entire dataset (for summary cards)
   const { data: fullStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/covered-units/stats", searchQuery],
     queryFn: async () => {
@@ -39,7 +37,6 @@ export default function Warranties() {
     },
   });
 
-  // Fetch table data (paginated - 100 items per page)
   const { data: stockUnderWarranty, isLoading: tableLoading } = useQuery({
     queryKey: ["/api/covered-units", searchQuery, currentPage],
     queryFn: async () => {
@@ -48,7 +45,6 @@ export default function Warranties() {
         params.append("search", searchQuery);
       }
       
-      // Add pagination parameters
       params.append("limit", ITEMS_PER_PAGE.toString());
       params.append("offset", ((currentPage - 1) * ITEMS_PER_PAGE).toString());
       
@@ -70,12 +66,11 @@ export default function Warranties() {
     return "Active";
   };
 
-  // Use full dataset stats for summary cards (not limited to 10k)
   const stats = fullStats || { active: 0, expiring: 0, expired: 0, total: 0 };
 
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page when search changes
+    setCurrentPage(1);
   }, []);
 
   const handlePageChange = useCallback((page: number) => {
@@ -213,7 +208,6 @@ export default function Warranties() {
         const daysRemaining = getDaysRemaining(item.coverageEndDate);
         const status = getCoverageStatus(daysRemaining);
         
-        // Color coding: Active=blue, Expiring Soon=orange, Expired=red
         const badgeVariant = status === "Active" ? "default" : status === "Expiring Soon" ? "secondary" : "outline";
         const badgeClass = status === "Active" 
           ? "bg-blue-500 hover:bg-blue-600 text-white border-blue-600" 
@@ -240,7 +234,6 @@ export default function Warranties() {
         const daysRemaining = getDaysRemaining(item.coverageEndDate);
         const status = getCoverageStatus(daysRemaining);
         
-        // Color coding matches status
         const color = status === "Active"
           ? "text-blue-600 dark:text-blue-400"
           : status === "Expiring Soon"
@@ -258,14 +251,19 @@ export default function Warranties() {
 
   if (statsLoading || tableLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-8">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Stock under Warranty</h1>
+            <h1 className="text-3xl font-bold">Stock under Warranty</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Units deployed under warranty coverage that may need replacement
             </p>
           </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -273,50 +271,99 @@ export default function Warranties() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-6 p-8">
+      {/* Header Section */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold" data-testid="heading-stock-under-warranty">
+          <h1 className="text-3xl font-bold" data-testid="heading-stock-under-warranty">
             Stock under Warranty
           </h1>
           <p className="text-sm text-muted-foreground mt-1" data-testid="text-stock-under-warranty-description">
             Units deployed under warranty coverage that may need replacement
           </p>
         </div>
-        <Button variant="outline" data-testid="button-export-stock-under-warranty">
+        <Button variant="outline" data-testid="button-export-stock-under-warranty" size="lg">
           <Download className="h-4 w-4 mr-2" />
           Export
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Total Units</div>
-            <div className="text-2xl font-semibold mt-1">{stats.total}</div>
+      {/* Summary Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="rounded-2xl border hover-elevate transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-primary/10 rounded-xl">
+                <Shield className="h-6 w-6 text-primary" />
+              </div>
+              <Badge variant="outline">Total</Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Total Units</p>
+              <p className="text-4xl font-bold tracking-tight">{stats.total.toLocaleString()}</p>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Active</div>
-            <div className="text-2xl font-semibold mt-1 text-blue-600 dark:text-blue-400">{stats.active}</div>
+
+        <Card className="rounded-2xl border hover-elevate transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-blue-500/10 rounded-xl">
+                <CheckCircle2 className="h-6 w-6 text-blue-600 dark:text-blue-500" />
+              </div>
+              <Badge variant="outline" className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800">
+                Active
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Active Coverage</p>
+              <p className="text-4xl font-bold tracking-tight text-blue-600 dark:text-blue-500">
+                {stats.active}
+              </p>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Expiring Soon</div>
-            <div className="text-2xl font-semibold mt-1 text-orange-600 dark:text-orange-400">{stats.expiring}</div>
+
+        <Card className="rounded-2xl border hover-elevate transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-orange-500/10 rounded-xl">
+                <Clock className="h-6 w-6 text-orange-600 dark:text-orange-500" />
+              </div>
+              <Badge variant="outline" className="bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800">
+                Expiring
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Expiring Soon</p>
+              <p className="text-4xl font-bold tracking-tight text-orange-600 dark:text-orange-500">
+                {stats.expiring}
+              </p>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Expired</div>
-            <div className="text-2xl font-semibold mt-1 text-red-600 dark:text-red-400">{stats.expired}</div>
+
+        <Card className="rounded-2xl border hover-elevate transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-red-500/10 rounded-xl">
+                <XCircle className="h-6 w-6 text-red-600 dark:text-red-500" />
+              </div>
+              <Badge variant="outline" className="bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800">
+                Expired
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Coverage Expired</p>
+              <p className="text-4xl font-bold tracking-tight text-red-600 dark:text-red-500">
+                {stats.expired}
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Search and Table */}
       <div className="space-y-4">
         <SearchBar
           placeholder="Search by serial number, make, or model..."

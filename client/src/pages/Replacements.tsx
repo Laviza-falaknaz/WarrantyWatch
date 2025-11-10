@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { Download } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import type { Replacement } from "@shared/schema";
@@ -183,14 +183,34 @@ export default function Replacements() {
 
   const totalReplacements = stats?.total || 0;
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-8">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Replacement History</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Track all units sent as warranty replacements
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+          <Skeleton className="h-32" />
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-8">
+      {/* Header Section */}
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold" data-testid="replacements-heading">
             Replacement History
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Track all units sent as warranty replacements
           </p>
         </div>
@@ -198,56 +218,53 @@ export default function Replacements() {
           onClick={handleExportToExcel}
           disabled={!replacements || replacements.length === 0}
           data-testid="button-export-replacements"
+          size="lg"
         >
           <Download className="h-4 w-4 mr-2" />
           Export to Excel
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 gap-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Total Replacements</p>
-              <p className="text-3xl font-bold" data-testid="text-total-replacements">
-                {totalReplacements.toLocaleString()}
-              </p>
+      {/* Summary Stats Row */}
+      <Card className="rounded-2xl border hover-elevate transition-all">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-3 bg-primary/10 rounded-xl">
+              <RefreshCw className="h-6 w-6 text-primary" />
             </div>
+            <Badge variant="outline">Total</Badge>
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">Total Replacements</p>
+            <p className="text-4xl font-bold tracking-tight" data-testid="text-total-replacements">
+              {totalReplacements.toLocaleString()}
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <SearchBar
-            onSearch={handleSearchChange}
-            placeholder="Search by serial number, RMA, make, or model..."
-          />
-        </div>
-      </div>
-
-      {totalPages > 1 && (
-        <TablePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          totalItems={totalReplacements}
-          itemsPerPage={ITEMS_PER_PAGE}
+      {/* Search and Table */}
+      <div className="space-y-4">
+        <SearchBar
+          onSearch={handleSearchChange}
+          placeholder="Search by serial number, RMA, make, or model..."
         />
-      )}
 
-      {isLoading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
-      ) : (
+        {totalPages > 1 && (
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            totalItems={totalReplacements}
+            itemsPerPage={ITEMS_PER_PAGE}
+          />
+        )}
+
         <DataTable
           data={replacements || []}
           columns={columns}
         />
-      )}
+      </div>
     </div>
   );
 }
