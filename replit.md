@@ -68,7 +68,7 @@ Preferred communication style: Simple, everyday language.
 - **UI**: Configuration page provides form-based interface with webhook integration card for Power Automate URL configuration and password-protected updates.
 
 **High-Risk Combination Analysis System** (November 2025):
-- **Endpoint**: `GET /api/risk-combinations` with query parameters for sorting, pagination
+- **Endpoint**: `GET /api/risk-combinations` with query parameters for sorting, pagination, search
 - **Risk Scoring** (Updated November 2025): Multi-tier classification prioritizing run-rate-based spare adequacy:
   - **Critical**: Spare count < 5% of monthly run rate (insufficient buffer for high-demand models)
     - Formula: `spare_count < (run_rate × 0.05)` where `run_rate = claims_last_6_months / 6`
@@ -78,9 +78,20 @@ Preferred communication style: Simple, everyday language.
   - **Low**: All other combinations
 - **Analysis Period**: Rolling 6-month window for claims and replacements analysis
 - **Metrics**: Coverage ratio, monthly run rate, fulfillment rate (replacements/claims), available stock count, risk score
-- **UI Features**: 7-column table displaying Equipment, Covered, Coverage, **Available Stock** (newly added), Run Rate, Risk, and Actions
-- **Actions**: Webhook alerting via `POST /api/risk-combinations/send-alert` and auto-pool creation
-- **Integration**: Sends structured JSON payloads to configured Power Automate webhook URL with equipment details, risk metrics, and timestamp
+- **UI Features** (November 2025):
+  - **Table**: 8-column display with checkbox column, Equipment, Covered, Coverage, Available Stock, Run Rate, Spare/Rate, Risk, and Actions
+  - **Search**: Debounced search (500ms) by make, model, processor, or generation with maintained input focus during loading
+  - **Filter Toggle**: "Exclude 0 covered" switch to show/hide units with zero covered count
+  - **Bulk Selection**: Multi-row selection with checkboxes and "Select All" functionality
+  - **Bulk Actions**: When items selected, bulk action bar appears with "Send Combined Alert" and "Create Combined Pool" buttons; individual row actions hide during bulk selection
+  - **Filter Persistence**: Applied filters (search, zero-coverage toggle) retained during bulk selection operations
+- **Actions**:
+  - **Single-item**: Row-level "Alert" and "Pool" buttons for individual combinations
+  - **Bulk operations**: Combined alert webhook and pool creation for multiple selected items
+- **Alert Webhook** (Updated November 2025): `POST /api/risk-combinations/send-alert` always sends data as array with consistent schema
+  - Request format: `{ combinations: RiskCombination[] }` (array for both single and multiple items)
+  - Response includes `count` and `timestamp` for tracking
+- **Integration**: Sends structured JSON payloads to configured Power Automate webhook URL with equipment details, risk metrics, count, and timestamp
 
 **Coverage Pool Analytics System** (October 2025):
 - **Endpoint**: `GET /api/coverage-pools/:id/analytics` with query parameters for timeRangeMonths and forecastMonths
