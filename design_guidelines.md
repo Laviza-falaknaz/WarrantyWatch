@@ -1,230 +1,322 @@
-# Warranty Pool Management Application - Design Guidelines
+# Warranty Pool Management - Modern B2B SaaS Design System
 
-## Design Approach
+## Design Philosophy
 
-**Selected Approach**: Carbon Design System with Soft Pastel Modernization
-**Justification**: Enterprise data-heavy dashboard requiring efficient information display while maintaining a calming, approachable aesthetic through gentle color palette and refined visual treatment.
+**Approach**: Modern B2B SaaS Dashboard - Clean, Sophisticated, Data-Dense
+**Inspiration**: Contemporary enterprise tools (Linear, Notion, Stripe Dashboard)
 
-**Core Design Principles**:
-- Data-first presentation with soft, professional aesthetics
-- Calming pastel palette reduces cognitive load during extended use
-- Rounded, card-based layouts with subtle depth
-- Consistent visual rhythm across all data views
+**Core Principles**:
+- **Clean & Organized**: Generous white space, clear visual hierarchy, structured layouts
+- **Sophisticated**: Refined typography, subtle interactions, professional color palette
+- **Modern**: Vibrant pastels on clean white, sharp borders, contemporary spacing
+- **Data-First**: High information density without clutter
 
 ---
 
 ## Color System
 
-**Primary Palette** (Soft Pastels):
-- Peach: Primary actions, active states, positive metrics
-- Lavender: Secondary actions, category indicators, coverage status
-- Mint: Success states, active warranties, healthy metrics
-- Soft Blue: Informational elements, neutral data, backgrounds
-- Rose: Warnings, expiring items, attention states
+### Primary Palette (Vibrant Pastels on White)
 
-**Functional Colors**:
-- Background: Very light warm gray (#FAFAF9)
-- Card backgrounds: White with subtle peach/lavender tint
-- Borders: Light gray with 20% opacity (#E5E5E5)
-- Text primary: Charcoal gray (#374151)
-- Text secondary: Medium gray (#6B7280)
-- Text muted: Light gray (#9CA3AF)
+**Brand Colors** (More Saturated):
+- **Primary (Vibrant Peach)**: #FF9B7A - Primary actions, key metrics, active states
+- **Secondary (Vibrant Lavender)**: #B4A7FF - Secondary actions, complementary elements
+- **Accent (Vibrant Mint)**: #7EDDBA - Success, positive metrics, confirmations
+- **Info (Bright Blue)**: #7AB8FF - Informational, neutral highlights
+- **Warning (Coral Rose)**: #FF7A9E - Alerts, warnings, attention required
 
-**Chart Palette** (Coordinated Pastels):
-- Dataset 1: Soft peach (#FFD4C8)
-- Dataset 2: Lavender (#E5DEFF)
-- Dataset 3: Mint (#C8F0E3)
-- Dataset 4: Soft blue (#D4E8FF)
-- Dataset 5: Rose (#FFD4E5)
-- Use these in sequence for multi-dataset visualizations
+**Neutral Palette**:
+- **Background**: #FAFAFA - Very light neutral gray (clean, not stark white)
+- **Surface**: #FFFFFF - Pure white for cards and elevated surfaces
+- **Border**: #E4E4E7 - Subtle gray borders (not too light)
+- **Text Primary**: #18181B - Near black for headings
+- **Text Secondary**: #52525B - Medium gray for body text
+- **Text Tertiary**: #A1A1AA - Light gray for metadata
 
-**Status Indicators**:
-- Active/Healthy: Mint with darker mint text
-- Warning/Expiring: Rose with darker rose text
-- Inactive: Soft blue with darker blue text
-- In Progress: Lavender with darker lavender text
+**Chart Colors** (5-color coordinated palette):
+1. #FF9B7A (Peach)
+2. #B4A7FF (Lavender)
+3. #7EDDBA (Mint)
+4. #7AB8FF (Blue)
+5. #FF7A9E (Rose)
+
+### Status Color System
+
+- **Success/Active**: Mint (#7EDDBA) on mint/10 background
+- **Warning/Pending**: Peach (#FF9B7A) on peach/10 background
+- **Error/Critical**: Rose (#FF7A9E) on rose/10 background
+- **Info/Neutral**: Blue (#7AB8FF) on blue/10 background
 
 ---
 
 ## Typography System
 
-**Font Families**:
-- Primary: Inter (Google Fonts CDN)
-- Monospace: JetBrains Mono for serial numbers, IDs
+**Font Stack**:
+- **Primary**: Inter (all weights) - Clean, modern, highly legible
+- **Monospace**: JetBrains Mono - Serial numbers, IDs, code
 
-**Hierarchy**:
-- Page Headers: text-2xl font-semibold (charcoal)
-- Section Titles: text-lg font-medium
-- Card Headers: text-base font-medium
-- Data Labels: text-sm font-medium uppercase tracking-wide (medium gray)
-- Body Text: text-sm
-- Metrics: text-3xl font-bold (relevant pastel color)
-- Metadata: text-xs (light gray)
+**Type Scale**:
+- **Display**: text-4xl font-bold (36px) - Major page headers
+- **H1**: text-3xl font-bold (30px) - Page titles
+- **H2**: text-2xl font-semibold (24px) - Section headers
+- **H3**: text-xl font-semibold (20px) - Card titles
+- **H4**: text-lg font-medium (18px) - Subsection titles
+- **Body Large**: text-base (16px) - Primary content
+- **Body**: text-sm (14px) - Default text
+- **Caption**: text-xs (12px) - Metadata, labels
+- **Metric Large**: text-5xl font-bold - Dashboard KPIs
+- **Metric Medium**: text-3xl font-bold - Card metrics
 
----
-
-## Layout System
-
-**Spacing Primitives**: Tailwind units of 2, 4, 6, and 8
-- Card padding: p-6
-- Section gaps: space-y-8
-- Component gaps: gap-6
-- Tight elements: space-y-2
-
-**Grid Structure**:
-- Sidebar: w-64 (soft blue background)
-- Dashboard metrics: grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6
-- Content containers: max-w-7xl mx-auto
-- Table layouts: Full-width responsive
+**Font Weights**:
+- Regular: 400
+- Medium: 500
+- Semibold: 600
+- Bold: 700
 
 ---
 
-## Component Library
+## Layout & Spacing
 
-### Navigation & Structure
+**Spacing Scale** (Tailwind units):
+- **Micro**: 1, 2 (4px, 8px) - Tight spacing, icon gaps
+- **Small**: 3, 4 (12px, 16px) - Component internal padding
+- **Medium**: 6, 8 (24px, 32px) - Card padding, section gaps
+- **Large**: 12, 16 (48px, 64px) - Page sections, major separators
+
+**Container Widths**:
+- **Sidebar**: 280px (w-70) - Modern width for navigation
+- **Content Max**: 1400px - Maximum content width
+- **Card Max**: Full width with proper gutters
+
+**Grid Systems**:
+- **Dashboard Metrics**: grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6
+- **Content Cards**: grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6
+- **Table Layouts**: Full-width responsive with horizontal scroll
+
+---
+
+## Component Specifications
+
+### Navigation
 
 **Sidebar**:
-- Soft blue background with white text
-- Rounded icons (w-5 h-5, Heroicons outline)
-- Active state: Lavender background pill with rounded-lg
-- Logo area at top (h-16)
-- Navigation items with icon + label, p-3 each
+- Width: 280px
+- Background: Pure white (#FFFFFF)
+- Border: 1px solid #E4E4E7 (right border only)
+- Logo area: h-16, px-6
+- Navigation groups: space-y-6, px-4
+- Group labels: text-xs font-semibold uppercase tracking-wider text-tertiary
+- Nav items: rounded-lg, px-3, py-2, hover:bg-gray-50, active:bg-primary/10
+- Active state: bg-primary/10 text-primary font-medium
+- Icons: w-5 h-5, text-secondary
 
-**Top Bar**:
-- White background, h-16, subtle shadow
-- Search bar with rounded-full input, soft blue border
-- User profile with rounded-full avatar (peach border)
-- Quick actions: rounded-lg buttons with pastel backgrounds
+**Top Bar** (if used):
+- Height: 64px
+- Background: white
+- Border: 1px bottom
+- Shadow: subtle (shadow-sm)
 
-### Dashboard Components
+### Cards & Surfaces
 
-**KPI Metric Cards**:
-- White background, rounded-2xl, p-6
-- Subtle border (1px, light gray)
-- Soft box-shadow for depth
-- Large metric value in coordinating pastel (text-3xl font-bold)
-- Mini trend indicator with sparkline (Chart.js, matching pastel)
-- Label in medium gray (text-sm font-medium)
-- Icon in rounded square (w-12 h-12, matching pastel background)
+**Metric Cards** (KPI):
+- Background: white
+- Border: 1px solid #E4E4E7
+- Border-radius: rounded-2xl (16px)
+- Padding: p-6
+- Shadow: none (rely on border)
+- Hover: shadow-sm transition-shadow
+- Icon container: w-12 h-12, rounded-xl, bg-{color}/10
+- Metric value: text-3xl font-bold text-primary
+- Label: text-sm font-medium text-secondary
+- Trend indicator: text-xs font-medium
 
-**Coverage Pool Cards**:
-- Rounded-2xl with lavender tint background
-- Pool name (text-lg font-semibold)
-- Large percentage display in lavender (text-4xl)
-- Progress bar: rounded-full, mint fill on soft blue track
-- Fractional display: "4 / 150 units" (monospace)
-- Action button: rounded-lg, peach background
+**Data Cards**:
+- Same as metric cards
+- Header: pb-4 border-b border-gray-100
+- Content: pt-4
+- Footer (if needed): pt-4 border-t border-gray-100
 
-**Alert Banners**:
-- Rounded-xl, rose background (15% opacity)
-- Rose border (left-4 border width)
-- Heroicons exclamation-triangle in rose
-- h-14, px-4, dismissible
+**Status Cards** (Pool summary):
+- Compact design
+- Border-left: 4px solid {status-color}
+- Padding: p-4
+- Background: white
 
 ### Data Display
 
-**Data Tables**:
-- White background, rounded-xl
-- Header row: soft blue background, rounded-t-xl, sticky
-- Rows: hover state with lavender tint (5% opacity)
-- Borders: subtle 1px between rows
-- Column padding: px-4 py-3
-- Sort indicators: Heroicons chevron-up-down
-- Pagination: rounded-lg buttons with soft borders
+**Tables**:
+- Container: white bg, rounded-2xl, border
+- Header: bg-gray-50, rounded-t-2xl, sticky top-0
+- Header cells: px-6 py-4, text-xs font-semibold uppercase text-secondary
+- Body cells: px-6 py-4, text-sm text-primary
+- Row hover: bg-gray-50 transition-colors
+- Row borders: border-b border-gray-100 last:border-0
+- Zebra striping: NO (keep clean)
 
 **Status Badges**:
-- Rounded-full, px-3 py-1
-- Corresponding pastel backgrounds (20% opacity)
-- Darker text in matching color family
-- text-xs font-medium
-- Heroicons icon inline (w-4 h-4)
+- Size: px-2.5 py-1
+- Border-radius: rounded-full
+- Font: text-xs font-medium
+- Background: {color}/10
+- Text: {color} (darker shade)
+- Border: 1px solid {color}/20
 
-**Risk Analysis Table**:
-- White rounded-2xl card
-- Risk level column: Color-coded pills (mint=low, peach=medium, rose=high)
-- Coverage % column: Inline progress bars (rounded-full)
-- Expandable rows for device details
-
-### Filtering & Search
-
-**Filter Panel**:
-- White background, rounded-xl, w-72
-- Accordion sections with lavender headers
-- Multi-select checkboxes: rounded border, peach check state
-- Date range picker: rounded-lg inputs with soft blue accents
-- Apply button: peach, rounded-lg
-- Clear button: soft blue outline, rounded-lg
-
-### Charts & Visualizations
-
-**Chart Cards**:
-- White background, rounded-2xl, p-6
-- Chart.js integration (CDN)
-- Use coordinated pastel palette in sequence
-- Grid lines: light gray (10% opacity)
-- Tooltips: rounded-lg, white with subtle shadow
-- Legends: bottom placement, rounded pills
-- Height: h-72 for primary charts, h-48 for mini dashboards
-
-**Chart Types**:
-- Line charts: Warranty expiration trends (gradient fills with pastels)
-- Bar charts: Coverage by category (pastel bars with spacing)
-- Donut charts: Status distribution (pastel segments)
-- Area charts: Historical coverage trends (stacked pastels with transparency)
+**Progress Bars**:
+- Height: h-2
+- Background: gray-100
+- Fill: bg-{color}
+- Border-radius: rounded-full
+- Overflow: hidden
 
 ### Forms & Inputs
 
 **Input Fields**:
-- rounded-lg borders, soft blue focus ring
-- h-10, px-4
-- Placeholder: medium gray
-- Labels: text-sm font-medium, charcoal
-- Helper text: text-xs, light gray
+- Height: h-10 (40px)
+- Padding: px-4
+- Border: 1.5px solid #E4E4E7
+- Border-radius: rounded-lg
+- Focus: ring-2 ring-primary/20 border-primary
+- Background: white
+- Placeholder: text-tertiary
+- Label: text-sm font-medium text-primary mb-2
 
 **Buttons**:
-- Primary: Peach background, white text, rounded-lg, h-10
-- Secondary: Lavender background, white text, rounded-lg
-- Outline: Soft blue border, blue text, rounded-lg
-- Icon buttons: rounded-lg, w-10 h-10, pastel backgrounds on hover
+- **Primary**: bg-primary text-white rounded-lg px-4 h-10 font-medium hover:bg-primary/90
+- **Secondary**: bg-secondary text-white rounded-lg px-4 h-10 font-medium hover:bg-secondary/90
+- **Outline**: border-2 border-gray-200 text-primary rounded-lg px-4 h-10 font-medium hover:bg-gray-50
+- **Ghost**: text-primary rounded-lg px-4 h-10 font-medium hover:bg-gray-50
+- **Icon**: w-10 h-10 rounded-lg flex items-center justify-center hover:bg-gray-50
 
-### Pool Group Management
+**Dropdowns & Selects**:
+- Same styling as inputs
+- Chevron icon: right-aligned, text-tertiary
+- Menu: white, rounded-xl, shadow-lg, border, mt-2
+- Menu items: px-4 py-2.5, hover:bg-gray-50, text-sm
 
-**Pool Creation Modal**:
-- Centered, rounded-2xl, max-w-2xl
-- Backdrop: blur with 50% dark overlay
-- Form sections with grouped inputs (space-y-4)
-- Specification tags: rounded-full pills, lavender
-- Preview panel: soft blue background, rounded-lg
-- Actions: Peach primary, soft blue secondary
+### Charts
+
+**Chart Containers**:
+- White background, rounded-2xl, border, p-6
+- Title: text-lg font-semibold mb-4
+- Height: h-80 (320px) for primary charts
+- Height: h-64 (256px) for secondary charts
+
+**Chart Styling**:
+- Grid lines: #F4F4F5 (very subtle)
+- Axis labels: text-xs text-tertiary
+- Tooltips: white bg, rounded-lg, shadow-md, px-3 py-2
+- Legend: horizontal, bottom, text-sm, color circles
+- Use coordinated pastel palette in sequence
+
+### Filtering & Actions
+
+**Filter Panel**:
+- White bg, rounded-xl, border, p-6
+- Width: 320px
+- Section headers: text-sm font-semibold mb-3
+- Sections: space-y-6
+- Checkboxes: rounded border-gray-300 text-primary
+- Apply button: primary style, full width
+
+**Action Bars**:
+- Background: white, border-b
+- Height: h-16
+- Padding: px-6
+- Flex layout: items-center justify-between
+- Search: w-80, rounded-lg
+- Buttons: gap-3
 
 ---
 
-## Responsive Behavior
+## Page Layouts
 
-- Mobile: Single column, collapsible sidebar, bottom nav (rounded-t-2xl)
-- Tablet: 2-column metrics, slide-out filters
-- Desktop: 4-column metrics, persistent sidebar
-- All cards maintain rounded corners at all breakpoints
-- Touch targets: min h-12 on mobile
+### Dashboard
+
+**Structure**:
+```
+┌─────────────────────────────────────────┐
+│  Page Header (h-16)                     │
+├─────────────────────────────────────────┤
+│  ┌────────┬────────┬────────┬────────┐  │
+│  │ KPI 1  │ KPI 2  │ KPI 3  │ KPI 4  │  │ (Metric cards)
+│  └────────┴────────┴────────┴────────┘  │
+│  ┌─────────────────────────────────────┐│
+│  │  Main Content (Data Table/Charts)   ││
+│  │  (white card, full width)           ││
+│  └─────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+```
+
+**Spacing**:
+- Page padding: p-8
+- Section gaps: space-y-6
+- Grid gaps: gap-6
+
+### Detail Pages
+
+**Header Section**:
+- Breadcrumbs: text-sm text-tertiary, chevron separators
+- Title: text-3xl font-bold
+- Actions: right-aligned, gap-3
+- Divider: border-b, my-6
+
+**Content Tabs** (if needed):
+- Border-b border-gray-200
+- Active tab: border-b-2 border-primary text-primary font-medium
+- Inactive: text-secondary hover:text-primary
+
+---
+
+## Interactions & Animations
+
+**Hover States**:
+- Cards: shadow-sm (subtle lift)
+- Buttons: opacity-90 or bg-{color}/90
+- Table rows: bg-gray-50
+- Links: text-primary/80
+
+**Transitions**:
+- All: transition-all duration-200
+- Colors: transition-colors duration-150
+- Shadows: transition-shadow duration-200
+
+**Loading States**:
+- Skeleton: bg-gray-100 animate-pulse rounded
+- Spinner: border-primary border-t-transparent animate-spin
+
+---
+
+## Responsive Breakpoints
+
+- **Mobile**: < 768px - Stack all, full-width cards
+- **Tablet**: 768px - 1024px - 2-column grids
+- **Desktop**: 1024px - 1280px - 3-4 column grids
+- **Large**: > 1280px - Max width container with gutters
 
 ---
 
 ## Accessibility
 
-- ARIA labels on all interactive elements
-- Keyboard navigation support
-- Focus rings: 2px peach outline with offset
-- Minimum contrast ratios maintained despite soft palette
-- Screen reader announcements for dynamic data
-- Form validation with inline messages in rose
+- Minimum contrast: 4.5:1 for text
+- Focus indicators: ring-2 ring-primary/50 ring-offset-2
+- Keyboard navigation: full support
+- ARIA labels: all interactive elements
+- Screen reader: meaningful text, live regions for updates
 
 ---
 
-## Animation Guidelines
+## Implementation Notes
 
-**Purposeful Only**:
-- Card hover: subtle lift (shadow increase), duration-200
-- Modal entrance: fade + scale, duration-150
-- Sidebar toggle: slide, duration-200
-- Chart animations: Smooth Chart.js defaults
-- Loading states: Pulsing skeleton with lavender tint
+**DO**:
+- Use pure white (#FFFFFF) for all card backgrounds
+- Use subtle borders (1px #E4E4E7) instead of shadows
+- Maintain consistent spacing (multiples of 4px)
+- Use vibrant pastel accents on clean white backgrounds
+- Group related actions and information clearly
+- Keep generous white space between sections
+
+**DON'T**:
+- Use gray card backgrounds (keep white)
+- Over-use shadows (rely on borders)
+- Create cluttered layouts
+- Mix border and shadow styles
+- Use dull, desaturated colors

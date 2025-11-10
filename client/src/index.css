@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE - Soft Pastel Theme */
+/* LIGHT MODE - Modern B2B SaaS Theme */
 :root {
   --button-outline: rgba(0,0,0, .08);
   --badge-outline: rgba(0,0,0, .04);
@@ -14,77 +14,81 @@
   --elevate-1: rgba(0,0,0, .02);
   --elevate-2: rgba(0,0,0, .06);
 
-  /* Warm, calming background */
-  --background: 30 10% 99%;
+  /* Clean, neutral background */
+  --background: 0 0% 98%;
 
-  --foreground: 220 15% 25%;
+  /* Near black for primary text */
+  --foreground: 240 10% 10%;
 
-  --border: 220 10% 92%;
+  /* Subtle gray border */
+  --border: 240 6% 90%;
 
-  /* Subtle peach-tinted cards */
+  /* Pure white cards */
   --card: 0 0% 100%;
 
-  --card-foreground: 220 15% 25%;
+  --card-foreground: 240 10% 10%;
 
-  --card-border: 220 10% 94%;
+  /* Clean border for cards */
+  --card-border: 240 6% 90%;
 
-  /* Soft blue-tinted sidebar */
-  --sidebar: 220 20% 96%;
+  /* White sidebar with border */
+  --sidebar: 0 0% 100%;
 
-  --sidebar-foreground: 220 15% 25%;
+  --sidebar-foreground: 240 10% 10%;
 
-  --sidebar-border: 220 15% 90%;
+  --sidebar-border: 240 6% 90%;
 
-  /* Lavender primary (from pastel palette) */
-  --sidebar-primary: 260 60% 72%;
+  /* Vibrant lavender for active states */
+  --sidebar-primary: 260 65% 70%;
 
   --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 260 30% 94%;
+  --sidebar-accent: 240 5% 96%;
 
-  --sidebar-accent-foreground: 220 15% 25%;
+  --sidebar-accent-foreground: 240 10% 10%;
 
-  --sidebar-ring: 260 60% 72%;
+  --sidebar-ring: 260 65% 70%;
 
   --popover: 0 0% 100%;
 
-  --popover-foreground: 220 15% 25%;
+  --popover-foreground: 240 10% 10%;
 
-  --popover-border: 220 10% 92%;
+  --popover-border: 240 6% 90%;
 
-  /* Peach primary color */
-  --primary: 15 100% 90%;
+  /* Vibrant Peach primary #FF9B7A */
+  --primary: 15 100% 74%;
 
-  --primary-foreground: 15 60% 40%;
+  --primary-foreground: 0 0% 100%;
 
-  /* Lavender secondary */
-  --secondary: 260 60% 92%;
+  /* Vibrant Lavender secondary #B4A7FF */
+  --secondary: 260 100% 83%;
 
-  --secondary-foreground: 260 40% 35%;
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 220 15% 95%;
+  /* Light gray muted */
+  --muted: 240 5% 96%;
 
-  --muted-foreground: 220 15% 55%;
+  --muted-foreground: 240 4% 46%;
 
-  /* Mint accent */
-  --accent: 160 50% 92%;
+  /* Vibrant Mint accent #7EDDBA */
+  --accent: 160 65% 68%;
 
-  --accent-foreground: 160 40% 35%;
+  --accent-foreground: 0 0% 100%;
 
-  /* Rose destructive */
-  --destructive: 340 80% 88%;
+  /* Vibrant Rose destructive #FF7A9E */
+  --destructive: 345 100% 74%;
 
-  --destructive-foreground: 340 60% 40%;
+  --destructive-foreground: 0 0% 100%;
 
-  --input: 220 15% 90%;
-  --ring: 260 60% 72%;
+  --input: 240 6% 90%;
+  --ring: 260 65% 70%;
   
-  /* Coordinated pastel chart colors */
-  --chart-1: 15 100% 88%;  /* Soft peach */
-  --chart-2: 260 60% 88%;  /* Lavender */
-  --chart-3: 160 50% 86%;  /* Mint */
-  --chart-4: 210 80% 88%;  /* Soft blue */
-  --chart-5: 340 70% 88%;  /* Rose */
+  /* Vibrant coordinated chart colors */
+  --chart-1: 15 100% 74%;  /* Vibrant peach #FF9B7A */
+  --chart-2: 260 100% 83%;  /* Vibrant lavender #B4A7FF */
+  --chart-3: 160 65% 68%;  /* Vibrant mint #7EDDBA */
+  --chart-4: 210 100% 74%;  /* Vibrant blue #7AB8FF */
+  --chart-5: 345 100% 74%;  /* Vibrant rose #FF7A9E */
 
   --font-sans: Inter, sans-serif;
   --font-serif: Georgia, serif;
@@ -142,77 +146,77 @@
   --elevate-1: rgba(255,255,255, .05);
   --elevate-2: rgba(255,255,255, .10);
 
-  /* Warm dark background */
-  --background: 230 15% 12%;
+  /* Clean dark background */
+  --background: 240 10% 10%;
 
-  --foreground: 220 10% 92%;
+  --foreground: 0 0% 95%;
 
-  --border: 220 10% 22%;
+  --border: 240 4% 20%;
 
-  /* Slightly elevated cards */
-  --card: 230 15% 15%;
+  /* Slightly elevated dark cards */
+  --card: 240 8% 13%;
 
-  --card-foreground: 220 10% 92%;
+  --card-foreground: 0 0% 95%;
 
-  --card-border: 220 10% 25%;
+  --card-border: 240 4% 20%;
 
-  /* Sidebar with soft blue tint */
-  --sidebar: 220 20% 18%;
+  /* Dark sidebar */
+  --sidebar: 240 8% 13%;
 
-  --sidebar-foreground: 220 10% 92%;
+  --sidebar-foreground: 0 0% 95%;
 
-  --sidebar-border: 220 15% 28%;
+  --sidebar-border: 240 4% 20%;
 
-  /* Desaturated lavender for dark mode */
-  --sidebar-primary: 260 45% 65%;
+  /* Vibrant lavender for dark mode */
+  --sidebar-primary: 260 65% 70%;
 
-  --sidebar-primary-foreground: 230 15% 12%;
+  --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 260 20% 25%;
+  --sidebar-accent: 240 5% 20%;
 
-  --sidebar-accent-foreground: 220 10% 92%;
+  --sidebar-accent-foreground: 0 0% 95%;
 
-  --sidebar-ring: 260 45% 65%;
+  --sidebar-ring: 260 65% 70%;
 
-  --popover: 230 15% 18%;
+  --popover: 240 8% 13%;
 
-  --popover-foreground: 220 10% 92%;
+  --popover-foreground: 0 0% 95%;
 
-  --popover-border: 220 10% 28%;
+  --popover-border: 240 4% 20%;
 
-  /* Desaturated peach for dark mode */
-  --primary: 15 70% 68%;
+  /* Vibrant peach for dark mode */
+  --primary: 15 95% 70%;
 
-  --primary-foreground: 230 15% 12%;
+  --primary-foreground: 0 0% 100%;
 
-  /* Desaturated lavender */
-  --secondary: 260 40% 62%;
+  /* Vibrant lavender for dark mode */
+  --secondary: 260 90% 80%;
 
-  --secondary-foreground: 230 15% 12%;
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 220 15% 22%;
+  --muted: 240 5% 20%;
 
-  --muted-foreground: 220 10% 68%;
+  --muted-foreground: 240 3% 60%;
 
-  /* Desaturated mint */
-  --accent: 160 35% 65%;
+  /* Vibrant mint for dark mode */
+  --accent: 160 60% 65%;
 
-  --accent-foreground: 230 15% 12%;
+  --accent-foreground: 0 0% 100%;
 
-  /* Desaturated rose */
-  --destructive: 340 60% 68%;
+  /* Vibrant rose for dark mode */
+  --destructive: 345 95% 70%;
 
-  --destructive-foreground: 230 15% 12%;
+  --destructive-foreground: 0 0% 100%;
 
-  --input: 220 15% 28%;
-  --ring: 260 45% 65%;
+  --input: 240 4% 20%;
+  --ring: 260 65% 70%;
   
-  /* Coordinated pastel chart colors for dark mode */
-  --chart-1: 15 70% 75%;   /* Soft peach - lighter */
-  --chart-2: 260 50% 75%;  /* Lavender - lighter */
-  --chart-3: 160 45% 72%;  /* Mint - lighter */
-  --chart-4: 210 65% 75%;  /* Soft blue - lighter */
-  --chart-5: 340 55% 75%;  /* Rose - lighter */
+  /* Vibrant chart colors for dark mode */
+  --chart-1: 15 95% 70%;   /* Vibrant peach */
+  --chart-2: 260 90% 80%;  /* Vibrant lavender */
+  --chart-3: 160 60% 65%;  /* Vibrant mint */
+  --chart-4: 210 95% 70%;  /* Vibrant blue */
+  --chart-5: 345 95% 70%;  /* Vibrant rose */
 
   --shadow-2xs: 0px 1px 2px 0px hsl(210 10% 3% / 0.20);
   --shadow-xs: 0px 1px 3px 0px hsl(210 10% 3% / 0.30);
