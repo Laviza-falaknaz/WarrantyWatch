@@ -10,6 +10,7 @@ import {
   Warehouse,
   Activity,
   Compass,
+  FileSearch,
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,6 +38,11 @@ const menuGroups = [
         title: "Explore",
         url: "/explore",
         icon: Compass,
+      },
+      {
+        title: "Warranty Explorer",
+        url: "/warranty-explorer",
+        icon: FileSearch,
       },
     ],
   },
