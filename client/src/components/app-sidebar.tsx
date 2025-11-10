@@ -1,4 +1,16 @@
-import { LayoutDashboard, Package, Shield, Layers, Search, Settings, ClipboardList, RefreshCw, Warehouse, Activity, Compass } from "lucide-react";
+import {
+  LayoutDashboard,
+  Package,
+  Shield,
+  Layers,
+  Search,
+  Settings,
+  ClipboardList,
+  RefreshCw,
+  Warehouse,
+  Activity,
+  Compass,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -14,22 +26,22 @@ import { useLocation } from "wouter";
 
 const menuGroups = [
   {
-    label: "Dashboard & Monitoring",
+    label: "Dashboard",
     items: [
       {
-        title: "Dashboard",
-        url: "/",
-        icon: LayoutDashboard,
-      },
-      {
         title: "Monitor Warranties",
-        url: "/monitor-warranties",
+        url: "/",
         icon: Activity,
       },
       {
         title: "Explore Warranties",
         url: "/explore-warranties",
         icon: Compass,
+      },
+      {
+        title: "Stock under Warranty",
+        url: "/covered-units",
+        icon: Shield,
       },
     ],
   },
@@ -56,11 +68,7 @@ const menuGroups = [
         url: "/spare-pool",
         icon: Package,
       },
-      {
-        title: "Stock under Warranty",
-        url: "/covered-units",
-        icon: Shield,
-      },
+
       {
         title: "Available Stock",
         url: "/available-stock",
@@ -101,7 +109,7 @@ export function AppSidebar() {
             Coverage Pool Management
           </SidebarGroupLabel>
         </SidebarGroup>
-        
+
         {menuGroups.map((group, groupIndex) => (
           <div key={group.label}>
             <SidebarGroup>
@@ -115,7 +123,10 @@ export function AppSidebar() {
                     return (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton asChild isActive={isActive}>
-                          <a href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}>
+                          <a
+                            href={item.url}
+                            data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                          >
                             <item.icon />
                             <span>{item.title}</span>
                           </a>
