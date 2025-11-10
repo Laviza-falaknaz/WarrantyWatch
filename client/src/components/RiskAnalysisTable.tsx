@@ -9,7 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, Bell, Plus, ArrowUpDown, Search } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertTriangle, Bell, Plus, ArrowUpDown, Search, Filter, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -56,8 +57,20 @@ export default function RiskAnalysisTable() {
   const [page, setPage] = useState(0);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [excludeZeroCovered, setExcludeZeroCovered] = useState(false);
+  const [excludeZeroCovered, setExcludeZeroCovered] = useState(true);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  
+  // Advanced filter state
+  const [selectedRiskLevels, setSelectedRiskLevels] = useState<RiskLevel[]>([]);
+  const [runRateMin, setRunRateMin] = useState<string>('');
+  const [runRateMax, setRunRateMax] = useState<string>('');
+  const [coverageRatioMin, setCoverageRatioMin] = useState<string>('');
+  const [coverageRatioMax, setCoverageRatioMax] = useState<string>('');
+  const [spareRateMin, setSpareRateMin] = useState<string>('');
+  const [spareRateMax, setSpareRateMax] = useState<string>('');
+  const [coveredCountMin, setCoveredCountMin] = useState<string>('');
+  const [coveredCountMax, setCoveredCountMax] = useState<string>('');
+  
   const limit = 20;
   const { toast } = useToast();
 
@@ -76,9 +89,76 @@ export default function RiskAnalysisTable() {
 
   const combinations = useMemo(() => {
     if (!allCombinations) return allCombinations;
-    if (!excludeZeroCovered) return allCombinations;
-    return allCombinations.filter(combo => combo.covered_count > 0);
-  }, [allCombinations, excludeZeroCovered]);
+    
+    // Clear selections when filters change to prevent accidental bulk actions
+    setSelectedRows(new Set());
+    
+    let filtered = allCombinations;
+    
+    // Exclude zero covered
+    if (excludeZeroCovered) {
+      filtered = filtered.filter(combo => combo.covered_count > 0);
+    }
+    
+    // Risk level filter
+    if (selectedRiskLevels.length > 0) {
+      filtered = filtered.filter(combo => selectedRiskLevels.includes(combo.risk_level));
+    }
+    
+    // Run rate filters
+    const runRateMinVal = parseFloat(runRateMin);
+    const runRateMaxVal = parseFloat(runRateMax);
+    if (!isNaN(runRateMinVal)) {
+      filtered = filtered.filter(combo => combo.run_rate >= runRateMinVal);
+    }
+    if (!isNaN(runRateMaxVal)) {
+      filtered = filtered.filter(combo => combo.run_rate <= runRateMaxVal);
+    }
+    
+    // Coverage ratio filters
+    const coverageRatioMinVal = parseFloat(coverageRatioMin);
+    const coverageRatioMaxVal = parseFloat(coverageRatioMax);
+    if (!isNaN(coverageRatioMinVal)) {
+      filtered = filtered.filter(combo => combo.coverage_ratio >= coverageRatioMinVal);
+    }
+    if (!isNaN(coverageRatioMaxVal)) {
+      filtered = filtered.filter(combo => combo.coverage_ratio <= coverageRatioMaxVal);
+    }
+    
+    // Spare/Rate filters
+    const spareRateMinVal = parseFloat(spareRateMin);
+    const spareRateMaxVal = parseFloat(spareRateMax);
+    if (!isNaN(spareRateMinVal)) {
+      filtered = filtered.filter(combo => combo.coverage_of_run_rate >= spareRateMinVal);
+    }
+    if (!isNaN(spareRateMaxVal)) {
+      filtered = filtered.filter(combo => combo.coverage_of_run_rate <= spareRateMaxVal);
+    }
+    
+    // Covered count filters
+    const coveredCountMinVal = parseFloat(coveredCountMin);
+    const coveredCountMaxVal = parseFloat(coveredCountMax);
+    if (!isNaN(coveredCountMinVal)) {
+      filtered = filtered.filter(combo => combo.covered_count >= coveredCountMinVal);
+    }
+    if (!isNaN(coveredCountMaxVal)) {
+      filtered = filtered.filter(combo => combo.covered_count <= coveredCountMaxVal);
+    }
+    
+    return filtered;
+  }, [
+    allCombinations, 
+    excludeZeroCovered, 
+    selectedRiskLevels,
+    runRateMin,
+    runRateMax,
+    coverageRatioMin,
+    coverageRatioMax,
+    spareRateMin,
+    spareRateMax,
+    coveredCountMin,
+    coveredCountMax
+  ]);
 
   const sendAlertMutation = useMutation({
     mutationFn: async (combinationsArray: RiskCombination[]) => {
@@ -201,6 +281,37 @@ export default function RiskAnalysisTable() {
     }
   };
 
+  const toggleRiskLevel = (level: RiskLevel) => {
+    setSelectedRiskLevels(prev => 
+      prev.includes(level) 
+        ? prev.filter(l => l !== level)
+        : [...prev, level]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSelectedRiskLevels([]);
+    setRunRateMin('');
+    setRunRateMax('');
+    setCoverageRatioMin('');
+    setCoverageRatioMax('');
+    setSpareRateMin('');
+    setSpareRateMax('');
+    setCoveredCountMin('');
+    setCoveredCountMax('');
+  };
+
+  const hasActiveFilters = 
+    selectedRiskLevels.length > 0 ||
+    runRateMin !== '' ||
+    runRateMax !== '' ||
+    coverageRatioMin !== '' ||
+    coverageRatioMax !== '' ||
+    spareRateMin !== '' ||
+    spareRateMax !== '' ||
+    coveredCountMin !== '' ||
+    coveredCountMax !== '';
+
   const hasSelection = selectedRows.size > 0;
 
   return (
@@ -238,6 +349,156 @@ export default function RiskAnalysisTable() {
                 Exclude 0 covered
               </Label>
             </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  data-testid="button-open-filters"
+                  className={hasActiveFilters ? "border-primary" : ""}
+                >
+                  <Filter className="h-4 w-4 mr-1" />
+                  Filters
+                  {hasActiveFilters && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1">
+                      {[
+                        selectedRiskLevels.length,
+                        runRateMin || runRateMax ? 1 : 0,
+                        coverageRatioMin || coverageRatioMax ? 1 : 0,
+                        spareRateMin || spareRateMax ? 1 : 0,
+                        coveredCountMin || coveredCountMax ? 1 : 0,
+                      ].reduce((sum, val) => sum + val, 0)}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="end" data-testid="popover-filters">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-sm">Advanced Filters</h4>
+                    {hasActiveFilters && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={clearAllFilters}
+                        data-testid="button-clear-filters"
+                        className="h-7 px-2"
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Clear all
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs font-medium mb-2 block">Risk Levels</Label>
+                      <div className="flex flex-wrap gap-1">
+                        {(['critical', 'high', 'medium', 'low'] as RiskLevel[]).map(level => (
+                          <Badge
+                            key={level}
+                            variant={selectedRiskLevels.includes(level) ? "default" : "outline"}
+                            className={`cursor-pointer ${selectedRiskLevels.includes(level) ? riskBadgeClass(level) : ''}`}
+                            onClick={() => toggleRiskLevel(level)}
+                            data-testid={`badge-filter-risk-${level}`}
+                          >
+                            {level.toUpperCase()}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Run Rate (claims/month)</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={runRateMin}
+                          onChange={(e) => setRunRateMin(e.target.value)}
+                          className="h-8"
+                          data-testid="input-filter-runrate-min"
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={runRateMax}
+                          onChange={(e) => setRunRateMax(e.target.value)}
+                          className="h-8"
+                          data-testid="input-filter-runrate-max"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Coverage Ratio (%)</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={coverageRatioMin}
+                          onChange={(e) => setCoverageRatioMin(e.target.value)}
+                          className="h-8"
+                          data-testid="input-filter-coverage-min"
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={coverageRatioMax}
+                          onChange={(e) => setCoverageRatioMax(e.target.value)}
+                          className="h-8"
+                          data-testid="input-filter-coverage-max"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Spare/Rate (%)</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={spareRateMin}
+                          onChange={(e) => setSpareRateMin(e.target.value)}
+                          className="h-8"
+                          data-testid="input-filter-sparerate-min"
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={spareRateMax}
+                          onChange={(e) => setSpareRateMax(e.target.value)}
+                          className="h-8"
+                          data-testid="input-filter-sparerate-max"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Covered Count</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={coveredCountMin}
+                          onChange={(e) => setCoveredCountMin(e.target.value)}
+                          className="h-8"
+                          data-testid="input-filter-covered-min"
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={coveredCountMax}
+                          onChange={(e) => setCoveredCountMax(e.target.value)}
+                          className="h-8"
+                          data-testid="input-filter-covered-max"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           {hasSelection && (
             <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
