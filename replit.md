@@ -4,11 +4,12 @@
 This application is an enterprise coverage pool management system designed to track warranty coverage for deployed laptop inventory and optimize the allocation of spare units. It features automated risk analysis, Power Automate webhook integration, and intelligent pool creation. The system provides a comprehensive dashboard with high-risk combination analysis, real-time alerting, and actionable recommendations for inventory management.
 
 The core concept revolves around a **warranty pool management system** where:
-- **Covered Units**: Laptops deployed in the field under warranty.
+- **Covered Units**: Laptops deployed in the field under warranty (**active warranties only** - filtered by `coverageEndDate >= today`).
 - **Spare Units**: Spare laptops available to cover warranty claims.
+- **Available Stock**: All inventory available for allocation, split by area: **UK** (immediately available) and **UAE** (production pipeline, 4-6 weeks delivery).
 - **Coverage Pool**: A grouping by specifications showing the coverage ratio.
 
-The **Coverage Ratio = (Spare Units / Covered Units) × 100%**. Both spare and covered units have matching specification fields (e.g., make, model, processor) which are used by coverage pools to group units and calculate ratios, identifying areas needing more spares.
+The **Coverage Ratio = (Spare Units / Covered Units) × 100%**. Both spare and covered units have matching specification fields (e.g., make, model, processor) which are used by coverage pools to group units and calculate ratios, identifying areas needing more spares. **All coverage calculations and analytics filter covered units to include only active warranties** (coverageEndDate >= current date) to ensure accurate risk assessment.
 
 ### User Preferences
 Preferred communication style: Simple, everyday language.
@@ -80,6 +81,7 @@ Preferred communication style: Simple, everyday language.
 - **Metrics**: Coverage ratio, monthly run rate, fulfillment rate (replacements/claims), available stock count, risk score
 - **UI Features** (November 2025):
   - **Table**: 8-column display with checkbox column, Equipment, Covered, Coverage, Available Stock, Run Rate, Spare/Rate, Risk, and Actions
+  - **Available Stock Display**: Shows total count with regional breakdown (e.g., "45 total" / "3 UK · 42 UAE") where UK = immediately available and UAE = production pipeline (4-6 weeks)
   - **Search**: Debounced search (500ms) by make, model, processor, or generation with maintained input focus during loading
   - **Filter Toggle**: "Exclude 0 covered" switch to show/hide units with zero covered count
   - **Bulk Selection**: Multi-row selection with checkboxes and "Select All" functionality
@@ -90,6 +92,7 @@ Preferred communication style: Simple, everyday language.
   - **Bulk operations**: Combined alert webhook and pool creation for multiple selected items
 - **Alert Webhook** (Updated November 2025): `POST /api/risk-combinations/send-alert` always sends data as array with consistent schema
   - Request format: `{ combinations: RiskCombination[] }` (array for both single and multiple items)
+  - Payload includes separate `ukAvailableCount` and `uaeAvailableCount` fields for regional stock visibility
   - Response includes `count` and `timestamp` for tracking
 - **Integration**: Sends structured JSON payloads to configured Power Automate webhook URL with equipment details, risk metrics, count, and timestamp
 
