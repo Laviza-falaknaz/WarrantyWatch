@@ -41,53 +41,32 @@ const menuGroups = [
     ],
   },
   {
-    label: "Data Views",
-    items: [
-      {
-        title: "Stock under Warranty",
-        url: "/covered-units",
-        icon: Shield,
-      },
-    ],
-  },
-  {
-    label: "Pool Management",
-    items: [
-      {
-        title: "Coverage Pools",
-        url: "/coverage-pools",
-        icon: Layers,
-      },
-      {
-        title: "Warranty Explorer",
-        url: "/warranty-explorer",
-        icon: Search,
-      },
-    ],
-  },
-  {
     label: "Inventory",
     items: [
       {
-        title: "Replacement Stock",
-        url: "/spare-pool",
-        icon: Package,
+        title: "Covered Units",
+        url: "/covered-units",
+        icon: Shield,
       },
-
       {
         title: "Available Stock",
         url: "/available-stock",
         icon: Warehouse,
       },
       {
-        title: "Claimed Units",
-        url: "/claims",
-        icon: ClipboardList,
+        title: "Spare Units",
+        url: "/spare-pool",
+        icon: Package,
       },
       {
         title: "Replacements Sent",
         url: "/replacements",
         icon: RefreshCw,
+      },
+      {
+        title: "Warranties Claims",
+        url: "/claims",
+        icon: ClipboardList,
       },
     ],
   },
