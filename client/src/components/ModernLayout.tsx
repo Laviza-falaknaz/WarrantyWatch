@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -41,7 +41,7 @@ const navigationItems: NavItem[] = [
 
 export function ModernLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { theme, setTheme } = useTheme();
 
   return (
@@ -93,49 +93,49 @@ export function ModernLayout({ children }: { children: React.ReactNode }) {
             const Icon = item.icon;
 
             return (
-              <Link key={item.path} href={item.path}>
-                <motion.a
-                  whileHover={{ scale: 1.02, x: 4 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer
-                    transition-colors relative group
-                    ${
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    }
-                  `}
-                  data-testid={`nav-${item.path.slice(1) || "dashboard"}`}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  <AnimatePresence mode="wait">
-                    {!sidebarCollapsed && (
-                      <motion.span
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: "auto" }}
-                        exit={{ opacity: 0, width: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="text-sm font-medium whitespace-nowrap overflow-hidden"
-                      >
-                        {item.label}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                  {item.badge && !sidebarCollapsed && (
-                    <Badge variant="secondary" className="ml-auto">
-                      {item.badge}
-                    </Badge>
+              <motion.button
+                key={item.path}
+                onClick={() => setLocation(item.path)}
+                whileHover={{ scale: 1.02, x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                className={`
+                  w-full flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer
+                  transition-colors relative group
+                  ${
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  }
+                `}
+                data-testid={`nav-${item.path.slice(1) || "dashboard"}`}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <AnimatePresence mode="wait">
+                  {!sidebarCollapsed && (
+                    <motion.span
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: "auto" }}
+                      exit={{ opacity: 0, width: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="text-sm font-medium whitespace-nowrap overflow-hidden"
+                    >
+                      {item.label}
+                    </motion.span>
                   )}
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeNav"
-                      className="absolute left-0 w-1 h-8 bg-primary rounded-r-full"
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                </motion.a>
-              </Link>
+                </AnimatePresence>
+                {item.badge && !sidebarCollapsed && (
+                  <Badge variant="secondary" className="ml-auto">
+                    {item.badge}
+                  </Badge>
+                )}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeNav"
+                    className="absolute left-0 w-1 h-8 bg-primary rounded-r-full"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </motion.button>
             );
           })}
         </nav>

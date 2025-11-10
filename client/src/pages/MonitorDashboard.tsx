@@ -464,6 +464,8 @@ export default function MonitorDashboard() {
                       if (ratio >= 10) return "text-yellow-600 dark:text-yellow-500";
                       return "text-red-600 dark:text-red-500";
                     };
+                    
+                    const coverageRatio = Number(pool.coverageRatio) || 0;
 
                     return (
                       <Link key={pool.id} href={`/pools/${pool.id}`}>
@@ -472,8 +474,8 @@ export default function MonitorDashboard() {
                             <div className="space-y-3">
                               <div className="flex items-start justify-between gap-2">
                                 <h3 className="text-sm font-medium flex-1 line-clamp-1">{pool.name}</h3>
-                                <span className={`text-xl font-bold ${getCoverageColor(Number(pool.coverageRatio))}`}>
-                                  {Number(pool.coverageRatio).toFixed(1)}%
+                                <span className={`text-xl font-bold ${getCoverageColor(coverageRatio)}`}>
+                                  {coverageRatio.toFixed(1)}%
                                 </span>
                               </div>
                               
@@ -481,7 +483,7 @@ export default function MonitorDashboard() {
                                 <span>{pool.spareCount} spare / {pool.coveredCount} covered</span>
                               </div>
                               
-                              <Progress value={Number(pool.coverageRatio)} className="h-1" />
+                              <Progress value={coverageRatio} className="h-1" />
                             </div>
                           </CardContent>
                         </Card>
@@ -604,19 +606,19 @@ export default function MonitorDashboard() {
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
                                 <p className="text-muted-foreground">Coverage</p>
-                                <p className="font-medium">{Number(combo.coverage_ratio).toFixed(1)}%</p>
+                                <p className="font-medium">{(Number(combo.coverage_ratio) || 0).toFixed(1)}%</p>
                               </div>
                               <div>
                                 <p className="text-muted-foreground">Run Rate</p>
-                                <p className="font-medium">{Number(combo.run_rate).toFixed(1)}/mo</p>
+                                <p className="font-medium">{(Number(combo.run_rate) || 0).toFixed(1)}/mo</p>
                               </div>
                               <div>
                                 <p className="text-muted-foreground">Covered</p>
-                                <p className="font-medium">{combo.covered_count}</p>
+                                <p className="font-medium">{Number(combo.covered_count) || 0}</p>
                               </div>
                               <div>
                                 <p className="text-muted-foreground">Spare</p>
-                                <p className="font-medium">{combo.spare_count}</p>
+                                <p className="font-medium">{Number(combo.spare_count) || 0}</p>
                               </div>
                             </div>
                           </div>
