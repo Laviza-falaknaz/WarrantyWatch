@@ -17,7 +17,8 @@ Preferred communication style: Simple, everyday language.
 - **State Management**: TanStack Query for server state, local React state for UI, and Context API for theme.
 - **Routing**: wouter.
 - **Key Pages** (All Redesigned November 2025):
-  - **Dashboard** (`/`) - Bento-box CSS grid layout with varied card sizes, integrated charts (pie/bar/line), reorganized pool insights, full-width risk analysis table
+  - **Monitor Dashboard** (`/`) - GitHub-style commit heatmap for warranty expirations with day-by-day tracking, default 6-month view (today -1mo to +5mo), filterable by order/customer/make/model, hover tooltips with unit details, 4 KPI stat cards (Total Expiring, Peak Day, High-Risk Days, Risk Combos), and 2 trend charts (Monthly Expiration Trends bar chart, Daily Expiration Pattern area chart)
+  - **Explore Dashboard** (`/explore`) - Comprehensive BI report interface with 7 summary stat cards, 6-tab data explorer (Warranties, Spare Stock, Available, Claims, Replacements, Pools), search functionality, export button, and tabular views for navigating all warranty data, stock, claims, replacements, and spare pool
   - **Configuration** (`/configuration`) - 5-tab interface (Thresholds, Timeframes, Alerts, Analytics, Integrations) with contextual icons, inline helpers, sticky action footer
   - **Coverage Pools** (`/pools`) - Summary KPI cards (Total/Avg Coverage/Healthy/Critical), status filtering, grid/list view toggle, improved pool creation dialog
   - **Inventory** (`/inventory`) - 4 stat cards (Total/Available/Reserved/Retired), toggleable filter panel with count badge, modern header design
@@ -27,8 +28,12 @@ Preferred communication style: Simple, everyday language.
   - **Available Stock** (`/available-stock`) - 3 stat cards (Total/Available/Reserved) with color-coded accents (green/amber)
   - **Pool Detail** (`/pools/:id`) - Full-page analytics dashboard with KPIs, trend forecasting, recommendations, Excel export
   - **Warranty Explorer** - External API integration with charts and filtering
-- **Navigation**: Grouped sidebar navigation with sections for Dashboard & Monitoring, Pool Management, Inventory, and Settings.
+- **Navigation**: Collapsible animated sidebar with grouped sections: Dashboards (Monitor, Explore), Data Views, Pool Management, Inventory, and Settings. Modern top bar with search (⌘K), system status badge, notifications, and theme toggle.
 - **Redesign Features** (Completed November 2025):
+  - **Two-Dashboard Architecture**: Separate Monitor (tracking/alerting) and Explore (BI/analytics) dashboards for distinct user workflows
+  - **Modern Navigation**: Collapsible sidebar with Framer Motion animations, smooth transitions (160-220ms), reduced-motion guards
+  - **GitHub-Style Heatmap**: Day-by-day warranty expiration visualization with 6 intensity levels, hover tooltips, and navigable time windows
+  - **Trend Charts**: Recharts-based visualizations (Bar, Area, Line) for monitoring patterns and forecasting
   - **Consistent Layout Pattern**: All pages use p-8 padding, text-3xl font-bold headers, rounded-2xl stat cards with hover-elevate transitions
   - **Stat Cards**: text-4xl font-bold tracking-tight numbers, semantic icons with color-coded backgrounds (green/blue/orange/red/yellow/amber)
   - **Export Buttons**: Unified size="lg" styling across all data-heavy pages
