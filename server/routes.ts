@@ -440,12 +440,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sortOrder = (req.query.sortOrder as string) || 'desc';
       const limit = parseInt(req.query.limit as string) || 100;
       const offset = parseInt(req.query.offset as string) || 0;
+      const search = (req.query.search as string) || '';
       
       const combinations = await storage.getRiskCombinations({
         sortBy: sortBy as any,
         sortOrder: sortOrder as any,
         limit,
         offset,
+        search,
       });
       
       res.json(combinations);

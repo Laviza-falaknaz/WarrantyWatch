@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,12 +49,22 @@ export default function RiskAnalysisTable() {
   const [sortBy, setSortBy] = useState<'riskScore' | 'riskLevel' | 'runRate' | 'coverageRatio' | 'coveredCount' | 'coverageOfRunRate'>('riskScore');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(0);
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const limit = 20;
   const { toast } = useToast();
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+      setPage(0);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   const { data: combinations, isLoading } = useQuery<RiskCombination[]>({
-    queryKey: ['/api/risk-combinations', { sortBy, sortOrder, limit, offset: page * limit, search }],
+    queryKey: ['/api/risk-combinations', { sortBy, sortOrder, limit, offset: page * limit, search: debouncedSearch }],
   });
 
   const sendAlertMutation = useMutation({
@@ -156,11 +166,8 @@ export default function RiskAnalysisTable() {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by make, model, processor, or generation..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(0);
-              }}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="pl-8"
               data-testid="input-search-risk"
             />
