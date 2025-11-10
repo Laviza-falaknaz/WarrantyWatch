@@ -26,18 +26,23 @@ import { useLocation } from "wouter";
 
 const menuGroups = [
   {
-    label: "Dashboard",
+    label: "Dashboards",
     items: [
       {
-        title: "Monitor Warranties",
+        title: "Monitor",
         url: "/",
         icon: Activity,
       },
       {
-        title: "Explore Warranties",
-        url: "/explore-warranties",
+        title: "Explore",
+        url: "/explore",
         icon: Compass,
       },
+    ],
+  },
+  {
+    label: "Data Views",
+    items: [
       {
         title: "Stock under Warranty",
         url: "/covered-units",

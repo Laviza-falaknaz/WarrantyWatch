@@ -5,9 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { ModernLayout } from "@/components/ModernLayout";
-import Dashboard from "@/pages/Dashboard";
-import MonitorWarranties from "@/pages/MonitorWarranties";
-import ExploreWarranties from "@/pages/ExploreWarranties";
+import MonitorDashboard from "@/pages/MonitorDashboard";
+import ExploreDashboard from "@/pages/ExploreDashboard";
 import Inventory from "@/pages/Inventory";
 import Warranties from "@/pages/Warranties";
 import PoolGroups from "@/pages/PoolGroups";
@@ -22,9 +21,8 @@ import NotFound from "@/pages/not-found";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/monitor-warranties" component={MonitorWarranties} />
-      <Route path="/explore-warranties" component={ExploreWarranties} />
+      <Route path="/" component={MonitorDashboard} />
+      <Route path="/explore" component={ExploreDashboard} />
       <Route path="/pools" component={PoolGroups} />
       <Route path="/pools/:poolId" component={PoolDetail} />
       <Route path="/warranty-explorer" component={WarrantyExplorer} />
