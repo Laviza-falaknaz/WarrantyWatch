@@ -34,6 +34,8 @@ import type { CoveragePoolWithStats } from "@shared/schema";
 
 export default function PoolGroups() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [activePool, setActivePool] = useState<CoveragePoolWithStats | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [poolToDelete, setPoolToDelete] = useState<string | null>(null);
   const [poolName, setPoolName] = useState("");
@@ -86,6 +88,29 @@ export default function PoolGroups() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return apiRequest("PATCH", `/api/coverage-pools/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/coverage-pools-with-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coverage-pools"] });
+      toast({
+        title: "Success",
+        description: "Coverage pool updated successfully",
+      });
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update coverage pool",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       return apiRequest("DELETE", `/api/coverage-pools/${id}`, undefined);
@@ -118,9 +143,41 @@ export default function PoolGroups() {
     setSelectedCategories([]);
     setSelectedStorageSizes([]);
     setSelectedGenerations([]);
+    setDialogMode("create");
+    setActivePool(null);
   };
 
-  const handleCreatePool = () => {
+  const populateFormForEdit = (pool: CoveragePoolWithStats) => {
+    setPoolName(pool.name);
+    setDescription(pool.description || "");
+    
+    try {
+      const filterCriteria = JSON.parse(pool.filterCriteria);
+      setSelectedMakes(filterCriteria.make || []);
+      setSelectedModels(filterCriteria.model || []);
+      setSelectedProcessors(filterCriteria.processor || []);
+      setSelectedRams(filterCriteria.ram || []);
+      setSelectedCategories(filterCriteria.category || []);
+      setSelectedStorageSizes(filterCriteria.hdd || []);
+      setSelectedGenerations(filterCriteria.generation || []);
+    } catch (error) {
+      console.error("Error parsing filter criteria:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load pool filters",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditPool = (pool: CoveragePoolWithStats) => {
+    setDialogMode("edit");
+    setActivePool(pool);
+    populateFormForEdit(pool);
+    setDialogOpen(true);
+  };
+
+  const handleSubmitPool = () => {
     const filterCriteria = {
       make: selectedMakes.length > 0 ? selectedMakes : undefined,
       model: selectedModels.length > 0 ? selectedModels : undefined,
@@ -131,11 +188,17 @@ export default function PoolGroups() {
       generation: selectedGenerations.length > 0 ? selectedGenerations : undefined,
     };
 
-    createMutation.mutate({
+    const poolData = {
       name: poolName,
       description: description || null,
       filterCriteria: JSON.stringify(filterCriteria),
-    });
+    };
+
+    if (dialogMode === "create") {
+      createMutation.mutate(poolData);
+    } else if (activePool) {
+      updateMutation.mutate({ id: activePool.id, data: poolData });
+    }
   };
 
   // Transform coverage pools data for display
@@ -193,16 +256,24 @@ export default function PoolGroups() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="button-create-coverage-pool">
+            <Button 
+              data-testid="button-create-coverage-pool"
+              onClick={() => setDialogMode("create")}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Coverage Pool
             </Button>
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] flex flex-col">
             <DialogHeader>
-              <DialogTitle>Create New Coverage Pool</DialogTitle>
+              <DialogTitle>
+                {dialogMode === "create" ? "Create New Coverage Pool" : "Edit Coverage Pool"}
+              </DialogTitle>
               <DialogDescription>
-                Define a coverage pool based on laptop specifications to track spare units and coverage ratios
+                {dialogMode === "create" 
+                  ? "Define a coverage pool based on laptop specifications to track spare units and coverage ratios"
+                  : "Update the coverage pool filters and settings"
+                }
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4 overflow-y-auto flex-1">
@@ -309,11 +380,14 @@ export default function PoolGroups() {
                 Cancel
               </Button>
               <Button
-                onClick={handleCreatePool}
-                disabled={!poolName || createMutation.isPending}
-                data-testid="button-confirm-create"
+                onClick={handleSubmitPool}
+                disabled={!poolName || createMutation.isPending || updateMutation.isPending}
+                data-testid={dialogMode === "create" ? "button-confirm-create" : "button-confirm-edit"}
               >
-                {createMutation.isPending ? "Creating..." : "Create Pool"}
+                {dialogMode === "create" 
+                  ? (createMutation.isPending ? "Creating..." : "Create Pool")
+                  : (updateMutation.isPending ? "Updating..." : "Update Pool")
+                }
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -321,7 +395,10 @@ export default function PoolGroups() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="hover-elevate border-dashed cursor-pointer" data-testid="card-create-coverage-pool" onClick={() => setDialogOpen(true)}>
+        <Card className="hover-elevate border-dashed cursor-pointer" data-testid="card-create-coverage-pool" onClick={() => {
+          setDialogMode("create");
+          setDialogOpen(true);
+        }}>
           <CardContent className="flex flex-col items-center justify-center h-full min-h-[200px] p-6">
             <Plus className="h-12 w-12 text-muted-foreground mb-3" />
             <h3 className="font-medium mb-1">Create New Pool</h3>
@@ -343,6 +420,7 @@ export default function PoolGroups() {
             availableStockCount={pool.availableStockCount}
             claimsCount={pool.claimsLast6Months}
             runRate={pool.runRate}
+            onEdit={() => handleEditPool(pool)}
             onDelete={() => {
               setPoolToDelete(pool.id);
               setDeleteDialogOpen(true);
