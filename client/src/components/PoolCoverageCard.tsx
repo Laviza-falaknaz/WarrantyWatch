@@ -3,7 +3,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ChevronRight, Trash2 } from "lucide-react";
+import { ChevronRight, Trash2, Pencil } from "lucide-react";
 
 interface PoolCoverageCardProps {
   poolId: string;
@@ -15,6 +15,7 @@ interface PoolCoverageCardProps {
   availableStockCount?: number; // available stock matching pool criteria
   claimsCount?: number; // claims matching pool criteria
   runRate?: number; // claims per month (run rate)
+  onEdit?: () => void;
   onDelete?: () => void;
 }
 
@@ -28,6 +29,7 @@ export default function PoolCoverageCard({
   availableStockCount,
   claimsCount,
   runRate,
+  onEdit,
   onDelete,
 }: PoolCoverageCardProps) {
   const getCoverageColor = (percentage: number) => {
@@ -45,6 +47,20 @@ export default function PoolCoverageCard({
             <span className={`text-2xl font-bold ${getCoverageColor(coverageRatio)}`} data-testid={`text-coverage-ratio-${groupName.toLowerCase().replace(/\s+/g, "-")}`}>
               {coverageRatio.toFixed(1)}%
             </span>
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                className="h-8 w-8 text-muted-foreground"
+                data-testid={`button-edit-coverage-pool-${groupName.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
             {onDelete && (
               <Button
                 variant="ghost"
