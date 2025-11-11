@@ -153,6 +153,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Covered Unit routes (units in field under warranty coverage)
   
+  // Filter options endpoint (must come before :id route)
+  app.get("/api/covered-units/filter-options", async (req, res) => {
+    try {
+      const options = await storage.getCoveredUnitsFilterOptions();
+      res.json(options);
+    } catch (error) {
+      console.error("Error fetching covered units filter options:", error);
+      res.status(500).json({ error: "Failed to fetch filter options" });
+    }
+  });
+  
   // Stats endpoint (must come before :id route to avoid matching "stats" as an id)
   app.get("/api/covered-units/stats", async (req, res) => {
     try {
@@ -163,6 +174,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ram: req.query.ram ? (Array.isArray(req.query.ram) ? req.query.ram as string[] : [req.query.ram as string]) : undefined,
         category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category as string[] : [req.query.category as string]) : undefined,
         status: req.query.status ? (Array.isArray(req.query.status) ? req.query.status as string[] : [req.query.status as string]) : undefined,
+        customerName: req.query.customerName ? (Array.isArray(req.query.customerName) ? req.query.customerName as string[] : [req.query.customerName as string]) : undefined,
+        orderNumber: req.query.orderNumber ? (Array.isArray(req.query.orderNumber) ? req.query.orderNumber as string[] : [req.query.orderNumber as string]) : undefined,
+        coverageDescription: req.query.coverageDescription ? (Array.isArray(req.query.coverageDescription) ? req.query.coverageDescription as string[] : [req.query.coverageDescription as string]) : undefined,
+        coverageStartDateFrom: req.query.coverageStartDateFrom as string | undefined,
+        coverageStartDateTo: req.query.coverageStartDateTo as string | undefined,
+        coverageEndDateFrom: req.query.coverageEndDateFrom as string | undefined,
+        coverageEndDateTo: req.query.coverageEndDateTo as string | undefined,
         search: req.query.search as string | undefined,
       };
       
@@ -204,6 +222,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ram: req.query.ram ? (Array.isArray(req.query.ram) ? req.query.ram as string[] : [req.query.ram as string]) : undefined,
         category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category as string[] : [req.query.category as string]) : undefined,
         status: req.query.status ? (Array.isArray(req.query.status) ? req.query.status as string[] : [req.query.status as string]) : undefined,
+        customerName: req.query.customerName ? (Array.isArray(req.query.customerName) ? req.query.customerName as string[] : [req.query.customerName as string]) : undefined,
+        orderNumber: req.query.orderNumber ? (Array.isArray(req.query.orderNumber) ? req.query.orderNumber as string[] : [req.query.orderNumber as string]) : undefined,
+        coverageDescription: req.query.coverageDescription ? (Array.isArray(req.query.coverageDescription) ? req.query.coverageDescription as string[] : [req.query.coverageDescription as string]) : undefined,
+        coverageStartDateFrom: req.query.coverageStartDateFrom as string | undefined,
+        coverageStartDateTo: req.query.coverageStartDateTo as string | undefined,
+        coverageEndDateFrom: req.query.coverageEndDateFrom as string | undefined,
+        coverageEndDateTo: req.query.coverageEndDateTo as string | undefined,
         search: req.query.search as string | undefined,
         limit,
         offset,

@@ -61,6 +61,13 @@ export interface IStorage {
     ram?: string[];
     category?: string[];
     status?: string[];
+    customerName?: string[];
+    orderNumber?: string[];
+    coverageDescription?: string[];
+    coverageStartDateFrom?: string;
+    coverageStartDateTo?: string;
+    coverageEndDateFrom?: string;
+    coverageEndDateTo?: string;
     search?: string;
     limit?: number;
     offset?: number;
@@ -86,6 +93,14 @@ export interface IStorage {
     categories: string[];
   }>;
   
+  getCoveredUnitsFilterOptions(): Promise<{
+    makes: string[];
+    models: string[];
+    customers: string[];
+    orders: string[];
+    coverageDescriptions: string[];
+  }>;
+  
   // Analytics
   getAnalytics(): Promise<{
     totalSpareUnits: number;
@@ -105,6 +120,13 @@ export interface IStorage {
     ram?: string[];
     category?: string[];
     status?: string[];
+    customerName?: string[];
+    orderNumber?: string[];
+    coverageDescription?: string[];
+    coverageStartDateFrom?: string;
+    coverageStartDateTo?: string;
+    coverageEndDateFrom?: string;
+    coverageEndDateTo?: string;
     search?: string;
   }): Promise<{
     total: number;
@@ -371,6 +393,13 @@ export class DatabaseStorage implements IStorage {
     ram?: string[];
     category?: string[];
     status?: string[];
+    customerName?: string[];
+    orderNumber?: string[];
+    coverageDescription?: string[];
+    coverageStartDateFrom?: string;
+    coverageStartDateTo?: string;
+    coverageEndDateFrom?: string;
+    coverageEndDateTo?: string;
     search?: string;
     limit?: number;
     offset?: number;
@@ -379,8 +408,8 @@ export class DatabaseStorage implements IStorage {
     
     const conditions = [];
     
-    // ALWAYS exclude expired units from results
-    conditions.push(nonExpiredCoveredUnitsCondition());
+    // Note: Expired units are now included in results to enable comprehensive filtering
+    // Users can filter by status or date ranges to control whether expired units appear
     
     if (filters?.make && filters.make.length > 0) {
       conditions.push(inArray(coveredUnit.make, filters.make));
@@ -402,6 +431,42 @@ export class DatabaseStorage implements IStorage {
       conditions.push(inArray(coveredUnit.category, filters.category));
     }
     
+    if (filters?.customerName && filters.customerName.length > 0) {
+      conditions.push(inArray(coveredUnit.customerName, filters.customerName));
+    }
+    
+    if (filters?.orderNumber && filters.orderNumber.length > 0) {
+      conditions.push(inArray(coveredUnit.orderNumber, filters.orderNumber));
+    }
+    
+    if (filters?.coverageDescription && filters.coverageDescription.length > 0) {
+      conditions.push(inArray(coveredUnit.coverageDescription, filters.coverageDescription));
+    }
+    
+    if (filters?.coverageStartDateFrom) {
+      const startDate = new Date(filters.coverageStartDateFrom);
+      startDate.setUTCHours(0, 0, 0, 0); // Start of day in UTC
+      conditions.push(gte(coveredUnit.coverageStartDate, startDate));
+    }
+    
+    if (filters?.coverageStartDateTo) {
+      const endDate = new Date(filters.coverageStartDateTo);
+      endDate.setUTCHours(23, 59, 59, 999); // End of day in UTC
+      conditions.push(lte(coveredUnit.coverageStartDate, endDate));
+    }
+    
+    if (filters?.coverageEndDateFrom) {
+      const startDate = new Date(filters.coverageEndDateFrom);
+      startDate.setUTCHours(0, 0, 0, 0); // Start of day in UTC
+      conditions.push(gte(coveredUnit.coverageEndDate, startDate));
+    }
+    
+    if (filters?.coverageEndDateTo) {
+      const endDate = new Date(filters.coverageEndDateTo);
+      endDate.setUTCHours(23, 59, 59, 999); // End of day in UTC
+      conditions.push(lte(coveredUnit.coverageEndDate, endDate));
+    }
+    
     if (filters?.status && filters.status.length > 0) {
       if (filters.status.includes("Active")) {
         conditions.push(eq(coveredUnit.isCoverageActive, true));
@@ -417,7 +482,9 @@ export class DatabaseStorage implements IStorage {
           like(coveredUnit.serialNumber, searchTerm),
           like(coveredUnit.make, searchTerm),
           like(coveredUnit.model, searchTerm),
-          like(coveredUnit.coverageDescription, searchTerm)
+          like(coveredUnit.coverageDescription, searchTerm),
+          like(coveredUnit.customerName, searchTerm),
+          like(coveredUnit.orderNumber, searchTerm)
         )
       );
     }
@@ -625,6 +692,31 @@ export class DatabaseStorage implements IStorage {
     
     return { makes, models, processors, rams, categories, storageSizes, generations };
   }
+  
+  async getCoveredUnitsFilterOptions(): Promise<{
+    makes: string[];
+    models: string[];
+    customers: string[];
+    orders: string[];
+    coverageDescriptions: string[];
+  }> {
+    // Get filter options from covered units only
+    const items = await db.select({
+      make: coveredUnit.make,
+      model: coveredUnit.model,
+      customerName: coveredUnit.customerName,
+      orderNumber: coveredUnit.orderNumber,
+      coverageDescription: coveredUnit.coverageDescription,
+    }).from(coveredUnit).where(nonExpiredCoveredUnitsCondition());
+    
+    const makes = Array.from(new Set(items.map(i => i.make).filter(Boolean) as string[])).sort();
+    const models = Array.from(new Set(items.map(i => i.model).filter(Boolean) as string[])).sort();
+    const customers = Array.from(new Set(items.map(i => i.customerName).filter(Boolean) as string[])).sort();
+    const orders = Array.from(new Set(items.map(i => i.orderNumber).filter(Boolean) as string[])).sort();
+    const coverageDescriptions = Array.from(new Set(items.map(i => i.coverageDescription).filter(Boolean) as string[])).sort();
+    
+    return { makes, models, customers, orders, coverageDescriptions };
+  }
 
   async getAnalytics(): Promise<{
     totalSpareUnits: number;
@@ -695,6 +787,13 @@ export class DatabaseStorage implements IStorage {
     ram?: string[];
     category?: string[];
     status?: string[];
+    customerName?: string[];
+    orderNumber?: string[];
+    coverageDescription?: string[];
+    coverageStartDateFrom?: string;
+    coverageStartDateTo?: string;
+    coverageEndDateFrom?: string;
+    coverageEndDateTo?: string;
     search?: string;
   }): Promise<{
     total: number;
@@ -729,6 +828,42 @@ export class DatabaseStorage implements IStorage {
       conditions.push(inArray(coveredUnit.category, filters.category));
     }
     
+    if (filters?.customerName && filters.customerName.length > 0) {
+      conditions.push(inArray(coveredUnit.customerName, filters.customerName));
+    }
+    
+    if (filters?.orderNumber && filters.orderNumber.length > 0) {
+      conditions.push(inArray(coveredUnit.orderNumber, filters.orderNumber));
+    }
+    
+    if (filters?.coverageDescription && filters.coverageDescription.length > 0) {
+      conditions.push(inArray(coveredUnit.coverageDescription, filters.coverageDescription));
+    }
+    
+    if (filters?.coverageStartDateFrom) {
+      const startDate = new Date(filters.coverageStartDateFrom);
+      startDate.setUTCHours(0, 0, 0, 0); // Start of day in UTC
+      conditions.push(gte(coveredUnit.coverageStartDate, startDate));
+    }
+    
+    if (filters?.coverageStartDateTo) {
+      const endDate = new Date(filters.coverageStartDateTo);
+      endDate.setUTCHours(23, 59, 59, 999); // End of day in UTC
+      conditions.push(lte(coveredUnit.coverageStartDate, endDate));
+    }
+    
+    if (filters?.coverageEndDateFrom) {
+      const startDate = new Date(filters.coverageEndDateFrom);
+      startDate.setUTCHours(0, 0, 0, 0); // Start of day in UTC
+      conditions.push(gte(coveredUnit.coverageEndDate, startDate));
+    }
+    
+    if (filters?.coverageEndDateTo) {
+      const endDate = new Date(filters.coverageEndDateTo);
+      endDate.setUTCHours(23, 59, 59, 999); // End of day in UTC
+      conditions.push(lte(coveredUnit.coverageEndDate, endDate));
+    }
+    
     if (filters?.status && filters.status.length > 0) {
       if (filters.status.includes("Active")) {
         conditions.push(eq(coveredUnit.isCoverageActive, true));
@@ -744,7 +879,9 @@ export class DatabaseStorage implements IStorage {
           like(coveredUnit.serialNumber, searchTerm),
           like(coveredUnit.make, searchTerm),
           like(coveredUnit.model, searchTerm),
-          like(coveredUnit.coverageDescription, searchTerm)
+          like(coveredUnit.coverageDescription, searchTerm),
+          like(coveredUnit.customerName, searchTerm),
+          like(coveredUnit.orderNumber, searchTerm)
         )
       );
     }

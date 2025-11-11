@@ -6,14 +6,142 @@ import TablePagination from "@/components/TablePagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
-import { Download, Shield, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Calendar } from "@/components/ui/calendar";
+import { Download, Shield, CheckCircle2, Clock, XCircle, X, Check, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import type { CoveredUnit, AppConfiguration } from "@shared/schema";
+
+interface WarrantyFilters {
+  make: string[];
+  model: string[];
+  customer: string[];
+  order: string[];
+  coverageDescription: string[];
+  coverageStartDateFrom?: Date;
+  coverageStartDateTo?: Date;
+  coverageEndDateFrom?: Date;
+  coverageEndDateTo?: Date;
+}
+
+// MultiSelect Component
+function MultiSelect({
+  options,
+  selected,
+  onChange,
+  placeholder,
+  testId
+}: {
+  options: string[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+  placeholder: string;
+  testId?: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const toggleOption = (value: string) => {
+    if (selected.includes(value)) {
+      onChange(selected.filter(v => v !== value));
+    } else {
+      onChange([...selected, value]);
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+          data-testid={testId}
+        >
+          {selected.length > 0 ? `${selected.length} selected` : placeholder}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[300px] p-0">
+        <Command>
+          <CommandInput placeholder={`Search...`} />
+          <CommandEmpty>No options found.</CommandEmpty>
+          <CommandList className="max-h-[200px] overflow-y-auto">
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option}
+                  value={option}
+                  onSelect={() => toggleOption(option)}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selected.includes(option) ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {option}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// DatePicker Component
+function DatePicker({
+  date,
+  onDateChange,
+  placeholder,
+  testId
+}: {
+  date?: Date;
+  onDateChange: (date?: Date) => void;
+  placeholder: string;
+  testId?: string;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !date && "text-muted-foreground"
+          )}
+          data-testid={testId}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? format(date, "PPP") : <span>{placeholder}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={onDateChange}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function Warranties() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState<WarrantyFilters>({
+    make: [],
+    model: [],
+    customer: [],
+    order: [],
+    coverageDescription: [],
+  });
   
   const ITEMS_PER_PAGE = 100;
 
@@ -23,14 +151,67 @@ export default function Warranties() {
 
   const expiringThresholdDays = configuration?.expiringCoverageDays || 30;
 
-  const { data: fullStats, isLoading: statsLoading } = useQuery({
-    queryKey: ["/api/covered-units/stats", searchQuery],
+  const { data: filterOptions } = useQuery({
+    queryKey: ["/api/covered-units/filter-options"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (searchQuery) {
-        params.append("search", searchQuery);
-      }
-      
+      const response = await fetch("/api/covered-units/filter-options");
+      if (!response.ok) throw new Error("Failed to fetch filter options");
+      return response.json() as Promise<{
+        makes: string[];
+        models: string[];
+        customers: string[];
+        orders: string[];
+        coverageDescriptions: string[];
+      }>;
+    },
+  });
+
+  // Helper to build URL params with all filters
+  const buildFilterParams = (includeLimit = false, includeOffset = false) => {
+    const params = new URLSearchParams();
+    if (searchQuery) {
+      params.append("search", searchQuery);
+    }
+    if (filters.make.length > 0) {
+      filters.make.forEach(m => params.append("make", m));
+    }
+    if (filters.model.length > 0) {
+      filters.model.forEach(m => params.append("model", m));
+    }
+    if (filters.customer.length > 0) {
+      filters.customer.forEach(c => params.append("customerName", c));
+    }
+    if (filters.order.length > 0) {
+      filters.order.forEach(o => params.append("orderNumber", o));
+    }
+    if (filters.coverageDescription.length > 0) {
+      filters.coverageDescription.forEach(d => params.append("coverageDescription", d));
+    }
+    if (filters.coverageStartDateFrom) {
+      params.append("coverageStartDateFrom", filters.coverageStartDateFrom.toISOString());
+    }
+    if (filters.coverageStartDateTo) {
+      params.append("coverageStartDateTo", filters.coverageStartDateTo.toISOString());
+    }
+    if (filters.coverageEndDateFrom) {
+      params.append("coverageEndDateFrom", filters.coverageEndDateFrom.toISOString());
+    }
+    if (filters.coverageEndDateTo) {
+      params.append("coverageEndDateTo", filters.coverageEndDateTo.toISOString());
+    }
+    if (includeLimit) {
+      params.append("limit", ITEMS_PER_PAGE.toString());
+    }
+    if (includeOffset) {
+      params.append("offset", ((currentPage - 1) * ITEMS_PER_PAGE).toString());
+    }
+    return params;
+  };
+
+  const { data: fullStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["/api/covered-units/stats", searchQuery, filters],
+    queryFn: async () => {
+      const params = buildFilterParams();
       const response = await fetch(`/api/covered-units/stats?${params}`);
       if (!response.ok) throw new Error("Failed to fetch covered units stats");
       return response.json() as Promise<{ total: number; active: number; expiring: number; expired: number; }>;
@@ -38,16 +219,9 @@ export default function Warranties() {
   });
 
   const { data: stockUnderWarranty, isLoading: tableLoading } = useQuery({
-    queryKey: ["/api/covered-units", searchQuery, currentPage],
+    queryKey: ["/api/covered-units", searchQuery, filters, currentPage],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (searchQuery) {
-        params.append("search", searchQuery);
-      }
-      
-      params.append("limit", ITEMS_PER_PAGE.toString());
-      params.append("offset", ((currentPage - 1) * ITEMS_PER_PAGE).toString());
-      
+      const params = buildFilterParams(true, true);
       const response = await fetch(`/api/covered-units?${params}`);
       if (!response.ok) throw new Error("Failed to fetch stock under warranty");
       return response.json();
@@ -76,6 +250,29 @@ export default function Warranties() {
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
   }, []);
+
+  const clearAllFilters = () => {
+    setFilters({
+      make: [],
+      model: [],
+      customer: [],
+      order: [],
+      coverageDescription: [],
+    });
+    setSearchQuery("");
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = 
+    filters.make.length > 0 ||
+    filters.model.length > 0 ||
+    filters.customer.length > 0 ||
+    filters.order.length > 0 ||
+    filters.coverageDescription.length > 0 ||
+    filters.coverageStartDateFrom ||
+    filters.coverageStartDateTo ||
+    filters.coverageEndDateFrom ||
+    filters.coverageEndDateTo;
 
   const totalPages = Math.ceil(stats.total / ITEMS_PER_PAGE);
 
@@ -287,6 +484,172 @@ export default function Warranties() {
           Export
         </Button>
       </div>
+
+      {/* Filters Section */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-3">
+          <div>
+            <CardTitle className="text-base">Advanced Filters</CardTitle>
+            <CardDescription>Filter warranties across entire database</CardDescription>
+          </div>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              data-testid="button-clear-all-filters"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Clear All
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Make</label>
+              <MultiSelect
+                options={filterOptions?.makes || []}
+                selected={filters.make}
+                onChange={(values) => { setFilters(prev => ({ ...prev, make: values })); setCurrentPage(1); }}
+                placeholder="All Makes"
+                testId="select-filter-make"
+              />
+              {filters.make.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {filters.make.map(make => (
+                    <Badge key={make} variant="secondary" className="text-xs cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, make: prev.make.filter(v => v !== make) }))}>
+                      {make} <X className="w-3 h-3 ml-1" />
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Model</label>
+              <MultiSelect
+                options={filterOptions?.models || []}
+                selected={filters.model}
+                onChange={(values) => { setFilters(prev => ({ ...prev, model: values })); setCurrentPage(1); }}
+                placeholder="All Models"
+                testId="select-filter-model"
+              />
+              {filters.model.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {filters.model.map(model => (
+                    <Badge key={model} variant="secondary" className="text-xs cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, model: prev.model.filter(v => v !== model) }))}>
+                      {model} <X className="w-3 h-3 ml-1" />
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Customer</label>
+              <MultiSelect
+                options={filterOptions?.customers || []}
+                selected={filters.customer}
+                onChange={(values) => { setFilters(prev => ({ ...prev, customer: values })); setCurrentPage(1); }}
+                placeholder="All Customers"
+                testId="select-filter-customer"
+              />
+              {filters.customer.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {filters.customer.map(customer => (
+                    <Badge key={customer} variant="secondary" className="text-xs cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, customer: prev.customer.filter(v => v !== customer) }))}>
+                      {customer} <X className="w-3 h-3 ml-1" />
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Order Number</label>
+              <MultiSelect
+                options={filterOptions?.orders || []}
+                selected={filters.order}
+                onChange={(values) => { setFilters(prev => ({ ...prev, order: values })); setCurrentPage(1); }}
+                placeholder="All Orders"
+                testId="select-filter-order"
+              />
+              {filters.order.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {filters.order.map(order => (
+                    <Badge key={order} variant="secondary" className="text-xs cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, order: prev.order.filter(v => v !== order) }))}>
+                      {order} <X className="w-3 h-3 ml-1" />
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Warranty Type</label>
+              <MultiSelect
+                options={filterOptions?.coverageDescriptions || []}
+                selected={filters.coverageDescription}
+                onChange={(values) => { setFilters(prev => ({ ...prev, coverageDescription: values })); setCurrentPage(1); }}
+                placeholder="All Types"
+                testId="select-filter-warranty-type"
+              />
+              {filters.coverageDescription.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {filters.coverageDescription.map(desc => (
+                    <Badge key={desc} variant="secondary" className="text-xs cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, coverageDescription: prev.coverageDescription.filter(v => v !== desc) }))}>
+                      {desc} <X className="w-3 h-3 ml-1" />
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Coverage Start From</label>
+              <DatePicker
+                date={filters.coverageStartDateFrom}
+                onDateChange={(date) => { setFilters(prev => ({ ...prev, coverageStartDateFrom: date })); setCurrentPage(1); }}
+                placeholder="Start date from"
+                testId="date-coverage-start-from"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Coverage Start To</label>
+              <DatePicker
+                date={filters.coverageStartDateTo}
+                onDateChange={(date) => { setFilters(prev => ({ ...prev, coverageStartDateTo: date })); setCurrentPage(1); }}
+                placeholder="Start date to"
+                testId="date-coverage-start-to"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Coverage End From</label>
+              <DatePicker
+                date={filters.coverageEndDateFrom}
+                onDateChange={(date) => { setFilters(prev => ({ ...prev, coverageEndDateFrom: date })); setCurrentPage(1); }}
+                placeholder="End date from"
+                testId="date-coverage-end-from"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Coverage End To</label>
+              <DatePicker
+                date={filters.coverageEndDateTo}
+                onDateChange={(date) => { setFilters(prev => ({ ...prev, coverageEndDateTo: date })); setCurrentPage(1); }}
+                placeholder="End date to"
+                testId="date-coverage-end-to"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Summary Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
