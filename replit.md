@@ -80,11 +80,39 @@ Preferred communication style: Simple, everyday language.
 - **Endpoint**: `GET /api/coverage-pools/:id/analytics` for time-series analysis and forecasting.
 - **Analytics**: Monthly aggregation of claims and replacements, growth metrics, 3-month moving average demand forecasting, and KPIs (Coverage Ratio, Average Fulfillment Rate, Claims Growth, Inventory Runway). Includes UK/UAE available stock breakdown.
 - **Recommendations Engine**: Generates actionable guidance.
-- **Monitor Dashboard Pool Cards**: Enhanced cards showing Spare/Covered counts, Run Rate, Warranty Coverage %, Inventory Runway (months), and Available Stock split by UK/UAE
-- **Pool Detail Page**: 
-  - **Basic Count Cards**: 6-card row showing Total Claims, Replacements, Run Rate, Pool Stock, Covered Stock, and Available Stock (with UK/UAE breakdown)
-  - **Detailed KPI Cards**: Coverage Ratio, Fulfillment Rate, Claims Growth, Inventory Runway, Available Stock
-  - **Analytics**: Trend charts, monthly breakdown, and Excel export
+
+### Unified Pool Card Design System (November 2025)
+- **Purpose**: Consistent, data-focused card design across all pool views for traceability and professional appearance
+- **Implementation**: Shared PoolCoverageCard component used in Monitor Dashboard, Pool Groups, and Pool Detail pages
+- **Core Layout Components**:
+  1. **Inventory Runway Panel** (Prominent Display):
+     - Large color-coded panel showing months of inventory (Spares ÷ Run Rate) × 30 days
+     - Color-coding: Red (<30d), Orange (<60d), Amber (<90d), Green (90+d), Muted (no demand)
+     - Critical logic: Checks `runRate > 0` (not `runwayMonths > 0`) to avoid false "No Demand" labels when demand exists but spares = 0
+     - Shows "No Recent Demand" when runRate = 0, or "X.X Months" when runRate > 0
+  2. **4-Column Metrics Grid**:
+     - **Covered Units**: Total units under warranty coverage
+     - **Spare Units**: Available spares in the pool
+     - **Demand/Month**: Monthly run rate (claims per month)
+     - **Net Gap**: Shortfall calculation (max(0, Covered - Spares)), color-coded red/green
+  3. **Regional Stock Breakdown**:
+     - Horizontal bar showing UK count + UAE count = Total
+     - Blue dot for UK, Purple dot for UAE
+     - Clear equation format for transparency
+- **Status Badges**: Color-coded urgency based on inventory runway (Critical/High/Medium/Low/Stable)
+- **Urgency Logic**: 
+  - Zero run rate = Low priority ("No Recent Demand")
+  - High run rate + low spares = Urgent/Critical condition
+  - Status and runway display always aligned and consistent
+- **Pool Detail Page Layout**:
+  - Large Inventory Runway panel at top
+  - Clean 4-column grid (Covered/Spares/Demand/Gap)
+  - Prominent UK/UAE stock breakdown card
+  - Additional metrics (Total Claims, Total Replacements) in 2-column grid
+  - All cards use rounded-2xl for visual consistency
+  - Detailed KPI Cards section: Coverage Ratio, Fulfillment Rate, Claims Growth, Inventory Runway, Available Stock
+  - Analytics section: Trend charts, monthly breakdown, Excel export
+- **Data Traceability**: All key counts visible, calculations transparent, no hidden metrics
 
 ### Explore Dashboard BI Analytics System
 - **Purpose**: Comprehensive business intelligence dashboard providing 9 interactive charts with global multi-select filtering capabilities.
