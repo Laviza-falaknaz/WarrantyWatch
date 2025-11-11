@@ -104,15 +104,18 @@ Preferred communication style: Simple, everyday language.
   - Zero run rate = Low priority ("No Recent Demand")
   - High run rate + low spares = Urgent/Critical condition
   - Status and runway display always aligned and consistent
-- **Pool Detail Page Layout**:
-  - Large Inventory Runway panel at top
-  - Clean 4-column grid (Covered/Spares/Demand/Gap)
-  - Prominent UK/UAE stock breakdown card
-  - Additional metrics (Total Claims, Total Replacements) in 2-column grid
-  - All cards use rounded-2xl for visual consistency
+- **Pool Detail Page Layout** (Compact 2-Column Design, November 2025):
+  - **Left Column - Key Metrics**:
+    - Inventory Runway card with Clock icon, color-coded panel
+    - 4-column compact grid with icons: Covered (Shield), Spares (Package), Demand (TrendingUp), Gap (AlertTriangle)
+    - Smaller typography and spacing for efficiency
+  - **Right Column - Supporting Data**:
+    - Available Stock card with Package icon showing Total, UK, UAE, and Other regions separately
+    - Activity Summary card with Activity icon showing Claims and Replacements
+  - **Available Stock Fix**: Shows "Total Matching" as primary value, with UK/UAE/Other breakdown to explain regional distribution
   - Detailed KPI Cards section: Coverage Ratio, Fulfillment Rate, Claims Growth, Inventory Runway, Available Stock
   - Analytics section: Trend charts, monthly breakdown, Excel export
-- **Data Traceability**: All key counts visible, calculations transparent, no hidden metrics
+- **Data Traceability**: All key counts visible, calculations transparent, no hidden metrics, regional stock accurately displayed
 
 ### Explore Dashboard BI Analytics System
 - **Purpose**: Comprehensive business intelligence dashboard providing 9 interactive charts with global multi-select filtering capabilities.
