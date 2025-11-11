@@ -75,18 +75,23 @@ interface RiskCombination {
   risk_score: number;
 }
 
+// Helper to create stable identifier for risk combinations
+const getRiskComboKey = (combo: RiskCombination): string => {
+  return `${combo.make}|${combo.model}|${combo.processor || 'null'}|${combo.generation || 'null'}`;
+};
+
 const riskBadgeClass = (level: RiskLevel) => {
   switch (level) {
     case 'critical': 
-      return 'bg-destructive/20 text-destructive-foreground border-destructive/30 dark:bg-destructive/30 dark:text-destructive-foreground dark:border-destructive/40 font-semibold rounded-full';
+      return 'border bg-red-600 text-white border-red-700 dark:bg-red-700 dark:border-red-800 font-bold rounded-full shadow-sm';
     case 'high': 
-      return 'bg-primary/30 text-primary-foreground border-primary/40 dark:bg-primary/40 dark:text-primary-foreground dark:border-primary/50 font-semibold rounded-full';
+      return 'border bg-orange-500 text-white border-orange-600 dark:bg-orange-600 dark:border-orange-700 font-bold rounded-full shadow-sm';
     case 'medium': 
-      return 'bg-secondary/30 text-secondary-foreground border-secondary/40 dark:bg-secondary/40 dark:text-secondary-foreground dark:border-secondary/50 font-medium rounded-full';
+      return 'border bg-amber-300 text-amber-900 border-amber-400 dark:bg-amber-400 dark:text-amber-950 dark:border-amber-500 font-semibold rounded-full';
     case 'low': 
-      return 'bg-accent/30 text-accent-foreground border-accent/40 dark:bg-accent/40 dark:text-accent-foreground dark:border-accent/50 rounded-full';
+      return 'border bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-100 dark:border-green-700 font-medium rounded-full';
     default: 
-      return 'bg-muted text-muted-foreground border-border rounded-full';
+      return 'border bg-muted text-muted-foreground border-border rounded-full';
   }
 };
 
@@ -154,11 +159,11 @@ export default function MonitorDashboard() {
     make: "",
     model: "",
   });
-  const [selectedRiskItems, setSelectedRiskItems] = useState<Set<number>>(new Set());
+  const [selectedRiskItems, setSelectedRiskItems] = useState<Set<string>>(new Set());
   const [excludeZeroCovered, setExcludeZeroCovered] = useState(true);
   const [riskFilters, setRiskFilters] = useState({
     search: "",
-    riskLevel: "",
+    riskLevel: "all",
   });
 
   const endDate = useMemo(() => addMonths(startDate, 6), [startDate]);
@@ -192,6 +197,7 @@ export default function MonitorDashboard() {
         combo.processor?.toLowerCase().includes(searchLower);
       
       const matchesRiskLevel = !riskFilters.riskLevel || 
+        riskFilters.riskLevel === "all" ||
         combo.risk_level === riskFilters.riskLevel;
       
       return matchesSearch && matchesRiskLevel;
@@ -672,7 +678,7 @@ export default function MonitorDashboard() {
                         <SelectValue placeholder="All risk levels" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value=" ">All risk levels</SelectItem>
+                        <SelectItem value="all">All risk levels</SelectItem>
                         <SelectItem value="critical">Critical</SelectItem>
                         <SelectItem value="high">High</SelectItem>
                         <SelectItem value="medium">Medium</SelectItem>
@@ -680,6 +686,37 @@ export default function MonitorDashboard() {
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  {/* Select all / Deselect all */}
+                  {filteredRiskCombinations && filteredRiskCombinations.length > 0 && (
+                    <div className="flex gap-2">
+                      {selectedRiskItems.size < filteredRiskCombinations.length ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const newSelected = new Set<string>();
+                            filteredRiskCombinations.forEach((combo) => newSelected.add(getRiskComboKey(combo)));
+                            setSelectedRiskItems(newSelected);
+                          }}
+                          className="flex-1 text-xs"
+                          data-testid="button-select-all"
+                        >
+                          Select All ({filteredRiskCombinations.length})
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setSelectedRiskItems(new Set())}
+                          className="flex-1 text-xs"
+                          data-testid="button-deselect-all"
+                        >
+                          Deselect All
+                        </Button>
+                      )}
+                    </div>
+                  )}
                   
                   {/* Bulk actions */}
                   {selectedRiskItems.size > 0 && (
@@ -716,10 +753,11 @@ export default function MonitorDashboard() {
                   <div>
                     <div className="space-y-3">
                       {filteredRiskCombinations.map((combo, index) => {
-                        const isSelected = selectedRiskItems.has(index);
+                        const comboKey = getRiskComboKey(combo);
+                        const isSelected = selectedRiskItems.has(comboKey);
                         
                         return (
-                          <Card key={index} className="rounded-xl hover-elevate">
+                          <Card key={comboKey} className="rounded-xl hover-elevate">
                             <CardContent className="p-3">
                               <div className="space-y-2">
                                 <div className="flex items-start gap-2">
@@ -728,9 +766,9 @@ export default function MonitorDashboard() {
                                     onCheckedChange={(checked) => {
                                       const newSelected = new Set(selectedRiskItems);
                                       if (checked) {
-                                        newSelected.add(index);
+                                        newSelected.add(comboKey);
                                       } else {
-                                        newSelected.delete(index);
+                                        newSelected.delete(comboKey);
                                       }
                                       setSelectedRiskItems(newSelected);
                                     }}
