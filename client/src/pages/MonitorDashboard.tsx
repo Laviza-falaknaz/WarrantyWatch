@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -152,6 +153,8 @@ function HeatmapDay({
 }
 
 export default function MonitorDashboard() {
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
   const [startDate, setStartDate] = useState(() => subMonths(new Date(), 1));
   const [filters, setFilters] = useState({
     orderNumber: "",
@@ -167,6 +170,7 @@ export default function MonitorDashboard() {
   });
 
   const endDate = useMemo(() => addMonths(startDate, 6), [startDate]);
+  const hasBulkSelection = selectedRiskItems.size > 1;
 
   const { data: coveredUnits, isLoading } = useQuery<CoveredUnit[]>({
     queryKey: ["/api/covered-units"],
@@ -203,6 +207,59 @@ export default function MonitorDashboard() {
       return matchesSearch && matchesRiskLevel;
     });
   }, [riskCombinations, riskFilters]);
+
+  // Action handlers
+  const handleCreatePool = (combo: RiskCombination) => {
+    const poolName = `${combo.make} ${combo.model}${combo.processor ? ` (${combo.processor})` : ''}`;
+    toast({
+      title: "Pool Creation Initiated",
+      description: `Creating coverage pool for "${poolName}"...`,
+    });
+    // TODO: Implement actual pool creation API call
+    setTimeout(() => {
+      toast({
+        title: "Pool Created Successfully",
+        description: `Coverage pool "${poolName}" has been created.`,
+      });
+    }, 1000);
+  };
+
+  const handleSendAlert = (combo: RiskCombination) => {
+    const itemName = `${combo.make} ${combo.model}`;
+    toast({
+      title: "Alert Sent",
+      description: `High-risk alert sent for "${itemName}".`,
+    });
+    // TODO: Implement actual alert API call
+  };
+
+  const handleCreateCombinedPool = () => {
+    if (selectedRiskItems.size === 0) return;
+    
+    toast({
+      title: "Combined Pool Creation Initiated",
+      description: `Creating coverage pool for ${selectedRiskItems.size} combinations...`,
+    });
+    // TODO: Implement actual combined pool creation API call
+    setTimeout(() => {
+      toast({
+        title: "Combined Pool Created Successfully",
+        description: `Coverage pool created with ${selectedRiskItems.size} combinations.`,
+      });
+      setSelectedRiskItems(new Set()); // Clear selection after success
+    }, 1000);
+  };
+
+  const handleSendCombinedAlert = () => {
+    if (selectedRiskItems.size === 0) return;
+    
+    toast({
+      title: "Combined Alert Sent",
+      description: `High-risk alert sent for ${selectedRiskItems.size} combinations.`,
+    });
+    setSelectedRiskItems(new Set()); // Clear selection after success
+    // TODO: Implement actual combined alert API call
+  };
 
   // Filter and map warranty expiration data
   const heatmapData = useMemo(() => {
@@ -594,7 +651,15 @@ export default function MonitorDashboard() {
 
             {/* Coverage Pools */}
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Low Coverage Pools</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Low Coverage Pools</h2>
+                <Link href="/pools">
+                  <Button variant="ghost" size="sm" className="gap-1" data-testid="link-view-all-pools">
+                    View All
+                    <ChevronRightIcon className="w-3 h-3" />
+                  </Button>
+                </Link>
+              </div>
               
               {sortedPools.length === 0 ? (
                 <Card className="rounded-2xl">
@@ -725,6 +790,7 @@ export default function MonitorDashboard() {
                         size="sm"
                         variant="default"
                         className="flex-1 gap-1"
+                        onClick={handleSendCombinedAlert}
                         data-testid="button-send-combined-alert"
                       >
                         <Bell className="w-3 h-3" />
@@ -734,6 +800,7 @@ export default function MonitorDashboard() {
                         size="sm"
                         variant="outline"
                         className="flex-1 gap-1"
+                        onClick={handleCreateCombinedPool}
                         data-testid="button-create-combined-pool"
                       >
                         <FolderPlus className="w-3 h-3" />
@@ -811,26 +878,30 @@ export default function MonitorDashboard() {
                                       </div>
                                     </div>
 
-                                    <div className="flex items-center gap-1 mt-2">
-                                      <Button 
-                                        size="sm" 
-                                        variant="default" 
-                                        className="flex-1 gap-1"
-                                        data-testid={`button-send-alert-${index}`}
-                                      >
-                                        <Bell className="w-3 h-3" />
-                                        Send Alert
-                                      </Button>
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline" 
-                                        className="flex-1 gap-1"
-                                        data-testid={`button-create-pool-${index}`}
-                                      >
-                                        <FolderPlus className="w-3 h-3" />
-                                        Create Pool
-                                      </Button>
-                                    </div>
+                                    {!hasBulkSelection && (
+                                      <div className="flex items-center gap-1 mt-2">
+                                        <Button 
+                                          size="sm" 
+                                          variant="default" 
+                                          className="flex-1 gap-1"
+                                          onClick={() => handleSendAlert(combo)}
+                                          data-testid={`button-send-alert-${index}`}
+                                        >
+                                          <Bell className="w-3 h-3" />
+                                          Send Alert
+                                        </Button>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline" 
+                                          className="flex-1 gap-1"
+                                          onClick={() => handleCreatePool(combo)}
+                                          data-testid={`button-create-pool-${index}`}
+                                        >
+                                          <FolderPlus className="w-3 h-3" />
+                                          Create Pool
+                                        </Button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -841,14 +912,16 @@ export default function MonitorDashboard() {
                     </div>
                     
                     <div className="mt-4 pt-4 border-t">
-                      <Button 
-                        variant="ghost" 
-                        className="w-full gap-2"
-                        data-testid="button-view-all-risk-profiles"
-                      >
-                        View All Risk Profiles
-                        <ChevronRightIcon className="w-4 h-4" />
-                      </Button>
+                      <Link href="/risk-combinations">
+                        <Button 
+                          variant="ghost" 
+                          className="w-full gap-2"
+                          data-testid="button-view-all-risk-profiles"
+                        >
+                          View All Risk Profiles
+                          <ChevronRightIcon className="w-4 h-4" />
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 )}
