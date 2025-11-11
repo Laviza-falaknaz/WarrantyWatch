@@ -386,7 +386,7 @@ export default function ExploreDashboard() {
                     contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
                     labelStyle={{ color: '#333', fontWeight: 600 }}
                   />
-                  <Bar dataKey="count" fill={CHART_COLORS.blue[0]} radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="count" fill={CHART_COLORS.blue[0]} radius={[0, 8, 8, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -648,7 +648,7 @@ export default function ExploreDashboard() {
                     contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
                     labelStyle={{ color: '#333', fontWeight: 600 }}
                   />
-                  <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                  <Bar dataKey="count" radius={[0, 8, 8, 0]}>
                     {(sparePool || []).map((_: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS.indigo[index % CHART_COLORS.indigo.length]} />
                     ))}
