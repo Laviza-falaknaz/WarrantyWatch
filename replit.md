@@ -8,145 +8,36 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend Architecture
+### Frontend
 - **Framework**: React 18 with TypeScript and Vite.
 - **UI Component System**: shadcn/ui (New York style) built on Radix UI, utilizing Tailwind CSS for styling, adhering to Carbon Design System principles, and supporting dark/light themes.
-- **Design Principles**: Modern B2B SaaS aesthetic with a subtle professional color palette, pure white cards on clean neutral backgrounds, data-first presentation, high information density, Inter and JetBrains Mono typography, and consistent spacing.
+- **Design Principles**: Modern B2B SaaS aesthetic with a professional color palette, pure white cards on neutral backgrounds, data-first presentation, high information density, Inter and JetBrains Mono typography.
 - **State Management**: TanStack Query for server state, local React state for UI, and Context API for theme.
 - **Routing**: wouter.
-- **Key Pages**: Monitor Dashboard, Explore Dashboard, Risk Combinations, Configuration, Coverage Pools, Inventory, Warranties, Claims, Replacements, Available Stock, Pool Detail, Warranty Explorer.
-- **Navigation**: Collapsible sidebar with Framer Motion animations, modern top bar with search, system status, notifications, and theme toggle.
-- **Redesign Features**: Two-Dashboard Architecture (Monitor for tracking/alerting, Explore for BI/analytics), GitHub-style Heatmap for warranty expiration with enhanced visibility (16px cells, bolder colors, day-of-week labels), numeric safety with `|| 0` fallbacks, consistent layout patterns, semantic stat cards, unified export buttons, and skeleton loaders.
+- **Key Features**: Two-Dashboard Architecture (Monitor for tracking/alerting, Explore for BI/analytics), GitHub-style Heatmap for warranty expiration, numeric safety with `|| 0` fallbacks, consistent layout patterns, semantic stat cards, unified export buttons, and skeleton loaders.
+- **Warranty Expiration Heatmap**: Rebuilt with improved visual design (16x16px cells, vibrant color scheme, month/day labels, "Today" highlight) and enhanced filtering (dropdowns for Make, Model, Customer, Order; dynamic options; case-insensitive filtering; removable badges). Interactive cells open a detailed dialog with warranty details, search, and Excel export.
+- **Unified Pool Card Design**: Consistent, data-focused card design across all pool views, featuring Inventory Runway Panel (color-coded, critical logic for "No Recent Demand"), 4-column metrics grid (Covered Units, Spare Units, Demand/Month, Net Gap), and Regional Stock Breakdown.
+- **Pool Detail Page Layout**: Compact 2-column design with key metrics (Inventory Runway, 4-column grid) and supporting data (Available Stock, Activity Summary).
+- **Explore Dashboard BI Analytics**: Provides 9 interactive charts with global multi-select filtering capabilities (Make, Model, Customer, Order). Charts include various data visualizations for warranties, claims, replacements, and spare units. Filtering is case-insensitive and uses consistent query keys for caching. Chart readability enhancements include increased height, refined axis labels, truncated text, and varied color palettes.
 
-### Warranty Expiration Heatmap (Monitor Dashboard)
-- **Rebuild**: Completely rebuilt from scratch (November 2025) with improved visual design and filtering UX.
-- **Duration**: 14-month range (present - 5 months to present + 9 months) for comprehensive warranty visibility
-- **Visual Design**: 
-  - **Cell Size**: 16×16px for better visibility
-  - **Color Scheme**: Vibrant progression from indigo → purple → fuchsia → rose for intensity levels, providing "poppier" visual appeal
-  - **Month Headers**: Properly aligned with week columns with year labels (e.g., "Jun 25"), accounting for padding cells to ensure visual accuracy
-  - **Day Labels**: Mon/Wed/Fri labels on left side for reference
-  - **Legend**: Color intensity scale from "Less" to "More"
-  - **Today Highlight**: Red border (ring-2 ring-red-600) around today's date cell with "(Today)" label in tooltip
-- **Filtering System**:
-  - **Dropdown Filters**: Replaced text inputs with Select dropdowns for Make, Model, Customer, and Order
-  - **Filter Options**: Dynamically extracted unique values from covered units data using useMemo with type guards
-  - **Filter Logic**: Exact match filtering (not includes/contains)
-  - **Filter Badges**: Active filters display as removable badges with individual clear or "Clear all" functionality
-- **Interactive Cells & Detail Dialog**:
-  - **Clickable Cells**: Each heatmap cell with units opens a detailed dialog showing all expiring warranties
-  - **Dialog Features**: 
-    - Full warranty details table (Serial Number, Make, Model, Customer, Order, Coverage Description, Processor, Generation, Start/End Dates)
-    - Real-time search filtering across all fields
-    - Excel export with filename format `warranties-expiring-YYYY-MM-DD.xlsx`
-    - Sticky table headers for easy navigation with many rows
-    - Results summary showing filtered count vs total
-    - Toast notification confirming successful export
-  - **Integration**: Dialog respects active heatmap filters (filtered data only)
-- **Time Navigation**: Previous/Next Month buttons to shift the 14-month display window
-- **Data Alignment**: Uses date-fns for precise week calculations with proper handling of padding cells to maintain Sunday-Saturday week structure
-- **Performance**: Heavy computations wrapped in useMemo for optimal re-render performance
-
-### Backend Architecture
+### Backend
 - **Framework**: Express.js with TypeScript on Node.js.
 - **Server Structure**: RESTful API organized by domain, with middleware for JSON parsing, logging, and error handling.
-- **API Endpoints**: CRUD operations for units and pools, analytics, configuration, risk analysis, webhook integration, and bulk upload endpoints for `spare_unit`, `covered_unit`, `available_stock`, `claims`, and `replacements` with deduplication.
+- **API Endpoints**: CRUD operations for units and pools, analytics, configuration, risk analysis, webhook integration, and bulk upload endpoints for various data types with deduplication.
 - **Data Access Layer**: Storage abstraction using an `IStorage` interface.
 - **Performance & Scalability**: Server-side pagination, query limits, lightweight stats, and optimized bulk upload processes.
+- **Units Running Out Analysis System**: `GET /api/risk-combinations` endpoint with multi-tier risk scoring (Critical, High, Medium, Low) based on spare count and coverage ratio. Provides metrics like Available Stock, Covered Units, Spare Units, Run Rate, and Risk Score. UI features include action-oriented dashboard cards, advanced filtering, and bulk actions for alerts and pool creation.
+- **Coverage Pool Analytics System**: `GET /api/coverage-pools/:id/analytics` for time-series analysis, monthly aggregation of claims and replacements, 3-month moving average demand forecasting, and KPIs (Coverage Ratio, Average Fulfillment Rate, Claims Growth, Inventory Runway). Includes a recommendations engine.
 
 ### Data Storage
 - **Database**: PostgreSQL via Neon Serverless.
 - **ORM**: Drizzle ORM for type-safe queries, schema-first approach, and migration support.
-- **Schema Design**: Tables for `spare_unit`, `covered_unit`, `coverage_pool` (with JSON-serialized filter criteria), `available_stock`, `claims`, `replacements`, and a single-row `app_configuration` table. Uses UUID primary keys, composite keys for tracking, and audit timestamps.
+- **Schema Design**: Tables for `spare_unit`, `covered_unit`, `coverage_pool` (with JSON-serialized filter criteria), `available_stock`, `claims`, `replacements`, and a single-row `app_configuration` table. Uses UUID primary keys, composite keys, and audit timestamps.
 
-### Runtime Configuration System
+### Runtime Configuration
 - **Purpose**: Allows dynamic configuration of system thresholds and preferences.
-- **Implementation**: Single-row `app_configuration` table with strongly-typed fields for settings like `lowCoverageThresholdPercent`, `expiringCoverageDays`, `alertWebhookUrl`, etc.
+- **Implementation**: Single-row `app_configuration` table with strongly-typed fields (e.g., `lowCoverageThresholdPercent`, `expiringCoverageDays`, `alertWebhookUrl`).
 - **Security**: Configuration updates require admin password authentication.
-
-### Units Running Out Analysis System
-- **Endpoint**: `GET /api/risk-combinations` with server-side filtering, sorting, and pagination.
-- **Risk Scoring**: Multi-tier classification (Critical, High, Medium, Low) based on spare count relative to monthly run rate and coverage ratio over a rolling 6-month window.
-- **Metrics**: Includes Available Stock (UK/UAE), Covered Units, Spare Units, Run Rate, Warranty Coverage %, Spare Coverage %, and a numeric Risk Score.
-- **Type System**: Shared types in `shared/risk-analysis-types.ts` for `RiskLevel` and `RiskCombination`.
-- **UI Features**: 
-  - **Monitor Dashboard Cards**: Action-oriented cards showing time-to-stockout, units at risk, demand metrics, and regional stock availability with urgency badges
-  - **Advanced filtering**: Multi-selection and bulk actions
-  - **Units Running Out Page**: Full-page data table with sortable columns, client-side search/filtering, pagination, and color-coded percentage metrics
-- **Actions**: Single-item and bulk actions for sending alerts and creating pools with API integration, error handling, toast feedback, and cache invalidation.
-- **Alert Webhook**: Configured in the Configuration page, sends structured JSON payloads to Power Automate.
-
-### Coverage Pool Analytics System
-- **Endpoint**: `GET /api/coverage-pools/:id/analytics` for time-series analysis and forecasting.
-- **Analytics**: Monthly aggregation of claims and replacements, growth metrics, 3-month moving average demand forecasting, and KPIs (Coverage Ratio, Average Fulfillment Rate, Claims Growth, Inventory Runway). Includes UK/UAE available stock breakdown.
-- **Recommendations Engine**: Generates actionable guidance.
-
-### Unified Pool Card Design System (November 2025)
-- **Purpose**: Consistent, data-focused card design across all pool views for traceability and professional appearance
-- **Implementation**: Shared PoolCoverageCard component used in Monitor Dashboard, Pool Groups, and Pool Detail pages
-- **Core Layout Components**:
-  1. **Inventory Runway Panel** (Prominent Display):
-     - Large color-coded panel showing months of inventory (Spares ÷ Run Rate) × 30 days
-     - Color-coding: Red (<30d), Orange (<60d), Amber (<90d), Green (90+d), Muted (no demand)
-     - Critical logic: Checks `runRate > 0` (not `runwayMonths > 0`) to avoid false "No Demand" labels when demand exists but spares = 0
-     - Shows "No Recent Demand" when runRate = 0, or "X.X Months" when runRate > 0
-  2. **4-Column Metrics Grid**:
-     - **Covered Units**: Total units under warranty coverage
-     - **Spare Units**: Available spares in the pool
-     - **Demand/Month**: Monthly run rate (claims per month)
-     - **Net Gap**: Shortfall calculation (max(0, Covered - Spares)), color-coded red/green
-  3. **Regional Stock Breakdown**:
-     - Horizontal bar showing UK count + UAE count = Total
-     - Blue dot for UK, Purple dot for UAE
-     - Clear equation format for transparency
-- **Status Badges**: Color-coded urgency based on inventory runway (Critical/High/Medium/Low/Stable)
-- **Urgency Logic**: 
-  - Zero run rate = Low priority ("No Recent Demand")
-  - High run rate + low spares = Urgent/Critical condition
-  - Status and runway display always aligned and consistent
-- **Pool Detail Page Layout** (Compact 2-Column Design, November 2025):
-  - **Left Column - Key Metrics**:
-    - Inventory Runway card with Clock icon, color-coded panel
-    - 4-column compact grid with icons: Covered (Shield), Spares (Package), Demand (TrendingUp), Gap (AlertTriangle)
-    - Smaller typography and spacing for efficiency
-  - **Right Column - Supporting Data**:
-    - Available Stock card with Package icon showing Total, UK, UAE, and Other regions separately
-    - Activity Summary card with Activity icon showing Claims and Replacements
-  - **Available Stock Fix**: Shows "Total Matching" as primary value, with UK/UAE/Other breakdown to explain regional distribution
-  - Detailed KPI Cards section: Coverage Ratio, Fulfillment Rate, Claims Growth, Inventory Runway, Available Stock
-  - Analytics section: Trend charts, monthly breakdown, Excel export
-- **Data Traceability**: All key counts visible, calculations transparent, no hidden metrics, regional stock accurately displayed
-
-### Explore Dashboard BI Analytics System
-- **Purpose**: Comprehensive business intelligence dashboard providing 9 interactive charts with global multi-select filtering capabilities.
-- **Endpoints**: 10 analytics routes (9 chart data + 1 filter options) with shared filter builder helper in storage layer.
-- **Charts**: 
-  1. Top Models by Active Warranties (horizontal bar chart, blue)
-  2. Coverage Descriptions Distribution (horizontal bar chart, green)
-  3. Monthly Claims vs Replacements (dual-line chart, red/green)
-  4. Warranty Starts by Category Over Time (stacked line chart, purple)
-  5. Top Customers by Coverage (vertical bar chart, orange)
-  6. Claims by Model (horizontal bar chart, pink)
-  7. Replacements by Model (horizontal bar chart, teal)
-  8. Spare Unit Pool by Model (horizontal bar chart, indigo)
-  9. Monthly Warranty Activations (vertical bar chart, amber)
-- **Global Filtering**: Multi-select dropdowns for make, model, customer, and order with removable badge UI.
-- **Filter Logic**: 
-  - **Case-Insensitive**: All filters use UPPER() normalization - backend returns uppercase options and uses `UPPER(column) IN ${upperCaseArray}` for SQL queries, eliminating duplicate entries like "lenovo" and "LENOVO"
-  - Full filters (make, model, customer, order) applied to covered units endpoints
-  - Limited filters (make, model only) applied to claims/replacements/spare pool endpoints (tables lack customer/order fields)
-  - Null-safe URL construction prevents trailing "?" when no filters selected
-  - Consistent query keys for proper TanStack Query caching
-- **UI Features**: Scrollable multi-select popovers with search, selected count display, filter badges with removal, "Clear All" button, skeleton loaders during data fetch.
-- **Chart Readability Enhancements (November 2025)**:
-  - All charts increased to 360px height for better visibility
-  - Horizontal bars (Top Models, Coverage Descriptions, Claims, Replacements, Spare Pool): 150-180px Y-axis width, truncated labels (18-22 chars), rounded right corners (radius 8px), eliminating white space issues
-  - Vertical bars (Top Customers, Monthly Activations): -30° label rotation, 80px bottom margin, truncated labels (15 chars), rounded top corners
-  - Line charts (Category Timeline, Monthly Claims/Replacements): Proper margins (20px), small dots (r=2-3), improved legends
-  - Improved text contrast: #333 for labels, #666 for axis ticks, white tooltips with borders
-  - All charts wrapped in overflow-hidden containers to prevent text overflow
-  - Converted pie charts to horizontal bars for clearer model-level data visualization
-- **Color Palettes**: Varied recharts color schemes for visual distinction between chart types.
 
 ### Authentication and Authorization
 - **Current State**: No authentication/authorization implemented; assumes a trusted internal network.
@@ -169,4 +60,3 @@ Preferred communication style: Simple, everyday language.
 - **class-variance-authority**: Component variant management.
 - **cmdk**: Command palette component.
 - **xlsx**: Excel file generation.
-- **react-chartjs-2 & chart.js**: Interactive charting library.
