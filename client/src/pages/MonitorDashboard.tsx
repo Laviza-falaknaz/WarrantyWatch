@@ -24,8 +24,24 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import * as XLSX from 'xlsx';
 import {
   Activity,
   AlertTriangle,
@@ -41,6 +57,8 @@ import {
   X,
   Bell,
   FolderPlus,
+  Download,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, addMonths, subMonths, eachDayOfInterval, startOfWeek, addWeeks, endOfWeek, isSameDay, differenceInCalendarWeeks } from "date-fns";
@@ -50,12 +68,17 @@ import { formatRiskLevel } from "@shared/risk-analysis-types";
 
 interface CoveredUnit {
   id: string;
+  serialNumber?: string;
   coverageEndDate: string;
+  coverageStartDate?: string;
   isCoverageActive: boolean;
   orderNumber?: string;
   customerName?: string;
   make?: string;
   model?: string;
+  coverageDescription?: string;
+  processor?: string;
+  generation?: string;
 }
 
 interface HeatmapCell {
@@ -99,21 +122,26 @@ function getCellColor(count: number, maxCount: number): string {
 function HeatmapDay({
   cell,
   maxCount,
+  onCellClick,
 }: {
   cell: HeatmapCell;
   maxCount: number;
+  onCellClick?: (cell: HeatmapCell) => void;
 }) {
   const cellColor = getCellColor(cell.count, maxCount);
+  const isToday = format(cell.date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <motion.div
           whileHover={{ scale: 1.1 }}
+          onClick={() => onCellClick?.(cell)}
           className={cn(
             "w-4 h-4 rounded-sm transition-all cursor-pointer shadow-sm",
             cellColor,
-            cell.count > 0 && "hover:ring-2 hover:ring-purple-400 dark:hover:ring-purple-600"
+            cell.count > 0 && "hover:ring-2 hover:ring-purple-400 dark:hover:ring-purple-600",
+            isToday && "ring-2 ring-red-500 dark:ring-red-600 ring-offset-1"
           )}
           data-testid={`heatmap-day-${format(cell.date, 'yyyy-MM-dd')}`}
         />
@@ -122,6 +150,7 @@ function HeatmapDay({
         <div className="space-y-2">
           <p className="text-sm font-semibold">
             {format(cell.date, 'MMM d, yyyy')}
+            {isToday && <span className="ml-2 text-red-500">(Today)</span>}
           </p>
           <div className="flex items-center gap-2">
             <Badge variant={cell.count > 5 ? "destructive" : cell.count > 0 ? "secondary" : "outline"}>
@@ -137,6 +166,9 @@ function HeatmapDay({
               ))}
             </div>
           )}
+          {cell.count > 0 && (
+            <p className="text-xs text-muted-foreground italic">Click to view details</p>
+          )}
         </div>
       </TooltipContent>
     </Tooltip>
@@ -147,7 +179,7 @@ export default function MonitorDashboard() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const riskCombinationsRef = useRef<HTMLDivElement>(null);
-  const [startDate, setStartDate] = useState(() => subMonths(new Date(), 1));
+  const [startDate, setStartDate] = useState(() => subMonths(new Date(), 4));
   const [filters, setFilters] = useState({
     orderNumber: "",
     customerName: "",
@@ -160,8 +192,10 @@ export default function MonitorDashboard() {
     search: "",
     riskLevel: "all",
   });
+  const [selectedDateCell, setSelectedDateCell] = useState<HeatmapCell | null>(null);
+  const [dialogSearch, setDialogSearch] = useState("");
 
-  const endDate = useMemo(() => addMonths(startDate, 6), [startDate]);
+  const endDate = useMemo(() => addMonths(startDate, 10), [startDate]);
   const hasBulkSelection = selectedRiskItems.size > 1;
 
   const { data: coveredUnits, isLoading } = useQuery<CoveredUnit[]>({
@@ -324,7 +358,7 @@ export default function MonitorDashboard() {
     const filtered = coveredUnits.filter((unit) => {
       if (!unit.isCoverageActive) return false;
       const endDate = new Date(unit.coverageEndDate);
-      if (endDate < startDate || endDate > addMonths(startDate, 6)) return false;
+      if (endDate < startDate || endDate > addMonths(startDate, 10)) return false;
 
       if (filters.orderNumber && unit.orderNumber !== filters.orderNumber) return false;
       if (filters.customerName && unit.customerName !== filters.customerName) return false;
@@ -334,7 +368,7 @@ export default function MonitorDashboard() {
       return true;
     });
 
-    const days = eachDayOfInterval({ start: startDate, end: addMonths(startDate, 6) });
+    const days = eachDayOfInterval({ start: startDate, end: addMonths(startDate, 10) });
     
     return days.map((date) => {
       const unitsExpiringOnDay = filtered.filter((unit) => {
@@ -483,6 +517,54 @@ export default function MonitorDashboard() {
     } else {
       setStartDate(prev => addMonths(prev, 1));
     }
+  };
+
+  // Filter units in dialog by search term
+  const filteredDialogUnits = useMemo(() => {
+    if (!selectedDateCell) return [];
+    
+    const searchLower = dialogSearch.toLowerCase();
+    if (!searchLower) return selectedDateCell.units;
+    
+    return selectedDateCell.units.filter(unit => 
+      unit.serialNumber?.toLowerCase().includes(searchLower) ||
+      unit.make?.toLowerCase().includes(searchLower) ||
+      unit.model?.toLowerCase().includes(searchLower) ||
+      unit.customerName?.toLowerCase().includes(searchLower) ||
+      unit.orderNumber?.toLowerCase().includes(searchLower) ||
+      unit.coverageDescription?.toLowerCase().includes(searchLower) ||
+      unit.processor?.toLowerCase().includes(searchLower)
+    );
+  }, [selectedDateCell, dialogSearch]);
+
+  // Export dialog units to Excel
+  const handleExportToExcel = () => {
+    if (!selectedDateCell) return;
+    
+    const data = filteredDialogUnits.map(unit => ({
+      'Serial Number': unit.serialNumber || '',
+      'Make': unit.make || '',
+      'Model': unit.model || '',
+      'Customer': unit.customerName || '',
+      'Order': unit.orderNumber || '',
+      'Coverage Description': unit.coverageDescription || '',
+      'Processor': unit.processor || '',
+      'Generation': unit.generation || '',
+      'Start Date': unit.coverageStartDate ? format(new Date(unit.coverageStartDate), 'MMM d, yyyy') : '',
+      'End Date': format(new Date(unit.coverageEndDate), 'MMM d, yyyy'),
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Units');
+    
+    const dateStr = format(selectedDateCell.date, 'yyyy-MM-dd');
+    XLSX.writeFile(wb, `warranties-expiring-${dateStr}.xlsx`);
+    
+    toast({
+      title: "Export Successful",
+      description: `Exported ${filteredDialogUnits.length} unit(s) to Excel`,
+    });
   };
 
   if (isLoading) {
@@ -766,7 +848,16 @@ export default function MonitorDashboard() {
                                 {cell.count === -1 ? (
                                   <div className="w-4 h-4" />
                                 ) : (
-                                  <HeatmapDay cell={cell} maxCount={maxCount} />
+                                  <HeatmapDay 
+                                    cell={cell} 
+                                    maxCount={maxCount} 
+                                    onCellClick={(cell) => {
+                                      if (cell.count > 0) {
+                                        setSelectedDateCell(cell);
+                                        setDialogSearch("");
+                                      }
+                                    }}
+                                  />
                                 )}
                               </div>
                             ))}
@@ -1084,6 +1175,101 @@ export default function MonitorDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Warranty Details Dialog */}
+      <Dialog open={!!selectedDateCell} onOpenChange={(open) => !open && setSelectedDateCell(null)}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              Warranties Expiring on {selectedDateCell && format(selectedDateCell.date, 'MMMM d, yyyy')}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedDateCell?.count || 0} unit(s) with coverage ending on this date
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+            {/* Search and Export Bar */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by serial, make, model, customer, order, warranty description..."
+                  value={dialogSearch}
+                  onChange={(e) => setDialogSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-dialog-search"
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleExportToExcel}
+                className="gap-2"
+                disabled={filteredDialogUnits.length === 0}
+                data-testid="button-export-excel"
+              >
+                <Download className="w-4 h-4" />
+                Export to Excel
+              </Button>
+            </div>
+
+            {/* Units Table */}
+            <div className="flex-1 overflow-auto border rounded-lg">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background z-10">
+                  <TableRow>
+                    <TableHead>Serial Number</TableHead>
+                    <TableHead>Make</TableHead>
+                    <TableHead>Model</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Order</TableHead>
+                    <TableHead>Coverage Description</TableHead>
+                    <TableHead>Processor</TableHead>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead>End Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredDialogUnits.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                        No units found matching your search
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredDialogUnits.map((unit, index) => (
+                      <TableRow key={unit.id} data-testid={`row-unit-${index}`}>
+                        <TableCell className="font-mono text-xs">{unit.serialNumber || '-'}</TableCell>
+                        <TableCell>{unit.make || '-'}</TableCell>
+                        <TableCell>{unit.model || '-'}</TableCell>
+                        <TableCell>{unit.customerName || '-'}</TableCell>
+                        <TableCell className="font-mono text-xs">{unit.orderNumber || '-'}</TableCell>
+                        <TableCell className="max-w-xs truncate" title={unit.coverageDescription}>
+                          {unit.coverageDescription || '-'}
+                        </TableCell>
+                        <TableCell className="text-xs">{unit.processor || '-'}</TableCell>
+                        <TableCell className="text-xs">
+                          {unit.coverageStartDate ? format(new Date(unit.coverageStartDate), 'MMM d, yyyy') : '-'}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {format(new Date(unit.coverageEndDate), 'MMM d, yyyy')}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Results Summary */}
+            {dialogSearch && (
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredDialogUnits.length} of {selectedDateCell?.count || 0} unit(s)
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }
