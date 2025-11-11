@@ -922,11 +922,51 @@ export default function MonitorDashboard() {
                     const targetSpares = Math.ceil((coveredCount * targetCoverage) / 100);
                     const shortfall = Math.max(0, targetSpares - spareCount);
                     
-                    // Status badge color based on coverage
+                    // Status badge and runway colors based on inventory runway
                     const getStatusBadge = () => {
-                      if (coverageRatio >= 6) return { text: "Healthy", class: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-300 dark:border-green-700" };
-                      if (coverageRatio >= 3) return { text: "Warning", class: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-700" };
-                      return { text: "Critical", class: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 border-red-300 dark:border-red-700" };
+                      if (runRate === 0) {
+                        return { 
+                          text: "Low Priority", 
+                          class: "bg-muted text-muted-foreground border-muted",
+                          bg: "bg-muted/30",
+                          borderColor: "border-l-muted",
+                          textColor: "text-muted-foreground"
+                        };
+                      }
+                      
+                      if (runwayMonths < 1) {
+                        return { 
+                          text: "Critical", 
+                          class: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 border-red-300 dark:border-red-700",
+                          bg: "bg-red-50 dark:bg-red-950/30",
+                          borderColor: "border-l-red-600",
+                          textColor: "text-red-600 dark:text-red-400"
+                        };
+                      } else if (runwayMonths < 2) {
+                        return { 
+                          text: "Warning", 
+                          class: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 border-orange-300 dark:border-orange-700",
+                          bg: "bg-orange-50 dark:bg-orange-950/30",
+                          borderColor: "border-l-orange-600",
+                          textColor: "text-orange-600 dark:text-orange-400"
+                        };
+                      } else if (runwayMonths < 3) {
+                        return { 
+                          text: "Caution", 
+                          class: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-700",
+                          bg: "bg-amber-50 dark:bg-amber-950/30",
+                          borderColor: "border-l-amber-600",
+                          textColor: "text-amber-600 dark:text-amber-500"
+                        };
+                      } else {
+                        return { 
+                          text: "Healthy", 
+                          class: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-300 dark:border-green-700",
+                          bg: "bg-green-50 dark:bg-green-950/30",
+                          borderColor: "border-l-green-600",
+                          textColor: "text-green-600 dark:text-green-500"
+                        };
+                      }
                     };
                     
                     const status = getStatusBadge();
@@ -944,50 +984,61 @@ export default function MonitorDashboard() {
                                 </Badge>
                               </div>
                               
-                              {/* Critical metrics - Coverage Shortfall */}
-                              <div className="bg-muted/30 rounded-lg p-3 space-y-1">
-                                <div className="flex items-baseline justify-between">
-                                  <span className="text-xs text-muted-foreground font-medium">Coverage Gap</span>
-                                  <div className="text-right">
-                                    <span className="text-2xl font-bold text-foreground">{shortfall}</span>
-                                    <span className="text-xs text-muted-foreground ml-1">units short</span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-muted-foreground">Current vs Target (6%)</span>
-                                  <span className="font-semibold">{spareCount} / {targetSpares}</span>
+                              {/* Inventory Runway - Prominent Display */}
+                              <div className={`${status.bg} rounded-lg p-3 border-l-4 ${status.borderColor}`}>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-medium text-muted-foreground">Inventory Runway</span>
+                                  <span className={`text-xl font-bold ${status.textColor}`}>
+                                    {runwayMonths > 0 ? `${runwayMonths.toFixed(1)} Months` : "No Demand"}
+                                  </span>
                                 </div>
                               </div>
                               
-                              {/* Key stats in compact row */}
-                              <div className="grid grid-cols-3 gap-2 text-xs">
-                                <div className="text-center p-2 bg-background rounded-lg border">
-                                  <p className="text-muted-foreground mb-0.5">Runway</p>
-                                  <p className="font-bold text-sm">
-                                    {runwayMonths > 0 ? `${runwayMonths.toFixed(1)}mo` : "N/A"}
+                              {/* Stock Counts - 4 Column Grid */}
+                              <div className="grid grid-cols-4 gap-2 text-center">
+                                <div className="bg-background rounded border p-2">
+                                  <p className="text-[10px] text-muted-foreground mb-1">Covered</p>
+                                  <p className="text-sm font-bold">{coveredCount}</p>
+                                </div>
+                                <div className="bg-background rounded border p-2">
+                                  <p className="text-[10px] text-muted-foreground mb-1">Spares</p>
+                                  <p className="text-sm font-bold">{spareCount}</p>
+                                </div>
+                                <div className="bg-background rounded border p-2">
+                                  <p className="text-[10px] text-muted-foreground mb-1">Demand/mo</p>
+                                  <p className="text-sm font-bold">{runRate.toFixed(1)}</p>
+                                </div>
+                                <div className="bg-background rounded border p-2">
+                                  <p className="text-[10px] text-muted-foreground mb-1">Gap</p>
+                                  <p className={`text-sm font-bold ${shortfall > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-500'}`}>
+                                    {shortfall}
                                   </p>
                                 </div>
-                                <div className="text-center p-2 bg-background rounded-lg border">
-                                  <p className="text-muted-foreground mb-0.5">Run Rate</p>
-                                  <p className="font-bold text-sm">{runRate.toFixed(1)}/mo</p>
-                                </div>
-                                <div className="text-center p-2 bg-background rounded-lg border">
-                                  <p className="text-muted-foreground mb-0.5">Available</p>
-                                  <p className="font-bold text-sm">{totalAvailable}</p>
-                                </div>
                               </div>
                               
-                              {/* Regional stock breakdown */}
-                              <div className="flex items-center gap-2 text-xs">
-                                <div className="flex-1 flex items-center gap-1.5">
-                                  <div className="w-2 h-2 rounded-full bg-blue-500" />
-                                  <span className="text-muted-foreground">UK:</span>
-                                  <span className="font-semibold">{ukAvailable}</span>
-                                </div>
-                                <div className="flex-1 flex items-center gap-1.5">
-                                  <div className="w-2 h-2 rounded-full bg-purple-500" />
-                                  <span className="text-muted-foreground">UAE:</span>
-                                  <span className="font-semibold">{uaeAvailable}</span>
+                              {/* Available Stock - Regional Breakdown */}
+                              <div className="bg-muted/20 rounded-lg p-2">
+                                <div className="flex items-center justify-between text-xs">
+                                  <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                                    <Package className="w-3 h-3" />
+                                    <span>Available Stock</span>
+                                  </div>
+                                  <div className="flex items-center gap-3 font-semibold">
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                      <span>{ukAvailable}</span>
+                                      <span className="text-muted-foreground">UK</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                      <span>{uaeAvailable}</span>
+                                      <span className="text-muted-foreground">UAE</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <span>=</span>
+                                      <span>{totalAvailable}</span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
