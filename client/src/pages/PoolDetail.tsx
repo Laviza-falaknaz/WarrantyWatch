@@ -403,15 +403,6 @@ export default function PoolDetail() {
                 </div>
                 <span className="font-semibold" data-testid="value-uae-available">{analytics.currentUaeAvailableCount || 0}</span>
               </div>
-              {(analytics.currentAvailableStockCount - (analytics.currentUkAvailableCount || 0) - (analytics.currentUaeAvailableCount || 0)) > 0 && (
-                <div className="flex items-center justify-between text-sm mt-1">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-gray-400" />
-                    <span className="text-muted-foreground">Other</span>
-                  </div>
-                  <span className="font-semibold">{analytics.currentAvailableStockCount - (analytics.currentUkAvailableCount || 0) - (analytics.currentUaeAvailableCount || 0)}</span>
-                </div>
-              )}
             </CardContent>
           </Card>
 

@@ -1410,19 +1410,15 @@ export class DatabaseStorage implements IStorage {
       .where(coveredConditions.length > 0 ? and(...coveredConditions) : undefined);
     
     const availableConditions = buildFilterConditions(availableStock);
-    const [currentAvailableResult] = await db
-      .select({ count: sql<number>`cast(count(*) as int)` })
-      .from(availableStock)
-      .where(availableConditions.length > 0 ? and(...availableConditions) : undefined);
     
-    // Get UK available stock
+    // Get UK available stock (only UK and UAE are considered for inventory)
     const ukConditions = [sql`UPPER(${availableStock.areaId}) = 'UK'`, ...availableConditions];
     const [ukAvailableResult] = await db
       .select({ count: sql<number>`cast(count(*) as int)` })
       .from(availableStock)
       .where(and(...ukConditions));
     
-    // Get UAE available stock
+    // Get UAE available stock (only UK and UAE are considered for inventory)
     const uaeConditions = [sql`UPPER(${availableStock.areaId}) = 'UAE'`, ...availableConditions];
     const [uaeAvailableResult] = await db
       .select({ count: sql<number>`cast(count(*) as int)` })
@@ -1431,9 +1427,10 @@ export class DatabaseStorage implements IStorage {
     
     const currentSpareCount = currentSpareResult?.count || 0;
     const currentCoveredCount = currentCoveredResult?.count || 0;
-    const currentAvailableStockCount = currentAvailableResult?.count || 0;
     const currentUkAvailableCount = ukAvailableResult?.count || 0;
     const currentUaeAvailableCount = uaeAvailableResult?.count || 0;
+    // Total available stock is UK + UAE only (no other area IDs considered)
+    const currentAvailableStockCount = currentUkAvailableCount + currentUaeAvailableCount;
     const currentCoverageRatio = currentCoveredCount > 0 ? (currentSpareCount / currentCoveredCount) * 100 : 0;
     
     // Generate monthly data array with all months in range
