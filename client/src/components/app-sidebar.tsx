@@ -40,26 +40,37 @@ const menuGroups = [
         url: "/explore",
         icon: Compass,
       },
+
       {
-        title: "Risk Combinations",
-        url: "/risk-combinations",
-        icon: AlertTriangle,
-      },
-      {
-        title: "Warranty Explorer",
+        title: "Insights",
         url: "/warranty-explorer",
         icon: FileSearch,
       },
     ],
   },
   {
-    label: "Inventory",
+    label: "Assets",
     items: [
       {
-        title: "Covered Units",
+        title: "Coverage Pools",
+        url: "/pools",
+        icon: Layers,
+      },
+      {
+        title: "Units running out",
+        url: "/risk-combinations",
+        icon: AlertTriangle,
+      },
+      {
+        title: "All Warranties",
         url: "/warranties",
         icon: Shield,
       },
+    ],
+  },
+  {
+    label: "Inventory",
+    items: [
       {
         title: "Available Stock",
         url: "/available-stock",
