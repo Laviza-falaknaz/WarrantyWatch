@@ -1135,30 +1135,58 @@ export default function MonitorDashboard() {
                         const ukAvailable = Number(combo.uk_available_count) || 0;
                         const uaeAvailable = Number(combo.uae_available_count) || 0;
                         
-                        // Calculate time to stockout (in months)
-                        const monthsToStockout = runRate > 0 ? spareCount / runRate : 0;
-                        const daysToStockout = monthsToStockout * 30;
+                        const totalAvailable = ukAvailable + uaeAvailable;
+                        const uncoveredUnits = Math.max(0, coveredCount - spareCount);
                         
-                        // Calculate uncovered units (units beyond spare capacity)
-                        const targetCoverage = 6; // 6% target
-                        const targetSpares = Math.ceil((coveredCount * targetCoverage) / 100);
-                        const uncoveredUnits = Math.max(0, targetSpares - spareCount);
+                        // Inventory runway: days worth of stock based on run rate
+                        const daysOfCover = runRate > 0 ? (spareCount / runRate) * 30 : Infinity;
                         
-                        // Time-based urgency pill
-                        const getUrgencyPill = () => {
-                          if (monthsToStockout === 0 || spareCount === 0) {
-                            return { text: "Out of Stock", class: "bg-red-600 text-white border-red-700 dark:bg-red-700 dark:border-red-800" };
+                        // Better urgency logic: 0 run rate = low risk (no recent demand)
+                        const getRunwayStatus = () => {
+                          if (runRate === 0) {
+                            return { 
+                              text: "No Recent Demand", 
+                              color: "text-muted-foreground",
+                              bg: "bg-muted/30"
+                            };
                           }
-                          if (daysToStockout < 30) {
-                            return { text: `${Math.round(daysToStockout)} days to stockout`, class: "bg-orange-600 text-white border-orange-700" };
+                          
+                          if (spareCount === 0) {
+                            return { 
+                              text: "Out of Stock", 
+                              color: "text-red-600 dark:text-red-400",
+                              bg: "bg-red-50 dark:bg-red-950/30"
+                            };
                           }
-                          if (monthsToStockout < 2) {
-                            return { text: `${monthsToStockout.toFixed(1)} months to stockout`, class: "bg-amber-500 text-white border-amber-600" };
+                          
+                          if (daysOfCover < 30) {
+                            return { 
+                              text: `${Math.floor(daysOfCover)} Days Left`, 
+                              color: "text-red-600 dark:text-red-400",
+                              bg: "bg-red-50 dark:bg-red-950/30"
+                            };
+                          } else if (daysOfCover < 60) {
+                            return { 
+                              text: `${Math.floor(daysOfCover)} Days Left`, 
+                              color: "text-orange-600 dark:text-orange-400",
+                              bg: "bg-orange-50 dark:bg-orange-950/30"
+                            };
+                          } else if (daysOfCover < 90) {
+                            return { 
+                              text: `${(daysOfCover / 30).toFixed(1)} Months`, 
+                              color: "text-amber-600 dark:text-amber-500",
+                              bg: "bg-amber-50 dark:bg-amber-950/30"
+                            };
+                          } else {
+                            return { 
+                              text: `${(daysOfCover / 30).toFixed(1)} Months`, 
+                              color: "text-green-600 dark:text-green-500",
+                              bg: "bg-green-50 dark:bg-green-950/30"
+                            };
                           }
-                          return { text: `${monthsToStockout.toFixed(1)} months runway`, class: "bg-blue-600 text-white border-blue-700" };
                         };
                         
-                        const urgency = getUrgencyPill();
+                        const runway = getRunwayStatus();
                         
                         return (
                           <Card key={comboKey} className="rounded-xl hover-elevate">
@@ -1179,7 +1207,7 @@ export default function MonitorDashboard() {
                                   className="mt-1"
                                 />
                                 
-                                <div className="flex-1 min-w-0 space-y-4">
+                                <div className="flex-1 min-w-0 space-y-3">
                                   {/* Header: Make/Model + Risk Badge */}
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="flex-1 min-w-0">
@@ -1197,65 +1225,72 @@ export default function MonitorDashboard() {
                                     </Badge>
                                   </div>
                                   
-                                  {/* Primary Metrics: Time to stockout + Units at Risk */}
-                                  <div className="bg-muted/10 rounded-lg p-3 space-y-3">
+                                  {/* Inventory Runway - Prominent Display */}
+                                  <div className={`${runway.bg} rounded-lg p-3 border-l-4 ${
+                                    runway.color.includes('red') ? 'border-l-red-600' :
+                                    runway.color.includes('orange') ? 'border-l-orange-600' :
+                                    runway.color.includes('amber') ? 'border-l-amber-600' :
+                                    runway.color.includes('muted') ? 'border-l-muted' :
+                                    'border-l-green-600'
+                                  }`}>
                                     <div className="flex items-center justify-between">
-                                      <span className="text-xs text-muted-foreground font-medium">Time to Stockout</span>
-                                      <span className={`text-lg font-bold ${
-                                        urgency.class.includes('red') ? 'text-red-600 dark:text-red-400' :
-                                        urgency.class.includes('orange') ? 'text-orange-600 dark:text-orange-400' :
-                                        urgency.class.includes('amber') ? 'text-amber-600 dark:text-amber-500' :
-                                        'text-green-600 dark:text-green-400'
-                                      }`}>
-                                        {urgency.text}
+                                      <span className="text-xs font-medium text-muted-foreground">Inventory Runway</span>
+                                      <span className={`text-xl font-bold ${runway.color}`}>
+                                        {runway.text}
                                       </span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs text-muted-foreground font-medium">Units at Risk</span>
-                                      <span className="text-2xl font-bold">{uncoveredUnits}</span>
                                     </div>
                                   </div>
                                   
-                                  {/* Secondary Metrics Grid */}
-                                  <div className="grid grid-cols-3 gap-3">
-                                    <div>
-                                      <p className="text-xs text-muted-foreground mb-1">Coverage</p>
-                                      <p className="text-sm font-bold">{coverageRatio.toFixed(1)}%</p>
+                                  {/* Stock Counts - 4 Column Grid */}
+                                  <div className="grid grid-cols-4 gap-2 text-center">
+                                    <div className="bg-background rounded border p-2">
+                                      <p className="text-[10px] text-muted-foreground mb-1">Covered</p>
+                                      <p className="text-sm font-bold">{coveredCount}</p>
                                     </div>
-                                    <div>
-                                      <p className="text-xs text-muted-foreground mb-1">Demand</p>
-                                      <p className="text-sm font-bold">{runRate.toFixed(1)}/mo</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-muted-foreground mb-1">Spares</p>
+                                    <div className="bg-background rounded border p-2">
+                                      <p className="text-[10px] text-muted-foreground mb-1">Spares</p>
                                       <p className="text-sm font-bold">{spareCount}</p>
                                     </div>
+                                    <div className="bg-background rounded border p-2">
+                                      <p className="text-[10px] text-muted-foreground mb-1">Demand/mo</p>
+                                      <p className="text-sm font-bold">{runRate.toFixed(1)}</p>
+                                    </div>
+                                    <div className="bg-background rounded border p-2">
+                                      <p className="text-[10px] text-muted-foreground mb-1">Net Gap</p>
+                                      <p className={`text-sm font-bold ${uncoveredUnits > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-500'}`}>
+                                        {uncoveredUnits}
+                                      </p>
+                                    </div>
                                   </div>
                                   
-                                  {/* Regional Availability */}
-                                  <div className="pt-3 border-t">
+                                  {/* Available Stock - Regional Breakdown */}
+                                  <div className="bg-muted/20 rounded-lg p-2">
                                     <div className="flex items-center justify-between text-xs">
-                                      <span className="text-muted-foreground font-medium flex items-center gap-1.5">
-                                        <Package className="w-3.5 h-3.5" />
-                                        Available Stock
-                                      </span>
-                                      <div className="flex items-center gap-3">
+                                      <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                                        <Package className="w-3 h-3" />
+                                        <span>Available Stock</span>
+                                      </div>
+                                      <div className="flex items-center gap-3 font-semibold">
                                         <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-blue-500" />
-                                          <span className="font-semibold">{ukAvailable}</span>
+                                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                          <span>{ukAvailable}</span>
                                           <span className="text-muted-foreground">UK</span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full bg-purple-500" />
-                                          <span className="font-semibold">{uaeAvailable}</span>
+                                          <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                          <span>{uaeAvailable}</span>
                                           <span className="text-muted-foreground">UAE</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <span>=</span>
+                                          <span>{totalAvailable}</span>
                                         </div>
                                       </div>
                                     </div>
                                   </div>
 
                                   {!hasBulkSelection && (
-                                    <div className="flex items-center gap-2 pt-2">
+                                    <div className="flex items-center gap-2">
                                       <Button 
                                         size="sm" 
                                         variant="default" 
