@@ -94,12 +94,12 @@ function HeatmapDay({
   const intensity = maxCount > 0 ? (cell.count / maxCount) * 100 : 0;
 
   const getBgColor = () => {
-    if (intensity === 0) return "bg-muted/10";
-    if (intensity < 20) return "bg-accent/20";
-    if (intensity < 40) return "bg-amber-400/30";
-    if (intensity < 60) return "bg-orange-500/40";
-    if (intensity < 80) return "bg-destructive/50";
-    return "bg-destructive/70";
+    if (intensity === 0) return "bg-muted/20";
+    if (intensity < 20) return "bg-accent/50";
+    if (intensity < 40) return "bg-amber-400/60";
+    if (intensity < 60) return "bg-orange-500/70";
+    if (intensity < 80) return "bg-destructive/80";
+    return "bg-destructive";
   };
 
   return (
@@ -108,7 +108,7 @@ function HeatmapDay({
         <motion.div
           whileHover={{ scale: 1.15 }}
           className={cn(
-            "w-3 h-3 rounded-sm border border-border/40 transition-all cursor-pointer",
+            "w-4 h-4 rounded-sm border border-border/40 transition-all cursor-pointer",
             getBgColor(),
             cell.count > 0 && "hover:ring-2 hover:ring-primary/50"
           )}
@@ -660,7 +660,7 @@ export default function MonitorDashboard() {
                         key={index}
                         className="text-xs font-semibold text-muted-foreground"
                         style={{
-                          marginLeft: index === 0 ? 0 : `${(header.weekIndex - (monthHeaders[index - 1]?.weekIndex || 0)) * 16}px`,
+                          marginLeft: index === 0 ? 0 : `${(header.weekIndex - (monthHeaders[index - 1]?.weekIndex || 0)) * 20}px`,
                         }}
                       >
                         {header.month}
@@ -675,7 +675,7 @@ export default function MonitorDashboard() {
                         {week.map((cell, dayIndex) => (
                           <div key={dayIndex}>
                             {cell.count === -1 ? (
-                              <div className="w-3 h-3" data-testid="heatmap-padding" />
+                              <div className="w-4 h-4" data-testid="heatmap-padding" />
                             ) : (
                               <HeatmapDay cell={cell} maxCount={maxCount} />
                             )}
@@ -689,12 +689,12 @@ export default function MonitorDashboard() {
                   <div className="flex items-center gap-2 mt-6 text-xs text-muted-foreground">
                     <span>Less</span>
                     <div className="flex gap-1">
-                      <div className="w-3 h-3 rounded-sm bg-muted/10 border border-border/40" />
-                      <div className="w-3 h-3 rounded-sm bg-accent/20 border border-border/40" />
-                      <div className="w-3 h-3 rounded-sm bg-amber-400/30 border border-border/40" />
-                      <div className="w-3 h-3 rounded-sm bg-orange-500/40 border border-border/40" />
-                      <div className="w-3 h-3 rounded-sm bg-destructive/50 border border-border/40" />
-                      <div className="w-3 h-3 rounded-sm bg-destructive/70 border border-border/40" />
+                      <div className="w-4 h-4 rounded-sm bg-muted/20 border border-border/40" />
+                      <div className="w-4 h-4 rounded-sm bg-accent/50 border border-border/40" />
+                      <div className="w-4 h-4 rounded-sm bg-amber-400/60 border border-border/40" />
+                      <div className="w-4 h-4 rounded-sm bg-orange-500/70 border border-border/40" />
+                      <div className="w-4 h-4 rounded-sm bg-destructive/80 border border-border/40" />
+                      <div className="w-4 h-4 rounded-sm bg-destructive border border-border/40" />
                     </div>
                     <span>More</span>
                   </div>
