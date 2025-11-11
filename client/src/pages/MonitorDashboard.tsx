@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
@@ -155,6 +155,7 @@ function HeatmapDay({
 export default function MonitorDashboard() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const riskCombinationsRef = useRef<HTMLDivElement>(null);
   const [startDate, setStartDate] = useState(() => subMonths(new Date(), 1));
   const [filters, setFilters] = useState({
     orderNumber: "",
@@ -708,7 +709,7 @@ export default function MonitorDashboard() {
           </div>
 
           {/* Right Column: lg:col-span-3 - High-Risk Combinations */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3" ref={riskCombinationsRef}>
             <Card className="rounded-2xl">
               <CardHeader>
                 <div className="space-y-3">
@@ -753,35 +754,46 @@ export default function MonitorDashboard() {
                   </div>
                   
                   {/* Select all / Deselect all */}
-                  {filteredRiskCombinations && filteredRiskCombinations.length > 0 && (
-                    <div className="flex gap-2">
-                      {selectedRiskItems.size < filteredRiskCombinations.length ? (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            const newSelected = new Set<string>();
-                            filteredRiskCombinations.forEach((combo) => newSelected.add(getRiskComboKey(combo)));
-                            setSelectedRiskItems(newSelected);
-                          }}
-                          className="flex-1 text-xs"
-                          data-testid="button-select-all"
-                        >
-                          Select All ({filteredRiskCombinations.length})
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setSelectedRiskItems(new Set())}
-                          className="flex-1 text-xs"
-                          data-testid="button-deselect-all"
-                        >
-                          Deselect All
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                  {filteredRiskCombinations && filteredRiskCombinations.length > 0 && (() => {
+                    // Check if all filtered items are selected
+                    const allFilteredSelected = filteredRiskCombinations.every((combo) => 
+                      selectedRiskItems.has(getRiskComboKey(combo))
+                    );
+                    
+                    return (
+                      <div className="flex gap-2">
+                        {!allFilteredSelected ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const newSelected = new Set(selectedRiskItems);
+                              filteredRiskCombinations.forEach((combo) => newSelected.add(getRiskComboKey(combo)));
+                              setSelectedRiskItems(newSelected);
+                            }}
+                            className="flex-1 text-xs"
+                            data-testid="button-select-all"
+                          >
+                            Select All ({filteredRiskCombinations.length})
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const newSelected = new Set(selectedRiskItems);
+                              filteredRiskCombinations.forEach((combo) => newSelected.delete(getRiskComboKey(combo)));
+                              setSelectedRiskItems(newSelected);
+                            }}
+                            className="flex-1 text-xs"
+                            data-testid="button-deselect-all"
+                          >
+                            Deselect All
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   
                   {/* Bulk actions */}
                   {selectedRiskItems.size > 0 && (
@@ -912,16 +924,20 @@ export default function MonitorDashboard() {
                     </div>
                     
                     <div className="mt-4 pt-4 border-t">
-                      <Link href="/risk-combinations">
-                        <Button 
-                          variant="ghost" 
-                          className="w-full gap-2"
-                          data-testid="button-view-all-risk-profiles"
-                        >
-                          View All Risk Profiles
-                          <ChevronRightIcon className="w-4 h-4" />
-                        </Button>
-                      </Link>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full gap-2"
+                        onClick={() => {
+                          riskCombinationsRef.current?.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start' 
+                          });
+                        }}
+                        data-testid="button-view-all-risk-profiles"
+                      >
+                        View All Risk Profiles
+                        <ChevronRightIcon className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 )}
