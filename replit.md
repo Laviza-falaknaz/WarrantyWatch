@@ -65,11 +65,20 @@ Preferred communication style: Simple, everyday language.
   9. Monthly Warranty Activations (bar chart, amber)
 - **Global Filtering**: Multi-select dropdowns for make, model, customer, and order with removable badge UI.
 - **Filter Logic**: 
+  - **Case-Insensitive**: All filters use UPPER() normalization - backend returns uppercase options and uses `UPPER(column) IN ${upperCaseArray}` for SQL queries, eliminating duplicate entries like "lenovo" and "LENOVO"
   - Full filters (make, model, customer, order) applied to covered units endpoints
   - Limited filters (make, model only) applied to claims/replacements/spare pool endpoints (tables lack customer/order fields)
   - Null-safe URL construction prevents trailing "?" when no filters selected
   - Consistent query keys for proper TanStack Query caching
 - **UI Features**: Scrollable multi-select popovers with search, selected count display, filter badges with removal, "Clear All" button, skeleton loaders during data fetch.
+- **Chart Readability Enhancements (November 2025)**:
+  - All charts increased to 360px height for better visibility
+  - Horizontal bars (Top Models, Spare Pool): 150px Y-axis width, truncated labels (18 chars), rounded right corners (radius 8px)
+  - Vertical bars (Descriptions, Customers, Activations): -30° label rotation, 80px bottom margin, truncated labels (15 chars), rounded top corners
+  - Pie charts (Claims, Replacements): Legend-only labeling, 100px outer radius, 2px padding between segments, 11px legend font
+  - Line charts (Category Timeline, Monthly Claims/Replacements): Proper margins (20px), small dots (r=2-3), improved legends
+  - Improved text contrast: #333 for labels, #666 for axis ticks, white tooltips with borders
+  - All charts wrapped in overflow-hidden containers to prevent text overflow
 - **Color Palettes**: Varied recharts color schemes for visual distinction between chart types.
 
 ### Authentication and Authorization
