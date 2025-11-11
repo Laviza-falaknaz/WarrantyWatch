@@ -483,8 +483,8 @@ export default function RiskCombinations() {
                     {paginatedCombinations.map((combo, index) => {
                       const key = getRiskComboKey(combo);
                       const isSelected = selectedItems.has(key);
-                      const warrantyRatio = (Number(combo.coverage_ratio || 0) * 100).toFixed(1);
-                      const spareRatio = (Number(combo.coverage_of_run_rate || 0) * 100).toFixed(1);
+                      const warrantyRatio = Number(combo.coverage_ratio || 0).toFixed(1);
+                      const spareRatio = Number(combo.coverage_of_run_rate || 0).toFixed(1);
                       
                       return (
                         <TableRow 
