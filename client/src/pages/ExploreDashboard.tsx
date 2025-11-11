@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TrendingUp, Users, Package, FileText, AlertCircle, Calendar, X, Check } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -393,7 +393,7 @@ export default function ExploreDashboard() {
           </CardContent>
         </Card>
 
-        {/* Chart 2: Warranty Descriptions Count - Vertical Bar */}
+        {/* Chart 2: Coverage Descriptions - Horizontal Bar */}
         <Card>
           <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
             <FileText className="w-5 h-5 text-muted-foreground" />
@@ -409,24 +409,23 @@ export default function ExploreDashboard() {
               <ResponsiveContainer width="100%" height={360}>
                 <BarChart 
                   data={warrantyDescriptions || []}
-                  margin={{ top: 5, right: 20, left: 20, bottom: 80 }}
+                  layout="vertical"
+                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                  <XAxis 
+                  <XAxis type="number" tick={{ fontSize: 12, fill: "#666" }} />
+                  <YAxis 
                     dataKey="description" 
-                    angle={-30} 
-                    textAnchor="end" 
-                    height={80}
+                    type="category" 
+                    width={180}
                     tick={{ fontSize: 11, fill: "#333" }}
-                    interval={0}
-                    tickFormatter={(value) => truncateText(value, 15)}
+                    tickFormatter={(value) => truncateText(value, 22)}
                   />
-                  <YAxis tick={{ fontSize: 12, fill: "#666" }} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
                     labelStyle={{ color: '#333', fontWeight: 600 }}
                   />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="count" radius={[0, 8, 8, 0]}>
                     {(warrantyDescriptions || []).map((_: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS.green[index % CHART_COLORS.green.length]} />
                     ))}
@@ -528,7 +527,7 @@ export default function ExploreDashboard() {
           </CardContent>
         </Card>
 
-        {/* Chart 5: Claims Distribution Pie */}
+        {/* Chart 5: Claims by Model - Horizontal Bar */}
         <Card>
           <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
             <AlertCircle className="w-5 h-5 text-muted-foreground" />
@@ -542,37 +541,36 @@ export default function ExploreDashboard() {
               <Skeleton className="h-[360px] w-full" />
             ) : (
               <ResponsiveContainer width="100%" height={360}>
-                <PieChart>
-                  <Pie
-                    data={claimsByModel || []}
-                    cx="50%"
-                    cy="45%"
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="count"
-                    paddingAngle={2}
-                    label={false}
-                  >
+                <BarChart 
+                  data={claimsByModel || []} 
+                  layout="vertical"
+                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis type="number" tick={{ fontSize: 12, fill: "#666" }} />
+                  <YAxis 
+                    dataKey="model" 
+                    type="category" 
+                    width={150} 
+                    tick={{ fontSize: 12, fill: "#333" }}
+                    tickFormatter={(value) => truncateText(value, 18)}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                    labelStyle={{ color: '#333', fontWeight: 600 }}
+                  />
+                  <Bar dataKey="count" radius={[0, 8, 8, 0]}>
                     {(claimsByModel || []).map((_: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS.pink[index % CHART_COLORS.pink.length]} />
                     ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
-                  />
-                  <Legend 
-                    wrapperStyle={{ fontSize: '11px' }}
-                    iconSize={10}
-                    layout="horizontal"
-                    align="center"
-                  />
-                </PieChart>
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        {/* Chart 6: Replacements Distribution Pie */}
+        {/* Chart 6: Replacements by Model - Horizontal Bar */}
         <Card>
           <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
             <Package className="w-5 h-5 text-muted-foreground" />
@@ -586,31 +584,30 @@ export default function ExploreDashboard() {
               <Skeleton className="h-[360px] w-full" />
             ) : (
               <ResponsiveContainer width="100%" height={360}>
-                <PieChart>
-                  <Pie
-                    data={replacementsByModel || []}
-                    cx="50%"
-                    cy="45%"
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="count"
-                    paddingAngle={2}
-                    label={false}
-                  >
+                <BarChart 
+                  data={replacementsByModel || []} 
+                  layout="vertical"
+                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis type="number" tick={{ fontSize: 12, fill: "#666" }} />
+                  <YAxis 
+                    dataKey="model" 
+                    type="category" 
+                    width={150} 
+                    tick={{ fontSize: 12, fill: "#333" }}
+                    tickFormatter={(value) => truncateText(value, 18)}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                    labelStyle={{ color: '#333', fontWeight: 600 }}
+                  />
+                  <Bar dataKey="count" radius={[0, 8, 8, 0]}>
                     {(replacementsByModel || []).map((_: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS.teal[index % CHART_COLORS.teal.length]} />
                     ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
-                  />
-                  <Legend 
-                    wrapperStyle={{ fontSize: '11px' }}
-                    iconSize={10}
-                    layout="horizontal"
-                    align="center"
-                  />
-                </PieChart>
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
             )}
           </CardContent>
