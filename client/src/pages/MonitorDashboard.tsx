@@ -653,36 +653,49 @@ export default function MonitorDashboard() {
                 </div>
 
                 <div className="overflow-x-auto mt-4">
-                  {/* Month Headers */}
-                  <div className="flex gap-1 mb-1">
-                    {monthHeaders.map((header, index) => (
-                      <div
-                        key={index}
-                        className="text-xs font-semibold text-muted-foreground"
-                        style={{
-                          marginLeft: index === 0 ? 0 : `${(header.weekIndex - (monthHeaders[index - 1]?.weekIndex || 0)) * 20}px`,
-                        }}
-                      >
-                        {header.month}
-                      </div>
-                    ))}
-                  </div>
+                  <div className="flex gap-3">
+                    {/* Day of Week Labels */}
+                    <div className="flex flex-col justify-around text-xs text-muted-foreground pr-2" style={{ height: '148px' }}>
+                      <div>Mon</div>
+                      <div>Wed</div>
+                      <div>Fri</div>
+                    </div>
 
-                  {/* Grid */}
-                  <div className="flex gap-1">
-                    {heatmapWeeks.map((week, weekIndex) => (
-                      <div key={weekIndex} className="flex flex-col gap-1">
-                        {week.map((cell, dayIndex) => (
-                          <div key={dayIndex}>
-                            {cell.count === -1 ? (
-                              <div className="w-4 h-4" data-testid="heatmap-padding" />
-                            ) : (
-                              <HeatmapDay cell={cell} maxCount={maxCount} />
-                            )}
+                    {/* Heatmap Container */}
+                    <div className="flex-1">
+                      {/* Month Headers */}
+                      <div className="flex mb-1" style={{ paddingLeft: '0px' }}>
+                        {monthHeaders.map((header, index) => (
+                          <div
+                            key={index}
+                            className="text-xs font-semibold text-muted-foreground"
+                            style={{
+                              marginLeft: index === 0 ? '0px' : `${(header.weekIndex - (monthHeaders[index - 1]?.weekIndex || 0) - 1) * 20}px`,
+                              width: '20px',
+                            }}
+                          >
+                            {header.month}
                           </div>
                         ))}
                       </div>
-                    ))}
+
+                      {/* Grid */}
+                      <div className="flex gap-1">
+                        {heatmapWeeks.map((week, weekIndex) => (
+                          <div key={weekIndex} className="flex flex-col gap-1">
+                            {week.map((cell, dayIndex) => (
+                              <div key={dayIndex}>
+                                {cell.count === -1 ? (
+                                  <div className="w-4 h-4" data-testid="heatmap-padding" />
+                                ) : (
+                                  <HeatmapDay cell={cell} maxCount={maxCount} />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Legend */}
