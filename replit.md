@@ -20,18 +20,30 @@ Preferred communication style: Simple, everyday language.
 
 ### Warranty Expiration Heatmap (Monitor Dashboard)
 - **Rebuild**: Completely rebuilt from scratch (November 2025) with improved visual design and filtering UX.
+- **Duration**: Extended to 10-month range (present - 4 months to present + 6 months) for comprehensive warranty visibility
 - **Visual Design**: 
   - **Cell Size**: 16×16px for better visibility
   - **Color Scheme**: Vibrant progression from indigo → purple → fuchsia → rose for intensity levels, providing "poppier" visual appeal
   - **Month Headers**: Properly aligned with week columns, accounting for padding cells to ensure visual accuracy
   - **Day Labels**: Mon/Wed/Fri labels on left side for reference
   - **Legend**: Color intensity scale from "Less" to "More"
+  - **Today Highlight**: Red border (ring-2 ring-red-600) around today's date cell with "(Today)" label in tooltip
 - **Filtering System**:
   - **Dropdown Filters**: Replaced text inputs with Select dropdowns for Make, Model, Customer, and Order
   - **Filter Options**: Dynamically extracted unique values from covered units data using useMemo with type guards
   - **Filter Logic**: Exact match filtering (not includes/contains)
   - **Filter Badges**: Active filters display as removable badges with individual clear or "Clear all" functionality
-- **Time Navigation**: Previous/Next Month buttons to shift the 6-month display window
+- **Interactive Cells & Detail Dialog**:
+  - **Clickable Cells**: Each heatmap cell with units opens a detailed dialog showing all expiring warranties
+  - **Dialog Features**: 
+    - Full warranty details table (Serial Number, Make, Model, Customer, Order, Coverage Description, Processor, Generation, Start/End Dates)
+    - Real-time search filtering across all fields
+    - Excel export with filename format `warranties-expiring-YYYY-MM-DD.xlsx`
+    - Sticky table headers for easy navigation with many rows
+    - Results summary showing filtered count vs total
+    - Toast notification confirming successful export
+  - **Integration**: Dialog respects active heatmap filters (filtered data only)
+- **Time Navigation**: Previous/Next Month buttons to shift the 10-month display window
 - **Data Alignment**: Uses date-fns for precise week calculations with proper handling of padding cells to maintain Sunday-Saturday week structure
 - **Performance**: Heavy computations wrapped in useMemo for optimal re-render performance
 
