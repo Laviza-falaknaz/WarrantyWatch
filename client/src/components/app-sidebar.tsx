@@ -11,6 +11,7 @@ import {
   Activity,
   Compass,
   FileSearch,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -38,6 +39,11 @@ const menuGroups = [
         title: "Explore",
         url: "/explore",
         icon: Compass,
+      },
+      {
+        title: "Risk Combinations",
+        url: "/risk-combinations",
+        icon: AlertTriangle,
       },
       {
         title: "Warranty Explorer",

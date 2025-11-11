@@ -992,12 +992,7 @@ export default function MonitorDashboard() {
                       <Button 
                         variant="ghost" 
                         className="w-full gap-2"
-                        onClick={() => {
-                          riskCombinationsRef.current?.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'start' 
-                          });
-                        }}
+                        onClick={() => window.location.href = "/risk-combinations"}
                         data-testid="button-view-all-risk-profiles"
                       >
                         View All Risk Profiles

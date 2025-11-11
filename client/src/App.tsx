@@ -22,6 +22,7 @@ import WarrantyExplorer from "@/pages/WarrantyExplorer";
 import Claims from "@/pages/Claims";
 import Replacements from "@/pages/Replacements";
 import AvailableStockPage from "@/pages/AvailableStock";
+import RiskCombinations from "@/pages/RiskCombinations";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -29,6 +30,7 @@ function Router() {
     <Switch>
       <Route path="/" component={MonitorDashboard} />
       <Route path="/explore" component={ExploreDashboard} />
+      <Route path="/risk-combinations" component={RiskCombinations} />
       <Route path="/pools" component={PoolGroups} />
       <Route path="/pools/:poolId" component={PoolDetail} />
       <Route path="/warranty-explorer" component={WarrantyExplorer} />
