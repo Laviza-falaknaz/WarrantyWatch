@@ -16,7 +16,7 @@ Preferred communication style: Simple, everyday language.
 - **Routing**: wouter.
 - **Key Pages**: Monitor Dashboard, Explore Dashboard, Risk Combinations, Configuration, Coverage Pools, Inventory, Warranties, Claims, Replacements, Available Stock, Pool Detail, Warranty Explorer.
 - **Navigation**: Collapsible sidebar with Framer Motion animations, modern top bar with search, system status, notifications, and theme toggle.
-- **Redesign Features**: Two-Dashboard Architecture (Monitor for tracking/alerting, Explore for BI/analytics), GitHub-style Heatmap for warranty expiration with enhanced visibility (16px cells, bolder colors), numeric safety with `|| 0` fallbacks, consistent layout patterns, semantic stat cards, unified export buttons, and skeleton loaders.
+- **Redesign Features**: Two-Dashboard Architecture (Monitor for tracking/alerting, Explore for BI/analytics), GitHub-style Heatmap for warranty expiration with enhanced visibility (16px cells, bolder colors, day-of-week labels), numeric safety with `|| 0` fallbacks, consistent layout patterns, semantic stat cards, unified export buttons, and skeleton loaders.
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript on Node.js.
@@ -56,12 +56,12 @@ Preferred communication style: Simple, everyday language.
 - **Charts**: 
   1. Top Models by Active Warranties (horizontal bar chart, blue)
   2. Coverage Descriptions Distribution (horizontal bar chart, green)
-  3. Warranty Starts by Category Over Time (stacked line chart, purple)
-  4. Top Customers by Coverage (vertical bar chart, orange)
-  5. Claims by Model (horizontal bar chart, pink)
-  6. Replacements by Model (horizontal bar chart, teal)
-  7. Spare Unit Pool by Model (horizontal bar chart, indigo)
-  8. Monthly Claims vs Replacements (dual-line chart, red/green)
+  3. Monthly Claims vs Replacements (dual-line chart, red/green)
+  4. Warranty Starts by Category Over Time (stacked line chart, purple)
+  5. Top Customers by Coverage (vertical bar chart, orange)
+  6. Claims by Model (horizontal bar chart, pink)
+  7. Replacements by Model (horizontal bar chart, teal)
+  8. Spare Unit Pool by Model (horizontal bar chart, indigo)
   9. Monthly Warranty Activations (vertical bar chart, amber)
 - **Global Filtering**: Multi-select dropdowns for make, model, customer, and order with removable badge UI.
 - **Filter Logic**: 

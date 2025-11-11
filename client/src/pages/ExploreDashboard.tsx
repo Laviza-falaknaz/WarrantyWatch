@@ -436,6 +436,59 @@ export default function ExploreDashboard() {
           </CardContent>
         </Card>
 
+        {/* Chart 8: Monthly Claims vs Replacements Timeline - Dual Line */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
+            <Calendar className="w-5 h-5 text-muted-foreground" />
+            <div className="flex-1">
+              <CardTitle className="text-base">Monthly Claims vs Replacements</CardTitle>
+              <CardDescription>Trend analysis of claims and fulfillment</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="overflow-hidden">
+            {loadingMonthly ? (
+              <Skeleton className="h-[360px] w-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height={360}>
+                <LineChart 
+                  data={monthlyClaimsReplacements || []}
+                  margin={{ top: 5, right: 20, left: 20, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 12, fill: "#666" }}
+                  />
+                  <YAxis tick={{ fontSize: 12, fill: "#666" }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                  />
+                  <Legend 
+                    iconType="line"
+                    wrapperStyle={{ fontSize: '12px' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="claims"
+                    stroke={CHART_COLORS.red[0]}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    name="Claims"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="replacements"
+                    stroke={CHART_COLORS.green[0]}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    name="Replacements"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Chart 3: Warranties by Category Timeline - Line Chart */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
@@ -651,59 +704,6 @@ export default function ExploreDashboard() {
                     ))}
                   </Bar>
                 </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Chart 8: Monthly Claims vs Replacements Timeline - Dual Line */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
-            <Calendar className="w-5 h-5 text-muted-foreground" />
-            <div className="flex-1">
-              <CardTitle className="text-base">Monthly Claims vs Replacements</CardTitle>
-              <CardDescription>Trend analysis of claims and fulfillment</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="overflow-hidden">
-            {loadingMonthly ? (
-              <Skeleton className="h-[360px] w-full" />
-            ) : (
-              <ResponsiveContainer width="100%" height={360}>
-                <LineChart 
-                  data={monthlyClaimsReplacements || []}
-                  margin={{ top: 5, right: 20, left: 20, bottom: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                  <XAxis 
-                    dataKey="month" 
-                    tick={{ fontSize: 12, fill: "#666" }}
-                  />
-                  <YAxis tick={{ fontSize: 12, fill: "#666" }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
-                  />
-                  <Legend 
-                    iconType="line"
-                    wrapperStyle={{ fontSize: '12px' }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="claims"
-                    stroke={CHART_COLORS.red[0]}
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    name="Claims"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="replacements"
-                    stroke={CHART_COLORS.green[0]}
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    name="Replacements"
-                  />
-                </LineChart>
               </ResponsiveContainer>
             )}
           </CardContent>
