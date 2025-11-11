@@ -1,7 +1,7 @@
 # Coverage Pool Management Application
 
 ## Overview
-This application is an enterprise coverage pool management system designed to track warranty coverage for deployed laptop inventory and optimize the allocation of spare units. It features automated risk analysis, Power Automate webhook integration, and intelligent pool creation. The system provides a comprehensive dashboard with high-risk combination analysis, real-time alerting, and actionable recommendations for inventory management. The core concept revolves around managing warranty pools, calculating coverage ratios based on active warranties, and identifying areas needing more spares.
+This application is an enterprise coverage pool management system designed to track warranty coverage for deployed laptop inventory and optimize the allocation of spare units. It features automated risk analysis, Power Automate webhook integration, and intelligent pool creation. The system provides a comprehensive dashboard with units running out analysis, real-time alerting, and actionable recommendations for inventory management. The core concept revolves around managing warranty pools, calculating coverage ratios based on active warranties, and identifying areas needing more spares.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -20,7 +20,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Warranty Expiration Heatmap (Monitor Dashboard)
 - **Rebuild**: Completely rebuilt from scratch (November 2025) with improved visual design and filtering UX.
-- **Duration**: Extended to 15-month range (present - 5 months to present + 10 months) for comprehensive warranty visibility
+- **Duration**: 14-month range (present - 5 months to present + 9 months) for comprehensive warranty visibility
 - **Visual Design**: 
   - **Cell Size**: 16×16px for better visibility
   - **Color Scheme**: Vibrant progression from indigo → purple → fuchsia → rose for intensity levels, providing "poppier" visual appeal
@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
     - Results summary showing filtered count vs total
     - Toast notification confirming successful export
   - **Integration**: Dialog respects active heatmap filters (filtered data only)
-- **Time Navigation**: Previous/Next Month buttons to shift the 15-month display window
+- **Time Navigation**: Previous/Next Month buttons to shift the 14-month display window
 - **Data Alignment**: Uses date-fns for precise week calculations with proper handling of padding cells to maintain Sunday-Saturday week structure
 - **Performance**: Heavy computations wrapped in useMemo for optimal re-render performance
 
@@ -64,15 +64,15 @@ Preferred communication style: Simple, everyday language.
 - **Implementation**: Single-row `app_configuration` table with strongly-typed fields for settings like `lowCoverageThresholdPercent`, `expiringCoverageDays`, `alertWebhookUrl`, etc.
 - **Security**: Configuration updates require admin password authentication.
 
-### High-Risk Combination Analysis System
+### Units Running Out Analysis System
 - **Endpoint**: `GET /api/risk-combinations` with server-side filtering, sorting, and pagination.
 - **Risk Scoring**: Multi-tier classification (Critical, High, Medium, Low) based on spare count relative to monthly run rate and coverage ratio over a rolling 6-month window.
 - **Metrics**: Includes Available Stock (UK/UAE), Covered Units, Spare Units, Run Rate, Warranty Coverage %, Spare Coverage %, and a numeric Risk Score.
 - **Type System**: Shared types in `shared/risk-analysis-types.ts` for `RiskLevel` and `RiskCombination`.
 - **UI Features**: 
-  - **Monitor Dashboard Cards**: Compact card view with 6-metric grid showing Coverage, Run Rate, Covered, Spare, Available UK, and Available UAE
+  - **Monitor Dashboard Cards**: Action-oriented cards showing time-to-stockout, units at risk, demand metrics, and regional stock availability with urgency badges
   - **Advanced filtering**: Multi-selection and bulk actions
-  - **Risk Combinations Page**: Full-page data table with sortable columns, client-side search/filtering, pagination, and color-coded percentage metrics
+  - **Units Running Out Page**: Full-page data table with sortable columns, client-side search/filtering, pagination, and color-coded percentage metrics
 - **Actions**: Single-item and bulk actions for sending alerts and creating pools with API integration, error handling, toast feedback, and cache invalidation.
 - **Alert Webhook**: Configured in the Configuration page, sends structured JSON payloads to Power Automate.
 

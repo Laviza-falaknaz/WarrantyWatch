@@ -637,7 +637,7 @@ export default function Configuration() {
                             />
                           </FormControl>
                           <FormDescription className="text-sm">
-                            Power Automate webhook URL that receives structured JSON payloads when high-risk combination alerts are triggered
+                            Power Automate webhook URL that receives structured JSON payloads when units running out alerts are triggered
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -651,7 +651,7 @@ export default function Configuration() {
                       </div>
                       <pre className="text-xs bg-background rounded-lg p-3 overflow-x-auto border">
 {`{
-  "alertType": "high-risk-combination",
+  "alertType": "units-running-out",
   "timestamp": "2025-11-10T10:30:00Z",
   "combinations": [
     {

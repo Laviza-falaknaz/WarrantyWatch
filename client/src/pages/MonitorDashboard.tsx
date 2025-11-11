@@ -195,7 +195,7 @@ export default function MonitorDashboard() {
   const [selectedDateCell, setSelectedDateCell] = useState<HeatmapCell | null>(null);
   const [dialogSearch, setDialogSearch] = useState("");
 
-  const endDate = useMemo(() => addMonths(startDate, 15), [startDate]);
+  const endDate = useMemo(() => addMonths(startDate, 13), [startDate]);
   const hasBulkSelection = selectedRiskItems.size > 1;
 
   const { data: coveredUnits, isLoading } = useQuery<CoveredUnit[]>({
@@ -358,7 +358,7 @@ export default function MonitorDashboard() {
     const filtered = coveredUnits.filter((unit) => {
       if (!unit.isCoverageActive) return false;
       const endDate = new Date(unit.coverageEndDate);
-      if (endDate < startDate || endDate > addMonths(startDate, 15)) return false;
+      if (endDate < startDate || endDate > addMonths(startDate, 13)) return false;
 
       if (filters.orderNumber && unit.orderNumber !== filters.orderNumber) return false;
       if (filters.customerName && unit.customerName !== filters.customerName) return false;
@@ -368,7 +368,7 @@ export default function MonitorDashboard() {
       return true;
     });
 
-    const days = eachDayOfInterval({ start: startDate, end: addMonths(startDate, 15) });
+    const days = eachDayOfInterval({ start: startDate, end: addMonths(startDate, 13) });
     
     return days.map((date) => {
       const unitsExpiringOnDay = filtered.filter((unit) => {
@@ -597,7 +597,7 @@ export default function MonitorDashboard() {
           <div>
             <h1 className="text-3xl font-bold mb-2">Monitor</h1>
             <p className="text-muted-foreground">
-              Track warranty expirations and high-risk combinations
+              Track warranty expirations and units running out
             </p>
           </div>
         </motion.div>
@@ -906,59 +906,90 @@ export default function MonitorDashboard() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {sortedPools.map((pool) => {
-                    const getCoverageColor = (ratio: number) => {
-                      if (ratio >= 15) return "text-green-600 dark:text-green-500";
-                      if (ratio >= 10) return "text-yellow-600 dark:text-yellow-500";
-                      return "text-red-600 dark:text-red-500";
-                    };
-                    
                     const coverageRatio = Number(pool.coverageRatio) || 0;
-
                     const runRate = Number(pool.runRate) || 0;
-                    const inventoryRunway = runRate > 0 ? pool.spareCount / runRate : 0; // months of inventory
+                    const spareCount = Number(pool.spareCount) || 0;
+                    const coveredCount = Number(pool.coveredCount) || 0;
                     const ukAvailable = Number(pool.ukAvailableCount) || 0;
                     const uaeAvailable = Number(pool.uaeAvailableCount) || 0;
+                    const totalAvailable = ukAvailable + uaeAvailable;
+                    
+                    // Calculate runway in months
+                    const runwayMonths = runRate > 0 ? spareCount / runRate : 0;
+                    
+                    // Calculate shortfall (target 6% coverage)
+                    const targetCoverage = 6; // 6% target
+                    const targetSpares = Math.ceil((coveredCount * targetCoverage) / 100);
+                    const shortfall = Math.max(0, targetSpares - spareCount);
+                    
+                    // Status badge color based on coverage
+                    const getStatusBadge = () => {
+                      if (coverageRatio >= 6) return { text: "Healthy", class: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-300 dark:border-green-700" };
+                      if (coverageRatio >= 3) return { text: "Warning", class: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-700" };
+                      return { text: "Critical", class: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 border-red-300 dark:border-red-700" };
+                    };
+                    
+                    const status = getStatusBadge();
 
                     return (
                       <Link key={pool.id} href={`/pools/${pool.id}`}>
                         <Card className="rounded-2xl hover-elevate cursor-pointer" data-testid={`card-pool-${pool.id}`}>
                           <CardContent className="p-4">
                             <div className="space-y-3">
+                              {/* Header: Pool name + Status badge */}
                               <div className="flex items-start justify-between gap-2">
-                                <h3 className="text-sm font-medium flex-1 line-clamp-1">{pool.name}</h3>
-                                <span className={`text-xl font-bold ${getCoverageColor(coverageRatio)}`}>
-                                  {coverageRatio.toFixed(1)}%
-                                </span>
+                                <h3 className="text-sm font-semibold flex-1 line-clamp-2 leading-tight">{pool.name}</h3>
+                                <Badge className={`${status.class} font-semibold text-xs rounded-full px-2 py-0.5`} variant="outline">
+                                  {status.text}
+                                </Badge>
                               </div>
                               
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div>
-                                  <p className="text-muted-foreground">Spare / Covered</p>
-                                  <p className="font-medium">{pool.spareCount} / {pool.coveredCount}</p>
+                              {/* Critical metrics - Coverage Shortfall */}
+                              <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                                <div className="flex items-baseline justify-between">
+                                  <span className="text-xs text-muted-foreground font-medium">Coverage Gap</span>
+                                  <div className="text-right">
+                                    <span className="text-2xl font-bold text-foreground">{shortfall}</span>
+                                    <span className="text-xs text-muted-foreground ml-1">units short</span>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="text-muted-foreground">Run Rate</p>
-                                  <p className="font-medium">{runRate.toFixed(1)}/mo</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Warranty Cov.</p>
-                                  <p className="font-medium">{coverageRatio.toFixed(1)}%</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Runway</p>
-                                  <p className="font-medium">{inventoryRunway.toFixed(1)}mo</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Available UK</p>
-                                  <p className="font-medium">{ukAvailable}</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Available UAE</p>
-                                  <p className="font-medium">{uaeAvailable}</p>
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-muted-foreground">Current vs Target (6%)</span>
+                                  <span className="font-semibold">{spareCount} / {targetSpares}</span>
                                 </div>
                               </div>
                               
-                              <Progress value={coverageRatio} className="h-1" />
+                              {/* Key stats in compact row */}
+                              <div className="grid grid-cols-3 gap-2 text-xs">
+                                <div className="text-center p-2 bg-background rounded-lg border">
+                                  <p className="text-muted-foreground mb-0.5">Runway</p>
+                                  <p className="font-bold text-sm">
+                                    {runwayMonths > 0 ? `${runwayMonths.toFixed(1)}mo` : "N/A"}
+                                  </p>
+                                </div>
+                                <div className="text-center p-2 bg-background rounded-lg border">
+                                  <p className="text-muted-foreground mb-0.5">Run Rate</p>
+                                  <p className="font-bold text-sm">{runRate.toFixed(1)}/mo</p>
+                                </div>
+                                <div className="text-center p-2 bg-background rounded-lg border">
+                                  <p className="text-muted-foreground mb-0.5">Available</p>
+                                  <p className="font-bold text-sm">{totalAvailable}</p>
+                                </div>
+                              </div>
+                              
+                              {/* Regional stock breakdown */}
+                              <div className="flex items-center gap-2 text-xs">
+                                <div className="flex-1 flex items-center gap-1.5">
+                                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                  <span className="text-muted-foreground">UK:</span>
+                                  <span className="font-semibold">{ukAvailable}</span>
+                                </div>
+                                <div className="flex-1 flex items-center gap-1.5">
+                                  <div className="w-2 h-2 rounded-full bg-purple-500" />
+                                  <span className="text-muted-foreground">UAE:</span>
+                                  <span className="font-semibold">{uaeAvailable}</span>
+                                </div>
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -970,13 +1001,13 @@ export default function MonitorDashboard() {
             </div>
           </div>
 
-          {/* Right Column: lg:col-span-3 - High-Risk Combinations */}
+          {/* Right Column: lg:col-span-3 - Units Running Out */}
           <div className="lg:col-span-3" ref={riskCombinationsRef}>
             <Card className="rounded-2xl">
               <CardHeader>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">High-Risk Combinations</CardTitle>
+                    <CardTitle className="text-lg">Units Running Out</CardTitle>
                     <div className="flex items-center gap-2">
                       <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
                         <Switch
@@ -1088,7 +1119,7 @@ export default function MonitorDashboard() {
                 {!filteredRiskCombinations || filteredRiskCombinations.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
                     <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No high-risk combinations found</p>
+                    <p className="text-sm">No units running out found</p>
                   </div>
                 ) : (
                   <div>
@@ -1097,10 +1128,42 @@ export default function MonitorDashboard() {
                         const comboKey = getRiskComboKey(combo);
                         const isSelected = selectedRiskItems.has(comboKey);
                         
+                        const spareCount = Number(combo.spare_count) || 0;
+                        const runRate = Number(combo.run_rate) || 0;
+                        const coveredCount = Number(combo.covered_count) || 0;
+                        const coverageRatio = Number(combo.coverage_ratio) || 0;
+                        const ukAvailable = Number(combo.uk_available_count) || 0;
+                        const uaeAvailable = Number(combo.uae_available_count) || 0;
+                        
+                        // Calculate time to stockout (in months)
+                        const monthsToStockout = runRate > 0 ? spareCount / runRate : 0;
+                        const daysToStockout = monthsToStockout * 30;
+                        
+                        // Calculate uncovered units (units beyond spare capacity)
+                        const targetCoverage = 6; // 6% target
+                        const targetSpares = Math.ceil((coveredCount * targetCoverage) / 100);
+                        const uncoveredUnits = Math.max(0, targetSpares - spareCount);
+                        
+                        // Time-based urgency pill
+                        const getUrgencyPill = () => {
+                          if (monthsToStockout === 0 || spareCount === 0) {
+                            return { text: "Out of Stock", class: "bg-red-600 text-white border-red-700 dark:bg-red-700 dark:border-red-800" };
+                          }
+                          if (daysToStockout < 30) {
+                            return { text: `${Math.round(daysToStockout)} days to stockout`, class: "bg-orange-600 text-white border-orange-700" };
+                          }
+                          if (monthsToStockout < 2) {
+                            return { text: `${monthsToStockout.toFixed(1)} months to stockout`, class: "bg-amber-500 text-white border-amber-600" };
+                          }
+                          return { text: `${monthsToStockout.toFixed(1)} months runway`, class: "bg-blue-600 text-white border-blue-700" };
+                        };
+                        
+                        const urgency = getUrgencyPill();
+                        
                         return (
                           <Card key={comboKey} className="rounded-xl hover-elevate">
                             <CardContent className="p-3">
-                              <div className="space-y-2">
+                              <div className="space-y-2.5">
                                 <div className="flex items-start gap-2">
                                   <Checkbox
                                     checked={isSelected}
@@ -1116,10 +1179,11 @@ export default function MonitorDashboard() {
                                     data-testid={`checkbox-risk-${index}`}
                                   />
                                   
-                                  <div className="flex-1 min-w-0">
+                                  <div className="flex-1 min-w-0 space-y-2">
+                                    {/* Header: Make/Model + Risk Badge */}
                                     <div className="flex items-start justify-between gap-2">
                                       <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">
+                                        <p className="text-sm font-semibold truncate">
                                           {combo.make} {combo.model}
                                         </p>
                                         {combo.processor && (
@@ -1133,54 +1197,70 @@ export default function MonitorDashboard() {
                                       </Badge>
                                     </div>
                                     
-                                    <div className="grid grid-cols-2 gap-2 text-xs mt-2">
-                                      <div>
-                                        <p className="text-muted-foreground">Coverage</p>
-                                        <p className="font-medium">{(Number(combo.coverage_ratio) || 0).toFixed(1)}%</p>
+                                    {/* Critical Alert: Time to stockout + Uncovered units */}
+                                    <div className="bg-muted/40 rounded-lg p-2 space-y-1.5">
+                                      <Badge className={`${urgency.class} font-bold text-xs w-full justify-center py-1`} variant="outline">
+                                        {urgency.text}
+                                      </Badge>
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground font-medium">Units at Risk</span>
+                                        <span className="font-bold text-base">{uncoveredUnits}</span>
                                       </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Run Rate</p>
-                                        <p className="font-medium">{(Number(combo.run_rate) || 0).toFixed(1)}/mo</p>
+                                    </div>
+                                    
+                                    {/* Compact stats: Demand / Supply */}
+                                    <div className="grid grid-cols-3 gap-1.5 text-xs">
+                                      <div className="text-center p-1.5 bg-background rounded border">
+                                        <p className="text-muted-foreground mb-0.5 text-[10px]">Coverage</p>
+                                        <p className="font-bold">{coverageRatio.toFixed(1)}%</p>
                                       </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Covered</p>
-                                        <p className="font-medium">{Number(combo.covered_count) || 0}</p>
+                                      <div className="text-center p-1.5 bg-background rounded border">
+                                        <p className="text-muted-foreground mb-0.5 text-[10px]">Demand</p>
+                                        <p className="font-bold">{runRate.toFixed(1)}/mo</p>
                                       </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Spare</p>
-                                        <p className="font-medium">{Number(combo.spare_count) || 0}</p>
+                                      <div className="text-center p-1.5 bg-background rounded border">
+                                        <p className="text-muted-foreground mb-0.5 text-[10px]">Spares</p>
+                                        <p className="font-bold">{spareCount}</p>
                                       </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Available UK</p>
-                                        <p className="font-medium">{Number(combo.uk_available_count) || 0}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Available UAE</p>
-                                        <p className="font-medium">{Number(combo.uae_available_count) || 0}</p>
+                                    </div>
+                                    
+                                    {/* Regional stock availability */}
+                                    <div className="flex items-center gap-2 text-xs bg-background rounded-lg p-2 border">
+                                      <Package className="w-3.5 h-3.5 text-muted-foreground" />
+                                      <span className="text-muted-foreground font-medium">Available:</span>
+                                      <div className="flex items-center gap-2 ml-auto">
+                                        <div className="flex items-center gap-1">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                          <span className="font-semibold">{ukAvailable} UK</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                          <span className="font-semibold">{uaeAvailable} UAE</span>
+                                        </div>
                                       </div>
                                     </div>
 
                                     {!hasBulkSelection && (
-                                      <div className="flex items-center gap-1 mt-2">
+                                      <div className="flex items-center gap-1.5 pt-1">
                                         <Button 
                                           size="sm" 
                                           variant="default" 
-                                          className="flex-1 gap-1"
+                                          className="flex-1 gap-1 h-8"
                                           onClick={() => handleSendAlert(combo)}
                                           data-testid={`button-send-alert-${index}`}
                                         >
                                           <Bell className="w-3 h-3" />
-                                          Send Alert
+                                          Alert
                                         </Button>
                                         <Button 
                                           size="sm" 
                                           variant="outline" 
-                                          className="flex-1 gap-1"
+                                          className="flex-1 gap-1 h-8"
                                           onClick={() => handleCreatePool(combo)}
                                           data-testid={`button-create-pool-${index}`}
                                         >
                                           <FolderPlus className="w-3 h-3" />
-                                          Create Pool
+                                          Pool
                                         </Button>
                                       </div>
                                     )}

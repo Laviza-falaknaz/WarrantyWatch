@@ -251,9 +251,9 @@ export default function RiskCombinations() {
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Risk Combinations</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Units Running Out</h1>
           <p className="text-muted-foreground mt-1">
-            Comprehensive analysis of high-risk warranty combinations requiring attention
+            Comprehensive analysis of units running out requiring attention
           </p>
         </div>
       </div>

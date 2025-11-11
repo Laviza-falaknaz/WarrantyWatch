@@ -281,7 +281,7 @@ export default function RiskAnalysisTable() {
       <CardHeader className="pb-4 border-b border-border">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-destructive" />
-          High-Risk Combinations
+          Units Running Out
         </CardTitle>
         <CardDescription className="text-sm">
           Equipment with high claim rates and low spare coverage (last 6 months)
@@ -622,7 +622,7 @@ export default function RiskAnalysisTable() {
               ) : !isLoading ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                    No high-risk combinations found
+                    No units running out found
                   </TableCell>
                 </TableRow>
               ) : (
