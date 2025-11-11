@@ -1652,7 +1652,7 @@ export class DatabaseStorage implements IStorage {
 
   // Explore Dashboard Analytics Methods
   
-  // Helper: Build common WHERE clauses for explore filters
+  // Helper: Build common WHERE clauses for explore filters (case-insensitive)
   private buildExploreFilterConditions(filters?: {
     make?: string[];
     model?: string[];
@@ -1662,16 +1662,20 @@ export class DatabaseStorage implements IStorage {
     const conditions: any[] = [];
     
     if (filters?.make && filters.make.length > 0) {
-      conditions.push(inArray(coveredUnit.make, filters.make));
+      const upperMakes = filters.make.map(m => m.toUpperCase());
+      conditions.push(sql`UPPER(${coveredUnit.make}) IN ${upperMakes}`);
     }
     if (filters?.model && filters.model.length > 0) {
-      conditions.push(inArray(coveredUnit.model, filters.model));
+      const upperModels = filters.model.map(m => m.toUpperCase());
+      conditions.push(sql`UPPER(${coveredUnit.model}) IN ${upperModels}`);
     }
     if (filters?.customer && filters.customer.length > 0) {
-      conditions.push(inArray(coveredUnit.customerName, filters.customer));
+      const upperCustomers = filters.customer.map(c => c.toUpperCase());
+      conditions.push(sql`UPPER(${coveredUnit.customerName}) IN ${upperCustomers}`);
     }
     if (filters?.order && filters.order.length > 0) {
-      conditions.push(inArray(coveredUnit.orderNumber, filters.order));
+      const upperOrders = filters.order.map(o => o.toUpperCase());
+      conditions.push(sql`UPPER(${coveredUnit.orderNumber}) IN ${upperOrders}`);
     }
     
     return conditions;
@@ -1778,12 +1782,14 @@ export class DatabaseStorage implements IStorage {
   }): Promise<Array<{ model: string; count: number }>> {
     const conditions: any[] = [];
     
-    // Claims table only has make and model, no customer or order fields
+    // Claims table only has make and model, no customer or order fields (case-insensitive)
     if (filters?.make && filters.make.length > 0) {
-      conditions.push(inArray(claim.make, filters.make));
+      const upperMakes = filters.make.map(m => m.toUpperCase());
+      conditions.push(sql`UPPER(${claim.make}) IN ${upperMakes}`);
     }
     if (filters?.model && filters.model.length > 0) {
-      conditions.push(inArray(claim.model, filters.model));
+      const upperModels = filters.model.map(m => m.toUpperCase());
+      conditions.push(sql`UPPER(${claim.model}) IN ${upperModels}`);
     }
     
     const result = await db
@@ -1808,12 +1814,14 @@ export class DatabaseStorage implements IStorage {
   }): Promise<Array<{ model: string; count: number }>> {
     const conditions: any[] = [];
     
-    // Replacements table only has make and model, no customer or order fields
+    // Replacements table only has make and model, no customer or order fields (case-insensitive)
     if (filters?.make && filters.make.length > 0) {
-      conditions.push(inArray(replacement.make, filters.make));
+      const upperMakes = filters.make.map(m => m.toUpperCase());
+      conditions.push(sql`UPPER(${replacement.make}) IN ${upperMakes}`);
     }
     if (filters?.model && filters.model.length > 0) {
-      conditions.push(inArray(replacement.model, filters.model));
+      const upperModels = filters.model.map(m => m.toUpperCase());
+      conditions.push(sql`UPPER(${replacement.model}) IN ${upperModels}`);
     }
     
     const result = await db
@@ -1838,11 +1846,14 @@ export class DatabaseStorage implements IStorage {
   }): Promise<Array<{ model: string; count: number }>> {
     const conditions: any[] = [];
     
+    // Spare units filtering with case-insensitive matching
     if (filters?.make && filters.make.length > 0) {
-      conditions.push(inArray(spareUnit.make, filters.make));
+      const upperMakes = filters.make.map(m => m.toUpperCase());
+      conditions.push(sql`UPPER(${spareUnit.make}) IN ${upperMakes}`);
     }
     if (filters?.model && filters.model.length > 0) {
-      conditions.push(inArray(spareUnit.model, filters.model));
+      const upperModels = filters.model.map(m => m.toUpperCase());
+      conditions.push(sql`UPPER(${spareUnit.model}) IN ${upperModels}`);
     }
     
     const result = await db
@@ -1867,14 +1878,16 @@ export class DatabaseStorage implements IStorage {
     const claimConditions: any[] = [];
     const replacementConditions: any[] = [];
     
-    // Claims and replacements tables only have make and model
+    // Claims and replacements tables only have make and model (case-insensitive)
     if (filters?.make && filters.make.length > 0) {
-      claimConditions.push(inArray(claim.make, filters.make));
-      replacementConditions.push(inArray(replacement.make, filters.make));
+      const upperMakes = filters.make.map(m => m.toUpperCase());
+      claimConditions.push(sql`UPPER(${claim.make}) IN ${upperMakes}`);
+      replacementConditions.push(sql`UPPER(${replacement.make}) IN ${upperMakes}`);
     }
     if (filters?.model && filters.model.length > 0) {
-      claimConditions.push(inArray(claim.model, filters.model));
-      replacementConditions.push(inArray(replacement.model, filters.model));
+      const upperModels = filters.model.map(m => m.toUpperCase());
+      claimConditions.push(sql`UPPER(${claim.model}) IN ${upperModels}`);
+      replacementConditions.push(sql`UPPER(${replacement.model}) IN ${upperModels}`);
     }
     
     const claims = await db
@@ -1945,34 +1958,34 @@ export class DatabaseStorage implements IStorage {
     orders: string[];
   }> {
     const makes = await db
-      .selectDistinct({ value: coveredUnit.make })
+      .selectDistinct({ value: sql<string>`UPPER(${coveredUnit.make})`.as('value') })
       .from(coveredUnit)
       .where(sql`${coveredUnit.make} IS NOT NULL AND ${coveredUnit.make} != ''`)
-      .orderBy(coveredUnit.make);
+      .orderBy(sql`UPPER(${coveredUnit.make})`);
     
     const models = await db
-      .selectDistinct({ value: coveredUnit.model })
+      .selectDistinct({ value: sql<string>`UPPER(${coveredUnit.model})`.as('value') })
       .from(coveredUnit)
       .where(sql`${coveredUnit.model} IS NOT NULL AND ${coveredUnit.model} != ''`)
-      .orderBy(coveredUnit.model);
+      .orderBy(sql`UPPER(${coveredUnit.model})`);
     
     const customers = await db
-      .selectDistinct({ value: coveredUnit.customerName })
+      .selectDistinct({ value: sql<string>`UPPER(${coveredUnit.customerName})`.as('value') })
       .from(coveredUnit)
       .where(sql`${coveredUnit.customerName} IS NOT NULL AND ${coveredUnit.customerName} != ''`)
-      .orderBy(coveredUnit.customerName);
+      .orderBy(sql`UPPER(${coveredUnit.customerName})`);
     
     const orders = await db
-      .selectDistinct({ value: coveredUnit.orderNumber })
+      .selectDistinct({ value: sql<string>`UPPER(${coveredUnit.orderNumber})`.as('value') })
       .from(coveredUnit)
       .where(sql`${coveredUnit.orderNumber} IS NOT NULL AND ${coveredUnit.orderNumber} != ''`)
-      .orderBy(coveredUnit.orderNumber);
+      .orderBy(sql`UPPER(${coveredUnit.orderNumber})`);
     
     return {
-      makes: makes.map(m => m.value).filter(Boolean),
-      models: models.map(m => m.value).filter(Boolean),
-      customers: customers.map(c => c.value).filter(Boolean),
-      orders: orders.map(o => o.value).filter(Boolean),
+      makes: makes.map(m => m.value).filter(Boolean) as string[],
+      models: models.map(m => m.value).filter(Boolean) as string[],
+      customers: customers.map(c => c.value).filter(Boolean) as string[],
+      orders: orders.map(o => o.value).filter(Boolean) as string[],
     };
   }
 }

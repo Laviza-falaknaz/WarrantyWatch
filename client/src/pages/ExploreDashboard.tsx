@@ -37,6 +37,12 @@ const CHART_COLORS = {
   amber: ["#f59e0b", "#fbbf24", "#fcd34d", "#fde68a", "#fef3c7"],
 };
 
+// Helper to truncate long text
+const truncateText = (text: string, maxLength: number = 20) => {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + "...";
+};
+
 // MultiSelect Component
 function MultiSelect({
   options,
@@ -348,7 +354,7 @@ export default function ExploreDashboard() {
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Chart 1: Top Models by Warranties */}
+        {/* Chart 1: Top Models by Warranties - Horizontal Bar */}
         <Card>
           <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
             <TrendingUp className="w-5 h-5 text-muted-foreground" />
@@ -357,16 +363,29 @@ export default function ExploreDashboard() {
               <CardDescription>Most deployed models under coverage</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             {loadingTopModels ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[360px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={topModels || []} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis type="number" />
-                  <YAxis dataKey="model" type="category" width={100} />
-                  <Tooltip />
+              <ResponsiveContainer width="100%" height={360}>
+                <BarChart 
+                  data={topModels || []} 
+                  layout="vertical"
+                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis type="number" tick={{ fontSize: 12, fill: "#666" }} />
+                  <YAxis 
+                    dataKey="model" 
+                    type="category" 
+                    width={150} 
+                    tick={{ fontSize: 12, fill: "#333" }}
+                    tickFormatter={(value) => truncateText(value, 18)}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                    labelStyle={{ color: '#333', fontWeight: 600 }}
+                  />
                   <Bar dataKey="count" fill={CHART_COLORS.blue[0]} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -374,7 +393,7 @@ export default function ExploreDashboard() {
           </CardContent>
         </Card>
 
-        {/* Chart 2: Warranty Descriptions Count */}
+        {/* Chart 2: Warranty Descriptions Count - Vertical Bar */}
         <Card>
           <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
             <FileText className="w-5 h-5 text-muted-foreground" />
@@ -383,16 +402,30 @@ export default function ExploreDashboard() {
               <CardDescription>Breakdown by coverage type</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             {loadingDescriptions ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[360px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={warrantyDescriptions || []}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="description" angle={-45} textAnchor="end" height={100} />
-                  <YAxis />
-                  <Tooltip />
+              <ResponsiveContainer width="100%" height={360}>
+                <BarChart 
+                  data={warrantyDescriptions || []}
+                  margin={{ top: 5, right: 20, left: 20, bottom: 80 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis 
+                    dataKey="description" 
+                    angle={-30} 
+                    textAnchor="end" 
+                    height={80}
+                    tick={{ fontSize: 11, fill: "#333" }}
+                    interval={0}
+                    tickFormatter={(value) => truncateText(value, 15)}
+                  />
+                  <YAxis tick={{ fontSize: 12, fill: "#666" }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                    labelStyle={{ color: '#333', fontWeight: 600 }}
+                  />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                     {(warrantyDescriptions || []).map((_: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS.green[index % CHART_COLORS.green.length]} />
@@ -404,7 +437,7 @@ export default function ExploreDashboard() {
           </CardContent>
         </Card>
 
-        {/* Chart 3: Warranties by Category Timeline */}
+        {/* Chart 3: Warranties by Category Timeline - Line Chart */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
             <Calendar className="w-5 h-5 text-muted-foreground" />
@@ -413,25 +446,36 @@ export default function ExploreDashboard() {
               <CardDescription>Monthly breakdown by device category</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             {loadingCategory ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[360px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={categoryTimelineData}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
+              <ResponsiveContainer width="100%" height={360}>
+                <LineChart 
+                  data={categoryTimelineData}
+                  margin={{ top: 5, right: 20, left: 20, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 12, fill: "#666" }}
+                  />
+                  <YAxis tick={{ fontSize: 12, fill: "#666" }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                  />
+                  <Legend 
+                    iconType="line"
+                    wrapperStyle={{ fontSize: '12px' }}
+                  />
                   {categories.map((cat, idx) => (
                     <Line
-                      key={cat}
+                      key={String(cat)}
                       type="monotone"
-                      dataKey={cat}
+                      dataKey={String(cat)}
                       stroke={CHART_COLORS.purple[idx % CHART_COLORS.purple.length]}
                       strokeWidth={2}
-                      dot={{ r: 3 }}
+                      dot={{ r: 2 }}
                     />
                   ))}
                 </LineChart>
@@ -440,7 +484,7 @@ export default function ExploreDashboard() {
           </CardContent>
         </Card>
 
-        {/* Chart 4: Top Customers by Covered Units */}
+        {/* Chart 4: Top Customers by Covered Units - Vertical Bar */}
         <Card>
           <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
             <Users className="w-5 h-5 text-muted-foreground" />
@@ -449,16 +493,30 @@ export default function ExploreDashboard() {
               <CardDescription>Customers with most covered units</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             {loadingCustomers ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[360px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={topCustomers || []}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="customer" angle={-45} textAnchor="end" height={100} />
-                  <YAxis />
-                  <Tooltip />
+              <ResponsiveContainer width="100%" height={360}>
+                <BarChart 
+                  data={topCustomers || []}
+                  margin={{ top: 5, right: 20, left: 20, bottom: 80 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis 
+                    dataKey="customer" 
+                    angle={-30} 
+                    textAnchor="end" 
+                    height={80}
+                    tick={{ fontSize: 11, fill: "#333" }}
+                    interval={0}
+                    tickFormatter={(value) => truncateText(value, 15)}
+                  />
+                  <YAxis tick={{ fontSize: 12, fill: "#666" }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                    labelStyle={{ color: '#333', fontWeight: 600 }}
+                  />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                     {(topCustomers || []).map((_: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS.orange[index % CHART_COLORS.orange.length]} />
@@ -479,27 +537,35 @@ export default function ExploreDashboard() {
               <CardDescription>Distribution of warranty claims</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             {loadingClaims ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[360px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={360}>
                 <PieChart>
                   <Pie
                     data={claimsByModel || []}
                     cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(entry) => entry.model}
-                    outerRadius={80}
+                    cy="45%"
+                    outerRadius={100}
                     fill="#8884d8"
                     dataKey="count"
+                    paddingAngle={2}
+                    label={false}
                   >
                     {(claimsByModel || []).map((_: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS.pink[index % CHART_COLORS.pink.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ fontSize: '11px' }}
+                    iconSize={10}
+                    layout="horizontal"
+                    align="center"
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -515,27 +581,35 @@ export default function ExploreDashboard() {
               <CardDescription>Distribution of fulfilled replacements</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             {loadingReplacements ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[360px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={360}>
                 <PieChart>
                   <Pie
                     data={replacementsByModel || []}
                     cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(entry) => entry.model}
-                    outerRadius={80}
+                    cy="45%"
+                    outerRadius={100}
                     fill="#8884d8"
                     dataKey="count"
+                    paddingAngle={2}
+                    label={false}
                   >
                     {(replacementsByModel || []).map((_: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS.teal[index % CHART_COLORS.teal.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ fontSize: '11px' }}
+                    iconSize={10}
+                    layout="horizontal"
+                    align="center"
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -551,16 +625,29 @@ export default function ExploreDashboard() {
               <CardDescription>Available inventory distribution</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             {loadingSparePool ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[360px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={sparePool || []} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis type="number" />
-                  <YAxis dataKey="model" type="category" width={100} />
-                  <Tooltip />
+              <ResponsiveContainer width="100%" height={360}>
+                <BarChart 
+                  data={sparePool || []} 
+                  layout="vertical"
+                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis type="number" tick={{ fontSize: 12, fill: "#666" }} />
+                  <YAxis 
+                    dataKey="model" 
+                    type="category" 
+                    width={150}
+                    tick={{ fontSize: 12, fill: "#333" }}
+                    tickFormatter={(value) => truncateText(value, 18)}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                    labelStyle={{ color: '#333', fontWeight: 600 }}
+                  />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                     {(sparePool || []).map((_: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS.indigo[index % CHART_COLORS.indigo.length]} />
@@ -572,7 +659,7 @@ export default function ExploreDashboard() {
           </CardContent>
         </Card>
 
-        {/* Chart 8: Monthly Claims vs Replacements Timeline */}
+        {/* Chart 8: Monthly Claims vs Replacements Timeline - Dual Line */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
             <Calendar className="w-5 h-5 text-muted-foreground" />
@@ -581,23 +668,34 @@ export default function ExploreDashboard() {
               <CardDescription>Trend analysis of claims and fulfillment</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             {loadingMonthly ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[360px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={monthlyClaimsReplacements || []}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
+              <ResponsiveContainer width="100%" height={360}>
+                <LineChart 
+                  data={monthlyClaimsReplacements || []}
+                  margin={{ top: 5, right: 20, left: 20, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 12, fill: "#666" }}
+                  />
+                  <YAxis tick={{ fontSize: 12, fill: "#666" }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                  />
+                  <Legend 
+                    iconType="line"
+                    wrapperStyle={{ fontSize: '12px' }}
+                  />
                   <Line
                     type="monotone"
                     dataKey="claims"
                     stroke={CHART_COLORS.red[0]}
                     strokeWidth={2}
-                    dot={{ r: 4 }}
+                    dot={{ r: 3 }}
                     name="Claims"
                   />
                   <Line
@@ -605,7 +703,7 @@ export default function ExploreDashboard() {
                     dataKey="replacements"
                     stroke={CHART_COLORS.green[0]}
                     strokeWidth={2}
-                    dot={{ r: 4 }}
+                    dot={{ r: 3 }}
                     name="Replacements"
                   />
                 </LineChart>
@@ -614,7 +712,7 @@ export default function ExploreDashboard() {
           </CardContent>
         </Card>
 
-        {/* Chart 9: Monthly Warranty Starts */}
+        {/* Chart 9: Monthly Warranty Starts - Vertical Bar */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center gap-1 space-y-0 pb-2">
             <Calendar className="w-5 h-5 text-muted-foreground" />
@@ -623,16 +721,26 @@ export default function ExploreDashboard() {
               <CardDescription>New warranties started each month</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             {loadingWarrantyStarts ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[360px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyWarrantyStarts || []}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
+              <ResponsiveContainer width="100%" height={360}>
+                <BarChart 
+                  data={monthlyWarrantyStarts || []}
+                  margin={{ top: 5, right: 20, left: 20, bottom: 40 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 12, fill: "#666" }}
+                    angle={0}
+                  />
+                  <YAxis tick={{ fontSize: 12, fill: "#666" }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ddd' }}
+                    labelStyle={{ color: '#333', fontWeight: 600 }}
+                  />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                     {(monthlyWarrantyStarts || []).map((_: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS.amber[index % CHART_COLORS.amber.length]} />
