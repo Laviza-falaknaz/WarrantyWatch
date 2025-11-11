@@ -1,8 +1,9 @@
 import { useState, useMemo, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -209,57 +210,121 @@ export default function MonitorDashboard() {
     });
   }, [riskCombinations, riskFilters]);
 
+  // Mutations for creating pools and sending alerts
+  const createPoolMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string; filterCriteria: string }) => {
+      const res = await apiRequest("POST", "/api/coverage-pools", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/coverage-pools"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coverage-pools-with-stats"] });
+      toast({
+        title: "Pool Created Successfully",
+        description: `Coverage pool "${data.name}" has been created.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Pool Creation Failed",
+        description: error.message || "Failed to create coverage pool. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendAlertMutation = useMutation({
+    mutationFn: async (combinations: RiskCombination[]) => {
+      const res = await apiRequest("POST", "/api/risk-combinations/send-alert", { combinations });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Alert Sent Successfully",
+        description: data.message || "High-risk alert sent to configured webhook.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Alert Failed",
+        description: error.message || "Failed to send alert. Please check your webhook configuration.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Action handlers
   const handleCreatePool = (combo: RiskCombination) => {
     const poolName = `${combo.make} ${combo.model}${combo.processor ? ` (${combo.processor})` : ''}`;
-    toast({
-      title: "Pool Creation Initiated",
-      description: `Creating coverage pool for "${poolName}"...`,
+    const filterCriteria = JSON.stringify({
+      make: combo.make,
+      model: combo.model,
+      processor: combo.processor ? [combo.processor] : undefined,
+      generation: combo.generation ? [combo.generation] : undefined,
     });
-    // TODO: Implement actual pool creation API call
-    setTimeout(() => {
-      toast({
-        title: "Pool Created Successfully",
-        description: `Coverage pool "${poolName}" has been created.`,
-      });
-    }, 1000);
+    
+    createPoolMutation.mutate({
+      name: poolName,
+      description: `Automatically created pool for ${combo.make} ${combo.model} - Risk Level: ${combo.risk_level}`,
+      filterCriteria,
+    });
   };
 
   const handleSendAlert = (combo: RiskCombination) => {
-    const itemName = `${combo.make} ${combo.model}`;
-    toast({
-      title: "Alert Sent",
-      description: `High-risk alert sent for "${itemName}".`,
-    });
-    // TODO: Implement actual alert API call
+    sendAlertMutation.mutate([combo]);
   };
 
   const handleCreateCombinedPool = () => {
     if (selectedRiskItems.size === 0) return;
     
-    toast({
-      title: "Combined Pool Creation Initiated",
-      description: `Creating coverage pool for ${selectedRiskItems.size} combinations...`,
+    const selectedCombinations = filteredRiskCombinations?.filter(combo => 
+      selectedRiskItems.has(getRiskComboKey(combo))
+    ) || [];
+    
+    if (selectedCombinations.length === 0) return;
+    
+    // Create a combined filter criteria with arrays of makes, models, etc.
+    const makes = Array.from(new Set(selectedCombinations.map(c => c.make)));
+    const models = Array.from(new Set(selectedCombinations.map(c => c.model)));
+    const processors = Array.from(new Set(selectedCombinations.map(c => c.processor).filter(Boolean)));
+    const generations = Array.from(new Set(selectedCombinations.map(c => c.generation).filter(Boolean)));
+    
+    const poolName = `Combined Risk Pool (${selectedCombinations.length} combinations)`;
+    const filterCriteria = JSON.stringify({
+      make: makes.length > 0 ? makes : undefined,
+      model: models.length > 0 ? models : undefined,
+      processor: processors.length > 0 ? processors : undefined,
+      generation: generations.length > 0 ? generations : undefined,
     });
-    // TODO: Implement actual combined pool creation API call
-    setTimeout(() => {
-      toast({
-        title: "Combined Pool Created Successfully",
-        description: `Coverage pool created with ${selectedRiskItems.size} combinations.`,
-      });
-      setSelectedRiskItems(new Set()); // Clear selection after success
-    }, 1000);
+    
+    createPoolMutation.mutate(
+      {
+        name: poolName,
+        description: `Combined pool covering ${makes.join(", ")} with ${selectedCombinations.length} risk combinations`,
+        filterCriteria,
+      },
+      {
+        onSuccess: () => {
+          setSelectedRiskItems(new Set()); // Clear selection after success
+        },
+      }
+    );
   };
 
   const handleSendCombinedAlert = () => {
     if (selectedRiskItems.size === 0) return;
     
-    toast({
-      title: "Combined Alert Sent",
-      description: `High-risk alert sent for ${selectedRiskItems.size} combinations.`,
+    const selectedCombinations = filteredRiskCombinations?.filter(combo => 
+      selectedRiskItems.has(getRiskComboKey(combo))
+    ) || [];
+    
+    if (selectedCombinations.length === 0) return;
+    
+    sendAlertMutation.mutate(selectedCombinations, {
+      onSuccess: () => {
+        setSelectedRiskItems(new Set()); // Clear selection after success
+      },
     });
-    setSelectedRiskItems(new Set()); // Clear selection after success
-    // TODO: Implement actual combined alert API call
   };
 
   // Filter and map warranty expiration data
