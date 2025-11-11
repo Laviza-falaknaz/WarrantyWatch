@@ -45,6 +45,8 @@ import {
 import { cn } from "@/lib/utils";
 import { format, addMonths, subMonths, eachDayOfInterval } from "date-fns";
 import type { CoveragePoolWithStats } from "@shared/schema";
+import type { RiskCombination, RiskLevel } from "@shared/risk-analysis-types";
+import { formatRiskLevel } from "@shared/risk-analysis-types";
 
 interface CoveredUnit {
   id: string;
@@ -60,28 +62,6 @@ interface HeatmapCell {
   date: Date;
   count: number;
   units: CoveredUnit[];
-}
-
-type RiskLevel = 'critical' | 'high' | 'medium' | 'low';
-
-interface RiskCombination {
-  make: string;
-  model: string;
-  processor: string | null;
-  generation: string | null;
-  covered_count: number;
-  spare_count: number;
-  uk_available_count: number;
-  uae_available_count: number;
-  available_stock_count: number;
-  run_rate: number;
-  coverage_ratio: number; // Warranty Coverage: % of spare vs covered units
-  coverage_of_run_rate: number; // Spare Coverage: % of spare vs run rate
-  fulfillment_rate: number;
-  claims_last_6_months: number;
-  replacements_last_6_months: number;
-  risk_score: number;
-  risk_level: RiskLevel;
 }
 
 // Helper to create stable identifier for risk combinations

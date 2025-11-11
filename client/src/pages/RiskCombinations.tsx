@@ -12,26 +12,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Bell, FolderPlus, Search, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-
-interface RiskCombination {
-  make: string;
-  model: string;
-  processor: string | null;
-  generation: string | null;
-  covered_count: number;
-  spare_count: number;
-  uk_available_count: number;
-  uae_available_count: number;
-  available_stock_count: number;
-  run_rate: number;
-  coverage_ratio: number; // Warranty Coverage: % of spare vs covered units
-  coverage_of_run_rate: number; // Spare Coverage: % of spare vs run rate
-  fulfillment_rate: number;
-  claims_last_6_months: number;
-  replacements_last_6_months: number;
-  risk_score: number;
-  risk_level: "Critical" | "High" | "Medium" | "Low";
-}
+import type { RiskCombination, RiskLevel } from "@shared/risk-analysis-types";
+import { formatRiskLevel } from "@shared/risk-analysis-types";
 
 type SortField = "risk_score" | "spare_count" | "run_rate" | "coverage_ratio" | "coverage_of_run_rate" | "covered_count";
 type SortOrder = "asc" | "desc";
@@ -39,13 +21,12 @@ type SortOrder = "asc" | "desc";
 const getRiskComboKey = (combo: RiskCombination) => 
   `${combo.make}|${combo.model}|${combo.processor || ""}|${combo.generation || ""}`;
 
-const getRiskBadgeVariant = (level: string) => {
+const getRiskBadgeVariant = (level: RiskLevel) => {
   switch (level) {
-    case "Critical": return "bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800";
-    case "High": return "bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-200 border-orange-200 dark:border-orange-800";
-    case "Medium": return "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800";
-    case "Low": return "bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800";
-    default: return "";
+    case "critical": return "bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800";
+    case "high": return "bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-200 border-orange-200 dark:border-orange-800";
+    case "medium": return "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800";
+    case "low": return "bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800";
   }
 };
 
@@ -577,7 +558,7 @@ export default function RiskCombinations() {
                           </TableCell>
                           <TableCell>
                             <Badge className={`${getRiskBadgeVariant(combo.risk_level)} font-semibold`}>
-                              {combo.risk_level}
+                              {formatRiskLevel(combo.risk_level)}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
