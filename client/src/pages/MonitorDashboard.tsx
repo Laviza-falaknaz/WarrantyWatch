@@ -71,10 +71,17 @@ interface RiskCombination {
   generation: string | null;
   covered_count: number;
   spare_count: number;
-  coverage_ratio: number;
+  uk_available_count: number;
+  uae_available_count: number;
+  available_stock_count: number;
   run_rate: number;
-  risk_level: RiskLevel;
+  coverage_ratio: number; // Warranty Coverage: % of spare vs covered units
+  coverage_of_run_rate: number; // Spare Coverage: % of spare vs run rate
+  fulfillment_rate: number;
+  claims_last_6_months: number;
+  replacements_last_6_months: number;
   risk_score: number;
+  risk_level: RiskLevel;
 }
 
 // Helper to create stable identifier for risk combinations

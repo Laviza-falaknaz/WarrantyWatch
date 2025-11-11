@@ -18,16 +18,22 @@ interface RiskCombination {
   model: string;
   processor: string | null;
   generation: string | null;
+  covered_count: number;
   spare_count: number;
-  monthly_run_rate: number;
-  coverage_ratio: number;
+  uk_available_count: number;
+  uae_available_count: number;
+  available_stock_count: number;
+  run_rate: number;
+  coverage_ratio: number; // Warranty Coverage: % of spare vs covered units
+  coverage_of_run_rate: number; // Spare Coverage: % of spare vs run rate
   fulfillment_rate: number;
-  available_stock: number;
+  claims_last_6_months: number;
+  replacements_last_6_months: number;
   risk_score: number;
   risk_level: "Critical" | "High" | "Medium" | "Low";
 }
 
-type SortField = "risk_score" | "spare_count" | "monthly_run_rate" | "coverage_ratio" | "fulfillment_rate";
+type SortField = "risk_score" | "spare_count" | "run_rate" | "coverage_ratio" | "coverage_of_run_rate" | "covered_count";
 type SortOrder = "asc" | "desc";
 
 const getRiskComboKey = (combo: RiskCombination) => 
@@ -436,7 +442,7 @@ export default function RiskCombinations() {
             <div className="text-center py-12 text-muted-foreground">No risk combinations found</div>
           ) : (
             <>
-              <div className="border rounded-lg overflow-hidden">
+              <div className="border rounded-lg overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -455,19 +461,33 @@ export default function RiskCombinations() {
                       </TableHead>
                       <TableHead>Make / Model</TableHead>
                       <TableHead>Processor</TableHead>
-                      <TableHead className="cursor-pointer" onClick={() => handleSort("spare_count")}>
-                        <div className="flex items-center">
+                      <TableHead className="text-center">
+                        <div>Available Stock</div>
+                        <div className="text-xs font-normal text-muted-foreground">UK / UAE</div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer text-right" onClick={() => handleSort("covered_count")}>
+                        <div className="flex items-center justify-end">
+                          Covered {getSortIcon("covered_count")}
+                        </div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer text-right" onClick={() => handleSort("spare_count")}>
+                        <div className="flex items-center justify-end">
                           Spares {getSortIcon("spare_count")}
                         </div>
                       </TableHead>
-                      <TableHead className="cursor-pointer" onClick={() => handleSort("monthly_run_rate")}>
-                        <div className="flex items-center">
-                          Run Rate {getSortIcon("monthly_run_rate")}
+                      <TableHead className="cursor-pointer text-right" onClick={() => handleSort("run_rate")}>
+                        <div className="flex items-center justify-end">
+                          Run Rate {getSortIcon("run_rate")}
                         </div>
                       </TableHead>
-                      <TableHead className="cursor-pointer" onClick={() => handleSort("coverage_ratio")}>
-                        <div className="flex items-center">
-                          Coverage {getSortIcon("coverage_ratio")}
+                      <TableHead className="cursor-pointer text-right" onClick={() => handleSort("coverage_ratio")}>
+                        <div className="flex items-center justify-end">
+                          Warranty Cov % {getSortIcon("coverage_ratio")}
+                        </div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer text-right" onClick={() => handleSort("coverage_of_run_rate")}>
+                        <div className="flex items-center justify-end">
+                          Spare Cov % {getSortIcon("coverage_of_run_rate")}
                         </div>
                       </TableHead>
                       <TableHead className="cursor-pointer" onClick={() => handleSort("risk_score")}>
@@ -482,6 +502,8 @@ export default function RiskCombinations() {
                     {paginatedCombinations.map((combo, index) => {
                       const key = getRiskComboKey(combo);
                       const isSelected = selectedItems.has(key);
+                      const warrantyRatio = (Number(combo.coverage_ratio || 0) * 100).toFixed(1);
+                      const spareRatio = (Number(combo.coverage_of_run_rate || 0) * 100).toFixed(1);
                       
                       return (
                         <TableRow 
@@ -506,14 +528,52 @@ export default function RiskCombinations() {
                               <div className="text-xs text-muted-foreground">{combo.generation}</div>
                             )}
                           </TableCell>
-                          <TableCell>
-                            <span className="font-mono text-sm">{combo.spare_count || 0}</span>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="text-center">
+                                <div className="font-mono text-sm font-medium text-green-600 dark:text-green-400">
+                                  {Number(combo.uk_available_count || 0)}
+                                </div>
+                                <div className="text-xs text-muted-foreground">UK</div>
+                              </div>
+                              <div className="text-muted-foreground">/</div>
+                              <div className="text-center">
+                                <div className="font-mono text-sm font-medium text-amber-600 dark:text-amber-400">
+                                  {Number(combo.uae_available_count || 0)}
+                                </div>
+                                <div className="text-xs text-muted-foreground">UAE</div>
+                              </div>
+                            </div>
                           </TableCell>
-                          <TableCell>
-                            <span className="font-mono text-sm">{combo.monthly_run_rate?.toFixed(1) || 0}</span>
+                          <TableCell className="text-right">
+                            <span className="font-mono text-sm">{Number(combo.covered_count || 0)}</span>
                           </TableCell>
-                          <TableCell>
-                            <span className="font-mono text-sm">{((combo.coverage_ratio || 0) * 100).toFixed(0)}%</span>
+                          <TableCell className="text-right">
+                            <span className="font-mono text-sm font-medium">{Number(combo.spare_count || 0)}</span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="font-mono text-sm">{Number(combo.run_rate || 0).toFixed(1)}</span>
+                            <div className="text-xs text-muted-foreground">/ month</div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={`font-mono text-sm font-medium ${
+                              parseFloat(warrantyRatio) >= 100 ? 'text-green-600 dark:text-green-400' :
+                              parseFloat(warrantyRatio) >= 50 ? 'text-amber-600 dark:text-amber-400' :
+                              'text-red-600 dark:text-red-400'
+                            }`}>
+                              {warrantyRatio}%
+                            </span>
+                            <div className="text-xs text-muted-foreground">spare/covered</div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={`font-mono text-sm font-medium ${
+                              parseFloat(spareRatio) >= 100 ? 'text-green-600 dark:text-green-400' :
+                              parseFloat(spareRatio) >= 50 ? 'text-amber-600 dark:text-amber-400' :
+                              'text-red-600 dark:text-red-400'
+                            }`}>
+                              {spareRatio}%
+                            </span>
+                            <div className="text-xs text-muted-foreground">spare/runrate</div>
                           </TableCell>
                           <TableCell>
                             <Badge className={`${getRiskBadgeVariant(combo.risk_level)} font-semibold`}>
