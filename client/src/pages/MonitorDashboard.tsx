@@ -43,7 +43,7 @@ import {
   FolderPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, addMonths, subMonths, eachDayOfInterval } from "date-fns";
+import { format, addMonths, subMonths, eachDayOfInterval, startOfWeek, addWeeks, endOfWeek, isSameDay, differenceInCalendarWeeks } from "date-fns";
 import type { CoveragePoolWithStats } from "@shared/schema";
 import type { RiskCombination, RiskLevel } from "@shared/risk-analysis-types";
 import { formatRiskLevel } from "@shared/risk-analysis-types";
@@ -84,6 +84,18 @@ const riskBadgeClass = (level: RiskLevel) => {
   }
 };
 
+// Vibrant color palette for heatmap - poppy and bold
+function getCellColor(count: number, maxCount: number): string {
+  if (count === 0) return "bg-slate-100 dark:bg-slate-800";
+  const intensity = maxCount > 0 ? (count / maxCount) * 100 : 0;
+  
+  if (intensity < 20) return "bg-indigo-300 dark:bg-indigo-400";
+  if (intensity < 40) return "bg-indigo-500 dark:bg-indigo-600";
+  if (intensity < 60) return "bg-purple-500 dark:bg-purple-600";
+  if (intensity < 80) return "bg-fuchsia-600 dark:bg-fuchsia-700";
+  return "bg-rose-700 dark:bg-rose-800";
+}
+
 function HeatmapDay({
   cell,
   maxCount,
@@ -91,26 +103,17 @@ function HeatmapDay({
   cell: HeatmapCell;
   maxCount: number;
 }) {
-  const intensity = maxCount > 0 ? (cell.count / maxCount) * 100 : 0;
-
-  const getBgColor = () => {
-    if (intensity === 0) return "bg-muted/20";
-    if (intensity < 20) return "bg-accent/50";
-    if (intensity < 40) return "bg-amber-400/60";
-    if (intensity < 60) return "bg-orange-500/70";
-    if (intensity < 80) return "bg-destructive/80";
-    return "bg-destructive";
-  };
+  const cellColor = getCellColor(cell.count, maxCount);
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <motion.div
-          whileHover={{ scale: 1.15 }}
+          whileHover={{ scale: 1.1 }}
           className={cn(
-            "w-4 h-4 rounded-sm border border-border/40 transition-all cursor-pointer",
-            getBgColor(),
-            cell.count > 0 && "hover:ring-2 hover:ring-primary/50"
+            "w-4 h-4 rounded-sm transition-all cursor-pointer shadow-sm",
+            cellColor,
+            cell.count > 0 && "hover:ring-2 hover:ring-purple-400 dark:hover:ring-purple-600"
           )}
           data-testid={`heatmap-day-${format(cell.date, 'yyyy-MM-dd')}`}
         />
@@ -323,10 +326,10 @@ export default function MonitorDashboard() {
       const endDate = new Date(unit.coverageEndDate);
       if (endDate < startDate || endDate > addMonths(startDate, 6)) return false;
 
-      if (filters.orderNumber && !unit.orderNumber?.toLowerCase().includes(filters.orderNumber.toLowerCase())) return false;
-      if (filters.customerName && !unit.customerName?.toLowerCase().includes(filters.customerName.toLowerCase())) return false;
-      if (filters.make && !unit.make?.toLowerCase().includes(filters.make.toLowerCase())) return false;
-      if (filters.model && !unit.model?.toLowerCase().includes(filters.model.toLowerCase())) return false;
+      if (filters.orderNumber && unit.orderNumber !== filters.orderNumber) return false;
+      if (filters.customerName && unit.customerName !== filters.customerName) return false;
+      if (filters.make && unit.make !== filters.make) return false;
+      if (filters.model && unit.model !== filters.model) return false;
 
       return true;
     });
@@ -403,25 +406,52 @@ export default function MonitorDashboard() {
   }, [heatmapData]);
 
   const monthHeaders = useMemo(() => {
-    const headers: { weekIndex: number; month: string }[] = [];
+    const headers: { weekIndex: number; month: string; weekCount: number }[] = [];
     let lastMonth = -1;
+    let lastHeaderIndex = -1;
 
     heatmapWeeks.forEach((week, weekIndex) => {
       const firstRealDay = week.find(cell => cell.count !== -1);
       if (firstRealDay) {
         const month = firstRealDay.date.getMonth();
         if (month !== lastMonth) {
+          // Update previous header's weekCount
+          if (lastHeaderIndex >= 0) {
+            headers[lastHeaderIndex].weekCount = weekIndex - headers[lastHeaderIndex].weekIndex;
+          }
+          
           headers.push({
             weekIndex,
             month: format(firstRealDay.date, 'MMM'),
+            weekCount: 1,
           });
           lastMonth = month;
+          lastHeaderIndex = headers.length - 1;
         }
       }
     });
 
+    // Update last header's weekCount
+    if (lastHeaderIndex >= 0 && headers[lastHeaderIndex]) {
+      headers[lastHeaderIndex].weekCount = heatmapWeeks.length - headers[lastHeaderIndex].weekIndex;
+    }
+
     return headers;
   }, [heatmapWeeks]);
+
+  // Extract unique filter options from covered units
+  const filterOptions = useMemo(() => {
+    if (!coveredUnits) {
+      return { makes: [], models: [], customers: [], orders: [] };
+    }
+
+    const makes = Array.from(new Set(coveredUnits.map(u => u.make).filter((v): v is string => Boolean(v)))).sort();
+    const models = Array.from(new Set(coveredUnits.map(u => u.model).filter((v): v is string => Boolean(v)))).sort();
+    const customers = Array.from(new Set(coveredUnits.map(u => u.customerName).filter((v): v is string => Boolean(v)))).sort();
+    const orders = Array.from(new Set(coveredUnits.map(u => u.orderNumber).filter((v): v is string => Boolean(v)))).sort();
+
+    return { makes, models, customers, orders };
+  }, [coveredUnits]);
 
   const activeFilterCount = useMemo(
     () => Object.values(filters).filter(v => v).length,
@@ -534,10 +564,10 @@ export default function MonitorDashboard() {
               </Card>
             </div>
 
-            {/* Heatmap Timeline */}
+            {/* Warranty Expiration Timeline */}
             <Card className="rounded-2xl">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <CardTitle>Warranty Expiration Timeline</CardTitle>
                   <div className="flex items-center gap-2">
                     <Button
@@ -563,69 +593,91 @@ export default function MonitorDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                {/* Inline Filter Toolbar */}
-                <div className="border-t pt-4 pb-2">
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <Input
-                      placeholder="Order #"
-                      className="max-w-[150px]"
-                      value={filters.orderNumber}
-                      onChange={(e) => setFilters(prev => ({ ...prev, orderNumber: e.target.value }))}
-                      data-testid="input-filter-order"
-                    />
-                    <Input
-                      placeholder="Customer"
-                      className="max-w-[150px]"
-                      value={filters.customerName}
-                      onChange={(e) => setFilters(prev => ({ ...prev, customerName: e.target.value }))}
-                      data-testid="input-filter-customer"
-                    />
-                    <Input
-                      placeholder="Make"
-                      className="max-w-[120px]"
-                      value={filters.make}
-                      onChange={(e) => setFilters(prev => ({ ...prev, make: e.target.value }))}
-                      data-testid="input-filter-make"
-                    />
-                    <Input
-                      placeholder="Model"
-                      className="max-w-[120px]"
-                      value={filters.model}
-                      onChange={(e) => setFilters(prev => ({ ...prev, model: e.target.value }))}
-                      data-testid="input-filter-model"
-                    />
+                {/* Dropdown Filters */}
+                <div className="border-t pt-4 pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1">Make</Label>
+                      <Select
+                        value={filters.make || "all"}
+                        onValueChange={(value) => setFilters(prev => ({ ...prev, make: value === "all" ? "" : value }))}
+                      >
+                        <SelectTrigger className="h-9" data-testid="select-make">
+                          <SelectValue placeholder="All Makes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Makes</SelectItem>
+                          {filterOptions.makes.map((make: string) => (
+                            <SelectItem key={make} value={make}>{make}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1">Model</Label>
+                      <Select
+                        value={filters.model || "all"}
+                        onValueChange={(value) => setFilters(prev => ({ ...prev, model: value === "all" ? "" : value }))}
+                      >
+                        <SelectTrigger className="h-9" data-testid="select-model">
+                          <SelectValue placeholder="All Models" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Models</SelectItem>
+                          {filterOptions.models.map((model: string) => (
+                            <SelectItem key={model} value={model}>{model}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1">Customer</Label>
+                      <Select
+                        value={filters.customerName || "all"}
+                        onValueChange={(value) => setFilters(prev => ({ ...prev, customerName: value === "all" ? "" : value }))}
+                      >
+                        <SelectTrigger className="h-9" data-testid="select-customer">
+                          <SelectValue placeholder="All Customers" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Customers</SelectItem>
+                          {filterOptions.customers.map((customer: string) => (
+                            <SelectItem key={customer} value={customer}>{customer}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1">Order</Label>
+                      <Select
+                        value={filters.orderNumber || "all"}
+                        onValueChange={(value) => setFilters(prev => ({ ...prev, orderNumber: value === "all" ? "" : value }))}
+                      >
+                        <SelectTrigger className="h-9" data-testid="select-order">
+                          <SelectValue placeholder="All Orders" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Orders</SelectItem>
+                          {filterOptions.orders.map((order: string) => (
+                            <SelectItem key={order} value={order}>{order}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  {/* Active Filter Chips */}
+                  {/* Active Filter Badges */}
                   {activeFilterCount > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {filters.orderNumber && (
-                        <Badge variant="secondary" className="gap-1">
-                          Order: {filters.orderNumber}
-                          <X
-                            className="w-3 h-3 cursor-pointer hover-elevate"
-                            onClick={() => clearFilter('orderNumber')}
-                            data-testid="button-clear-order-filter"
-                          />
-                        </Badge>
-                      )}
-                      {filters.customerName && (
-                        <Badge variant="secondary" className="gap-1">
-                          Customer: {filters.customerName}
-                          <X
-                            className="w-3 h-3 cursor-pointer hover-elevate"
-                            onClick={() => clearFilter('customerName')}
-                            data-testid="button-clear-customer-filter"
-                          />
-                        </Badge>
-                      )}
                       {filters.make && (
                         <Badge variant="secondary" className="gap-1">
                           Make: {filters.make}
                           <X
                             className="w-3 h-3 cursor-pointer hover-elevate"
-                            onClick={() => clearFilter('make')}
-                            data-testid="button-clear-make-filter"
+                            onClick={() => setFilters(prev => ({ ...prev, make: "" }))}
                           />
                         </Badge>
                       )}
@@ -634,8 +686,25 @@ export default function MonitorDashboard() {
                           Model: {filters.model}
                           <X
                             className="w-3 h-3 cursor-pointer hover-elevate"
-                            onClick={() => clearFilter('model')}
-                            data-testid="button-clear-model-filter"
+                            onClick={() => setFilters(prev => ({ ...prev, model: "" }))}
+                          />
+                        </Badge>
+                      )}
+                      {filters.customerName && (
+                        <Badge variant="secondary" className="gap-1">
+                          Customer: {filters.customerName}
+                          <X
+                            className="w-3 h-3 cursor-pointer hover-elevate"
+                            onClick={() => setFilters(prev => ({ ...prev, customerName: "" }))}
+                          />
+                        </Badge>
+                      )}
+                      {filters.orderNumber && (
+                        <Badge variant="secondary" className="gap-1">
+                          Order: {filters.orderNumber}
+                          <X
+                            className="w-3 h-3 cursor-pointer hover-elevate"
+                            onClick={() => setFilters(prev => ({ ...prev, orderNumber: "" }))}
                           />
                         </Badge>
                       )}
@@ -652,26 +721,27 @@ export default function MonitorDashboard() {
                   )}
                 </div>
 
-                <div className="overflow-x-auto mt-4">
-                  <div className="flex gap-3">
-                    {/* Day of Week Labels */}
-                    <div className="flex flex-col justify-around text-xs text-muted-foreground pr-2" style={{ height: '148px' }}>
+                {/* Heatmap Grid */}
+                <div className="overflow-x-auto">
+                  <div className="flex gap-2 min-w-max">
+                    {/* Day Labels */}
+                    <div className="flex flex-col justify-around text-xs text-muted-foreground font-medium pt-6" style={{ width: '32px' }}>
                       <div>Mon</div>
                       <div>Wed</div>
                       <div>Fri</div>
                     </div>
 
-                    {/* Heatmap Container */}
+                    {/* Grid with Month Headers */}
                     <div className="flex-1">
                       {/* Month Headers */}
-                      <div className="flex mb-1" style={{ paddingLeft: '0px' }}>
+                      <div className="flex gap-1 mb-2 h-6">
                         {monthHeaders.map((header, index) => (
                           <div
                             key={index}
-                            className="text-xs font-semibold text-muted-foreground"
+                            className="text-xs font-bold text-foreground"
                             style={{
-                              marginLeft: index === 0 ? '0px' : `${(header.weekIndex - (monthHeaders[index - 1]?.weekIndex || 0) - 1) * 20}px`,
-                              width: '20px',
+                              width: `${header.weekCount * 20}px`,
+                              textAlign: 'left'
                             }}
                           >
                             {header.month}
@@ -679,14 +749,14 @@ export default function MonitorDashboard() {
                         ))}
                       </div>
 
-                      {/* Grid */}
+                      {/* Week Columns */}
                       <div className="flex gap-1">
                         {heatmapWeeks.map((week, weekIndex) => (
                           <div key={weekIndex} className="flex flex-col gap-1">
                             {week.map((cell, dayIndex) => (
                               <div key={dayIndex}>
                                 {cell.count === -1 ? (
-                                  <div className="w-4 h-4" data-testid="heatmap-padding" />
+                                  <div className="w-4 h-4" />
                                 ) : (
                                   <HeatmapDay cell={cell} maxCount={maxCount} />
                                 )}
@@ -699,17 +769,17 @@ export default function MonitorDashboard() {
                   </div>
 
                   {/* Legend */}
-                  <div className="flex items-center gap-2 mt-6 text-xs text-muted-foreground">
-                    <span>Less</span>
-                    <div className="flex gap-1">
-                      <div className="w-4 h-4 rounded-sm bg-muted/20 border border-border/40" />
-                      <div className="w-4 h-4 rounded-sm bg-accent/50 border border-border/40" />
-                      <div className="w-4 h-4 rounded-sm bg-amber-400/60 border border-border/40" />
-                      <div className="w-4 h-4 rounded-sm bg-orange-500/70 border border-border/40" />
-                      <div className="w-4 h-4 rounded-sm bg-destructive/80 border border-border/40" />
-                      <div className="w-4 h-4 rounded-sm bg-destructive border border-border/40" />
+                  <div className="flex items-center gap-3 mt-6 text-xs text-muted-foreground">
+                    <span className="font-medium">Less</span>
+                    <div className="flex gap-1.5">
+                      <div className="w-4 h-4 rounded-sm bg-slate-100 dark:bg-slate-800 shadow-sm" />
+                      <div className="w-4 h-4 rounded-sm bg-indigo-300 dark:bg-indigo-400 shadow-sm" />
+                      <div className="w-4 h-4 rounded-sm bg-indigo-500 dark:bg-indigo-600 shadow-sm" />
+                      <div className="w-4 h-4 rounded-sm bg-purple-500 dark:bg-purple-600 shadow-sm" />
+                      <div className="w-4 h-4 rounded-sm bg-fuchsia-600 dark:bg-fuchsia-700 shadow-sm" />
+                      <div className="w-4 h-4 rounded-sm bg-rose-700 dark:bg-rose-800 shadow-sm" />
                     </div>
-                    <span>More</span>
+                    <span className="font-medium">More</span>
                   </div>
                 </div>
               </CardContent>
