@@ -289,74 +289,122 @@ export default function PoolDetail() {
         </Alert>
       )}
 
-      {/* Basic Count Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {/* Total Claims */}
-        <Card data-testid="card-total-claims">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Total Claims</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="value-total-claims">{analytics.totalClaims}</div>
-          </CardContent>
-        </Card>
-
-        {/* Total Replacements */}
-        <Card data-testid="card-total-replacements">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Replacements</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="value-total-replacements">{analytics.totalReplacements}</div>
-          </CardContent>
-        </Card>
-
-        {/* Run Rate */}
-        <Card data-testid="card-run-rate">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Run Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="value-run-rate">{analytics.averageMonthlyClaimRate.toFixed(1)}</div>
-            <p className="text-xs text-muted-foreground">claims/month</p>
-          </CardContent>
-        </Card>
-
-        {/* Pool Stock (Spare Units) */}
-        <Card data-testid="card-pool-stock">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Pool Stock</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="value-pool-stock">{analytics.currentSpareCount}</div>
-            <p className="text-xs text-muted-foreground">spare units</p>
-          </CardContent>
-        </Card>
-
-        {/* Covered Stock */}
-        <Card data-testid="card-covered-stock">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Covered Stock</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="value-covered-stock">{analytics.currentCoveredCount}</div>
-            <p className="text-xs text-muted-foreground">covered units</p>
-          </CardContent>
-        </Card>
-
-        {/* Available Stock Combined */}
-        <Card data-testid="card-available-combined">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Available Stock</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="value-available-combined">{analytics.currentAvailableStockCount}</div>
-            <div className="text-xs text-muted-foreground space-y-0.5">
-              <div>UK: {analytics.currentUkAvailableCount || 0}</div>
-              <div>UAE: {analytics.currentUaeAvailableCount || 0}</div>
+      {/* Pool Summary - Organized Layout */}
+      <div className="space-y-4">
+        {/* Inventory Runway - Prominent Display */}
+        <Card className="rounded-2xl" data-testid="card-inventory-runway">
+          <CardContent className="p-6">
+            <div className={`${
+              analytics.averageMonthlyClaimRate === 0 ? 'bg-muted/30' :
+              analytics.inventoryRunwayMonths < 1 ? 'bg-red-50 dark:bg-red-950/30' :
+              analytics.inventoryRunwayMonths < 2 ? 'bg-orange-50 dark:bg-orange-950/30' :
+              analytics.inventoryRunwayMonths < 3 ? 'bg-amber-50 dark:bg-amber-950/30' :
+              'bg-green-50 dark:bg-green-950/30'
+            } rounded-lg p-6 border-l-4 ${
+              analytics.averageMonthlyClaimRate === 0 ? 'border-l-muted' :
+              analytics.inventoryRunwayMonths < 1 ? 'border-l-red-600' :
+              analytics.inventoryRunwayMonths < 2 ? 'border-l-orange-600' :
+              analytics.inventoryRunwayMonths < 3 ? 'border-l-amber-600' :
+              'border-l-green-600'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Inventory Runway</span>
+                <span className={`text-4xl font-bold ${
+                  analytics.averageMonthlyClaimRate === 0 ? 'text-muted-foreground' :
+                  analytics.inventoryRunwayMonths < 1 ? 'text-red-600 dark:text-red-400' :
+                  analytics.inventoryRunwayMonths < 2 ? 'text-orange-600 dark:text-orange-400' :
+                  analytics.inventoryRunwayMonths < 3 ? 'text-amber-600 dark:text-amber-500' :
+                  'text-green-600 dark:text-green-500'
+                }`} data-testid="value-inventory-runway">
+                  {analytics.averageMonthlyClaimRate > 0 
+                    ? `${analytics.inventoryRunwayMonths.toFixed(1)} Months`
+                    : "No Recent Demand"
+                  }
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Stock Counts - 4 Column Grid */}
+        <div className="grid grid-cols-4 gap-4">
+          <Card className="rounded-2xl" data-testid="card-covered-stock">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-2">Covered Units</p>
+              <p className="text-3xl font-bold" data-testid="value-covered-stock">{analytics.currentCoveredCount}</p>
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl" data-testid="card-pool-stock">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-2">Spare Units</p>
+              <p className="text-3xl font-bold" data-testid="value-pool-stock">{analytics.currentSpareCount}</p>
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl" data-testid="card-run-rate">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-2">Demand/Month</p>
+              <p className="text-3xl font-bold" data-testid="value-run-rate">{analytics.averageMonthlyClaimRate.toFixed(1)}</p>
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl" data-testid="card-net-gap">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-2">Net Gap</p>
+              <p className={`text-3xl font-bold ${
+                Math.max(0, analytics.currentCoveredCount - analytics.currentSpareCount) > 0 
+                  ? 'text-red-600 dark:text-red-400' 
+                  : 'text-green-600 dark:text-green-500'
+              }`} data-testid="value-net-gap">
+                {Math.max(0, analytics.currentCoveredCount - analytics.currentSpareCount)}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Available Stock - Regional Breakdown */}
+        <Card className="rounded-2xl" data-testid="card-available-stock">
+          <CardContent className="p-4">
+            <div className="bg-muted/20 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground font-medium">
+                  <Package className="w-4 h-4" />
+                  <span className="text-sm">Available Stock</span>
+                </div>
+                <div className="flex items-center gap-6 font-semibold text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <span data-testid="value-uk-available">{analytics.currentUkAvailableCount || 0}</span>
+                    <span className="text-muted-foreground">UK</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-purple-500" />
+                    <span data-testid="value-uae-available">{analytics.currentUaeAvailableCount || 0}</span>
+                    <span className="text-muted-foreground">UAE</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>=</span>
+                    <span className="text-base" data-testid="value-available-combined">{analytics.currentAvailableStockCount}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Additional Metrics Row */}
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="rounded-2xl" data-testid="card-total-claims">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-2">Total Claims</p>
+              <p className="text-2xl font-bold" data-testid="value-total-claims">{analytics.totalClaims}</p>
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl" data-testid="card-total-replacements">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-2">Total Replacements</p>
+              <p className="text-2xl font-bold" data-testid="value-total-replacements">{analytics.totalReplacements}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Detailed KPI Cards */}

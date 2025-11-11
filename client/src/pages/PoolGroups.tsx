@@ -628,6 +628,8 @@ export default function PoolGroups() {
             poolUnits={pool.spareCount}
             coveragePercentage={pool.coverageRatio}
             availableStockCount={pool.availableStockCount}
+            ukAvailableCount={pool.ukAvailableCount}
+            uaeAvailableCount={pool.uaeAvailableCount}
             claimsCount={pool.claimsLast6Months}
             runRate={pool.runRate}
             onEdit={() => handleEditPool(pool)}
