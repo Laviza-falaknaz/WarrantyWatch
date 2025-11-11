@@ -50,6 +50,28 @@ Preferred communication style: Simple, everyday language.
 - **Recommendations Engine**: Generates actionable guidance.
 - **UI**: Pool Detail Dashboard features KPI cards, trend charts, monthly breakdown, and Excel export.
 
+### Explore Dashboard BI Analytics System
+- **Purpose**: Comprehensive business intelligence dashboard providing 9 interactive charts with global multi-select filtering capabilities.
+- **Endpoints**: 10 analytics routes (9 chart data + 1 filter options) with shared filter builder helper in storage layer.
+- **Charts**: 
+  1. Top Models by Active Warranties (horizontal bar chart, blue)
+  2. Coverage Descriptions Distribution (bar chart, green)
+  3. Warranty Starts by Category Over Time (stacked line chart, purple)
+  4. Top Customers by Coverage (bar chart, orange)
+  5. Claims by Model (pie chart, pink)
+  6. Replacements by Model (pie chart, teal)
+  7. Spare Unit Pool by Model (horizontal bar chart, indigo)
+  8. Monthly Claims vs Replacements (dual-line chart, red/green)
+  9. Monthly Warranty Activations (bar chart, amber)
+- **Global Filtering**: Multi-select dropdowns for make, model, customer, and order with removable badge UI.
+- **Filter Logic**: 
+  - Full filters (make, model, customer, order) applied to covered units endpoints
+  - Limited filters (make, model only) applied to claims/replacements/spare pool endpoints (tables lack customer/order fields)
+  - Null-safe URL construction prevents trailing "?" when no filters selected
+  - Consistent query keys for proper TanStack Query caching
+- **UI Features**: Scrollable multi-select popovers with search, selected count display, filter badges with removal, "Clear All" button, skeleton loaders during data fetch.
+- **Color Palettes**: Varied recharts color schemes for visual distinction between chart types.
+
 ### Authentication and Authorization
 - **Current State**: No authentication/authorization implemented; assumes a trusted internal network.
 
