@@ -20,7 +20,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Warranty Expiration Heatmap (Monitor Dashboard)
 - **Rebuild**: Completely rebuilt from scratch (November 2025) with improved visual design and filtering UX.
-- **Duration**: Extended to 10-month range (present - 4 months to present + 6 months) for comprehensive warranty visibility
+- **Duration**: Extended to 12-month range (present - 5 months to present + 7 months) for comprehensive warranty visibility
 - **Visual Design**: 
   - **Cell Size**: 16×16px for better visibility
   - **Color Scheme**: Vibrant progression from indigo → purple → fuchsia → rose for intensity levels, providing "poppier" visual appeal
@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
     - Results summary showing filtered count vs total
     - Toast notification confirming successful export
   - **Integration**: Dialog respects active heatmap filters (filtered data only)
-- **Time Navigation**: Previous/Next Month buttons to shift the 10-month display window
+- **Time Navigation**: Previous/Next Month buttons to shift the 12-month display window
 - **Data Alignment**: Uses date-fns for precise week calculations with proper handling of padding cells to maintain Sunday-Saturday week structure
 - **Performance**: Heavy computations wrapped in useMemo for optimal re-render performance
 

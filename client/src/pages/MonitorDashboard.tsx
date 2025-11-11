@@ -179,7 +179,7 @@ export default function MonitorDashboard() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const riskCombinationsRef = useRef<HTMLDivElement>(null);
-  const [startDate, setStartDate] = useState(() => subMonths(new Date(), 4));
+  const [startDate, setStartDate] = useState(() => subMonths(new Date(), 5));
   const [filters, setFilters] = useState({
     orderNumber: "",
     customerName: "",
@@ -195,7 +195,7 @@ export default function MonitorDashboard() {
   const [selectedDateCell, setSelectedDateCell] = useState<HeatmapCell | null>(null);
   const [dialogSearch, setDialogSearch] = useState("");
 
-  const endDate = useMemo(() => addMonths(startDate, 10), [startDate]);
+  const endDate = useMemo(() => addMonths(startDate, 12), [startDate]);
   const hasBulkSelection = selectedRiskItems.size > 1;
 
   const { data: coveredUnits, isLoading } = useQuery<CoveredUnit[]>({
@@ -358,7 +358,7 @@ export default function MonitorDashboard() {
     const filtered = coveredUnits.filter((unit) => {
       if (!unit.isCoverageActive) return false;
       const endDate = new Date(unit.coverageEndDate);
-      if (endDate < startDate || endDate > addMonths(startDate, 10)) return false;
+      if (endDate < startDate || endDate > addMonths(startDate, 12)) return false;
 
       if (filters.orderNumber && unit.orderNumber !== filters.orderNumber) return false;
       if (filters.customerName && unit.customerName !== filters.customerName) return false;
@@ -368,7 +368,7 @@ export default function MonitorDashboard() {
       return true;
     });
 
-    const days = eachDayOfInterval({ start: startDate, end: addMonths(startDate, 10) });
+    const days = eachDayOfInterval({ start: startDate, end: addMonths(startDate, 12) });
     
     return days.map((date) => {
       const unitsExpiringOnDay = filtered.filter((unit) => {
