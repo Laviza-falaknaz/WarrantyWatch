@@ -928,6 +928,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Explore Dashboard Analytics routes
+  
+  // Helper to parse filter arrays from query params
+  const parseFilterArray = (param: any): string[] | undefined => {
+    if (!param) return undefined;
+    return Array.isArray(param) ? param as string[] : [param as string];
+  };
+  
+  app.get("/api/analytics/filter-options", async (req, res) => {
+    try {
+      const options = await storage.getExploreFilterOptions();
+      res.json(options);
+    } catch (error) {
+      console.error("Error fetching filter options:", error);
+      res.status(500).json({ error: "Failed to fetch filter options" });
+    }
+  });
+  
+  app.get("/api/analytics/top-models-by-warranties", async (req, res) => {
+    try {
+      const filters = {
+        make: parseFilterArray(req.query.make),
+        model: parseFilterArray(req.query.model),
+        customer: parseFilterArray(req.query.customer),
+        order: parseFilterArray(req.query.order),
+        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 10,
+      };
+      const data = await storage.getTopModelsByWarranties(filters);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching top models by warranties:", error);
+      res.status(500).json({ error: "Failed to fetch top models by warranties" });
+    }
+  });
+  
+  app.get("/api/analytics/warranty-descriptions", async (req, res) => {
+    try {
+      const filters = {
+        make: parseFilterArray(req.query.make),
+        model: parseFilterArray(req.query.model),
+        customer: parseFilterArray(req.query.customer),
+        order: parseFilterArray(req.query.order),
+      };
+      const data = await storage.getWarrantyDescriptions(filters);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching warranty descriptions:", error);
+      res.status(500).json({ error: "Failed to fetch warranty descriptions" });
+    }
+  });
+  
+  app.get("/api/analytics/warranties-by-category", async (req, res) => {
+    try {
+      const filters = {
+        make: parseFilterArray(req.query.make),
+        model: parseFilterArray(req.query.model),
+        customer: parseFilterArray(req.query.customer),
+        order: parseFilterArray(req.query.order),
+      };
+      const data = await storage.getWarrantiesByCategory(filters);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching warranties by category:", error);
+      res.status(500).json({ error: "Failed to fetch warranties by category" });
+    }
+  });
+  
+  app.get("/api/analytics/top-customers", async (req, res) => {
+    try {
+      const filters = {
+        make: parseFilterArray(req.query.make),
+        model: parseFilterArray(req.query.model),
+        customer: parseFilterArray(req.query.customer),
+        order: parseFilterArray(req.query.order),
+        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 10,
+      };
+      const data = await storage.getTopCustomersByCoveredUnits(filters);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching top customers:", error);
+      res.status(500).json({ error: "Failed to fetch top customers" });
+    }
+  });
+  
+  app.get("/api/analytics/claims-by-model", async (req, res) => {
+    try {
+      const filters = {
+        make: parseFilterArray(req.query.make),
+        model: parseFilterArray(req.query.model),
+        customer: parseFilterArray(req.query.customer),
+        order: parseFilterArray(req.query.order),
+      };
+      const data = await storage.getClaimsByModel(filters);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching claims by model:", error);
+      res.status(500).json({ error: "Failed to fetch claims by model" });
+    }
+  });
+  
+  app.get("/api/analytics/replacements-by-model", async (req, res) => {
+    try {
+      const filters = {
+        make: parseFilterArray(req.query.make),
+        model: parseFilterArray(req.query.model),
+        customer: parseFilterArray(req.query.customer),
+        order: parseFilterArray(req.query.order),
+      };
+      const data = await storage.getReplacementsByModel(filters);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching replacements by model:", error);
+      res.status(500).json({ error: "Failed to fetch replacements by model" });
+    }
+  });
+  
+  app.get("/api/analytics/spare-pool-by-model", async (req, res) => {
+    try {
+      const filters = {
+        make: parseFilterArray(req.query.make),
+        model: parseFilterArray(req.query.model),
+        customer: parseFilterArray(req.query.customer),
+        order: parseFilterArray(req.query.order),
+      };
+      const data = await storage.getSparePoolByModel(filters);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching spare pool by model:", error);
+      res.status(500).json({ error: "Failed to fetch spare pool by model" });
+    }
+  });
+  
+  app.get("/api/analytics/monthly-claims-replacements", async (req, res) => {
+    try {
+      const filters = {
+        make: parseFilterArray(req.query.make),
+        model: parseFilterArray(req.query.model),
+        customer: parseFilterArray(req.query.customer),
+        order: parseFilterArray(req.query.order),
+      };
+      const data = await storage.getMonthlyClaimsReplacements(filters);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching monthly claims/replacements:", error);
+      res.status(500).json({ error: "Failed to fetch monthly claims/replacements" });
+    }
+  });
+  
+  app.get("/api/analytics/monthly-warranty-starts", async (req, res) => {
+    try {
+      const filters = {
+        make: parseFilterArray(req.query.make),
+        model: parseFilterArray(req.query.model),
+        customer: parseFilterArray(req.query.customer),
+        order: parseFilterArray(req.query.order),
+      };
+      const data = await storage.getMonthlyWarrantyStarts(filters);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching monthly warranty starts:", error);
+      res.status(500).json({ error: "Failed to fetch monthly warranty starts" });
+    }
+  });
+
   // Configuration routes
   app.get("/api/configuration", async (req, res) => {
     try {

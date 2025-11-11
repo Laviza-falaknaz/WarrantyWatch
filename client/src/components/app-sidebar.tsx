@@ -57,7 +57,7 @@ const menuGroups = [
     items: [
       {
         title: "Covered Units",
-        url: "/covered-units",
+        url: "/warranties",
         icon: Shield,
       },
       {

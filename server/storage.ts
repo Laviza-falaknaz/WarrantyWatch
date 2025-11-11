@@ -191,6 +191,80 @@ export interface IStorage {
   // Configuration
   getConfiguration(): Promise<AppConfiguration>;
   updateConfiguration(data: Partial<InsertAppConfiguration>): Promise<AppConfiguration>;
+  
+  // Explore Dashboard Analytics
+  getTopModelsByWarranties(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+    limit?: number;
+  }): Promise<Array<{ model: string; count: number }>>;
+  
+  getWarrantyDescriptions(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ description: string; count: number }>>;
+  
+  getWarrantiesByCategory(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ category: string; month: string; count: number }>>;
+  
+  getTopCustomersByCoveredUnits(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+    limit?: number;
+  }): Promise<Array<{ customer: string; count: number }>>;
+  
+  getClaimsByModel(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ model: string; count: number }>>;
+  
+  getReplacementsByModel(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ model: string; count: number }>>;
+  
+  getSparePoolByModel(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ model: string; count: number }>>;
+  
+  getMonthlyClaimsReplacements(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ month: string; claims: number; replacements: number }>>;
+  
+  getMonthlyWarrantyStarts(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ month: string; count: number }>>;
+  
+  // Filter options for Explore dashboard
+  getExploreFilterOptions(): Promise<{
+    makes: string[];
+    models: string[];
+    customers: string[];
+    orders: string[];
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1574,6 +1648,332 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updated;
+  }
+
+  // Explore Dashboard Analytics Methods
+  
+  // Helper: Build common WHERE clauses for explore filters
+  private buildExploreFilterConditions(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }) {
+    const conditions: any[] = [];
+    
+    if (filters?.make && filters.make.length > 0) {
+      conditions.push(inArray(coveredUnit.make, filters.make));
+    }
+    if (filters?.model && filters.model.length > 0) {
+      conditions.push(inArray(coveredUnit.model, filters.model));
+    }
+    if (filters?.customer && filters.customer.length > 0) {
+      conditions.push(inArray(coveredUnit.customerName, filters.customer));
+    }
+    if (filters?.order && filters.order.length > 0) {
+      conditions.push(inArray(coveredUnit.orderNumber, filters.order));
+    }
+    
+    return conditions;
+  }
+
+  async getTopModelsByWarranties(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+    limit?: number;
+  }): Promise<Array<{ model: string; count: number }>> {
+    const conditions = this.buildExploreFilterConditions(filters);
+    conditions.push(nonExpiredCoveredUnitsCondition());
+    
+    const result = await db
+      .select({
+        model: coveredUnit.model,
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(coveredUnit)
+      .where(and(...conditions))
+      .groupBy(coveredUnit.model)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(filters?.limit || 10);
+    
+    return result.map(r => ({ model: r.model, count: Number(r.count) }));
+  }
+
+  async getWarrantyDescriptions(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ description: string; count: number }>> {
+    const conditions = this.buildExploreFilterConditions(filters);
+    conditions.push(nonExpiredCoveredUnitsCondition());
+    
+    const result = await db
+      .select({
+        description: coveredUnit.coverageDescription,
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(coveredUnit)
+      .where(and(...conditions))
+      .groupBy(coveredUnit.coverageDescription)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(20);
+    
+    return result.map(r => ({ description: r.description || 'N/A', count: Number(r.count) }));
+  }
+
+  async getWarrantiesByCategory(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ category: string; month: string; count: number }>> {
+    const conditions = this.buildExploreFilterConditions(filters);
+    conditions.push(nonExpiredCoveredUnitsCondition());
+    
+    const result = await db
+      .select({
+        category: coveredUnit.category,
+        month: sql<string>`TO_CHAR(${coveredUnit.coverageStartDate}, 'YYYY-MM')`.as('month'),
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(coveredUnit)
+      .where(and(...conditions))
+      .groupBy(coveredUnit.category, sql`TO_CHAR(${coveredUnit.coverageStartDate}, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(${coveredUnit.coverageStartDate}, 'YYYY-MM')`);
+    
+    return result.map(r => ({ category: r.category || 'Unknown', month: r.month, count: Number(r.count) }));
+  }
+
+  async getTopCustomersByCoveredUnits(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+    limit?: number;
+  }): Promise<Array<{ customer: string; count: number }>> {
+    const conditions = this.buildExploreFilterConditions(filters);
+    
+    const result = await db
+      .select({
+        customer: coveredUnit.customerName,
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(coveredUnit)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .groupBy(coveredUnit.customerName)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(filters?.limit || 10);
+    
+    return result.map(r => ({ customer: r.customer || 'Unknown', count: Number(r.count) }));
+  }
+
+  async getClaimsByModel(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ model: string; count: number }>> {
+    const conditions: any[] = [];
+    
+    // Claims table only has make and model, no customer or order fields
+    if (filters?.make && filters.make.length > 0) {
+      conditions.push(inArray(claim.make, filters.make));
+    }
+    if (filters?.model && filters.model.length > 0) {
+      conditions.push(inArray(claim.model, filters.model));
+    }
+    
+    const result = await db
+      .select({
+        model: claim.model,
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(claim)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .groupBy(claim.model)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(15);
+    
+    return result.map(r => ({ model: r.model, count: Number(r.count) }));
+  }
+
+  async getReplacementsByModel(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ model: string; count: number }>> {
+    const conditions: any[] = [];
+    
+    // Replacements table only has make and model, no customer or order fields
+    if (filters?.make && filters.make.length > 0) {
+      conditions.push(inArray(replacement.make, filters.make));
+    }
+    if (filters?.model && filters.model.length > 0) {
+      conditions.push(inArray(replacement.model, filters.model));
+    }
+    
+    const result = await db
+      .select({
+        model: replacement.model,
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(replacement)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .groupBy(replacement.model)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(15);
+    
+    return result.map(r => ({ model: r.model, count: Number(r.count) }));
+  }
+
+  async getSparePoolByModel(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ model: string; count: number }>> {
+    const conditions: any[] = [];
+    
+    if (filters?.make && filters.make.length > 0) {
+      conditions.push(inArray(spareUnit.make, filters.make));
+    }
+    if (filters?.model && filters.model.length > 0) {
+      conditions.push(inArray(spareUnit.model, filters.model));
+    }
+    
+    const result = await db
+      .select({
+        model: spareUnit.model,
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(spareUnit)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .groupBy(spareUnit.model)
+      .orderBy(desc(sql`COUNT(*)`));
+    
+    return result.map(r => ({ model: r.model, count: Number(r.count) }));
+  }
+
+  async getMonthlyClaimsReplacements(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ month: string; claims: number; replacements: number }>> {
+    const claimConditions: any[] = [];
+    const replacementConditions: any[] = [];
+    
+    // Claims and replacements tables only have make and model
+    if (filters?.make && filters.make.length > 0) {
+      claimConditions.push(inArray(claim.make, filters.make));
+      replacementConditions.push(inArray(replacement.make, filters.make));
+    }
+    if (filters?.model && filters.model.length > 0) {
+      claimConditions.push(inArray(claim.model, filters.model));
+      replacementConditions.push(inArray(replacement.model, filters.model));
+    }
+    
+    const claims = await db
+      .select({
+        month: sql<string>`TO_CHAR(${claim.claimDate}, 'YYYY-MM')`.as('month'),
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(claim)
+      .where(claimConditions.length > 0 ? and(...claimConditions) : undefined)
+      .groupBy(sql`TO_CHAR(${claim.claimDate}, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(${claim.claimDate}, 'YYYY-MM')`);
+    
+    const replacements = await db
+      .select({
+        month: sql<string>`TO_CHAR(${replacement.replacedDate}, 'YYYY-MM')`.as('month'),
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(replacement)
+      .where(replacementConditions.length > 0 ? and(...replacementConditions) : undefined)
+      .groupBy(sql`TO_CHAR(${replacement.replacedDate}, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(${replacement.replacedDate}, 'YYYY-MM')`);
+    
+    const monthMap = new Map<string, { claims: number; replacements: number }>();
+    
+    claims.forEach(c => {
+      monthMap.set(c.month, { claims: Number(c.count), replacements: 0 });
+    });
+    
+    replacements.forEach(r => {
+      const existing = monthMap.get(r.month);
+      if (existing) {
+        existing.replacements = Number(r.count);
+      } else {
+        monthMap.set(r.month, { claims: 0, replacements: Number(r.count) });
+      }
+    });
+    
+    return Array.from(monthMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, data]) => ({ month, claims: data.claims, replacements: data.replacements }));
+  }
+
+  async getMonthlyWarrantyStarts(filters?: {
+    make?: string[];
+    model?: string[];
+    customer?: string[];
+    order?: string[];
+  }): Promise<Array<{ month: string; count: number }>> {
+    const conditions = this.buildExploreFilterConditions(filters);
+    
+    const result = await db
+      .select({
+        month: sql<string>`TO_CHAR(${coveredUnit.coverageStartDate}, 'YYYY-MM')`.as('month'),
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(coveredUnit)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .groupBy(sql`TO_CHAR(${coveredUnit.coverageStartDate}, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(${coveredUnit.coverageStartDate}, 'YYYY-MM')`);
+    
+    return result.map(r => ({ month: r.month, count: Number(r.count) }));
+  }
+
+  async getExploreFilterOptions(): Promise<{
+    makes: string[];
+    models: string[];
+    customers: string[];
+    orders: string[];
+  }> {
+    const makes = await db
+      .selectDistinct({ value: coveredUnit.make })
+      .from(coveredUnit)
+      .where(sql`${coveredUnit.make} IS NOT NULL AND ${coveredUnit.make} != ''`)
+      .orderBy(coveredUnit.make);
+    
+    const models = await db
+      .selectDistinct({ value: coveredUnit.model })
+      .from(coveredUnit)
+      .where(sql`${coveredUnit.model} IS NOT NULL AND ${coveredUnit.model} != ''`)
+      .orderBy(coveredUnit.model);
+    
+    const customers = await db
+      .selectDistinct({ value: coveredUnit.customerName })
+      .from(coveredUnit)
+      .where(sql`${coveredUnit.customerName} IS NOT NULL AND ${coveredUnit.customerName} != ''`)
+      .orderBy(coveredUnit.customerName);
+    
+    const orders = await db
+      .selectDistinct({ value: coveredUnit.orderNumber })
+      .from(coveredUnit)
+      .where(sql`${coveredUnit.orderNumber} IS NOT NULL AND ${coveredUnit.orderNumber} != ''`)
+      .orderBy(coveredUnit.orderNumber);
+    
+    return {
+      makes: makes.map(m => m.value).filter(Boolean),
+      models: models.map(m => m.value).filter(Boolean),
+      customers: customers.map(c => c.value).filter(Boolean),
+      orders: orders.map(o => o.value).filter(Boolean),
+    };
   }
 }
 
