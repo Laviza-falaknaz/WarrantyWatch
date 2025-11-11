@@ -604,8 +604,8 @@ export default function MonitorDashboard() {
 
         {/* 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: lg:col-span-9 - Insights + Heatmap + Coverage Pools */}
-          <div className="lg:col-span-9 space-y-6">
+          {/* Left Column: lg:col-span-8 - Insights + Heatmap + Coverage Pools */}
+          <div className="lg:col-span-8 space-y-6">
             {/* Insight Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="rounded-2xl">
@@ -1001,8 +1001,8 @@ export default function MonitorDashboard() {
             </div>
           </div>
 
-          {/* Right Column: lg:col-span-3 - Units Running Out */}
-          <div className="lg:col-span-3" ref={riskCombinationsRef}>
+          {/* Right Column: lg:col-span-4 - Units Running Out */}
+          <div className="lg:col-span-4" ref={riskCombinationsRef}>
             <Card className="rounded-2xl">
               <CardHeader>
                 <div className="space-y-3">
@@ -1162,109 +1162,122 @@ export default function MonitorDashboard() {
                         
                         return (
                           <Card key={comboKey} className="rounded-xl hover-elevate">
-                            <CardContent className="p-3">
-                              <div className="space-y-2.5">
-                                <div className="flex items-start gap-2">
-                                  <Checkbox
-                                    checked={isSelected}
-                                    onCheckedChange={(checked) => {
-                                      const newSelected = new Set(selectedRiskItems);
-                                      if (checked) {
-                                        newSelected.add(comboKey);
-                                      } else {
-                                        newSelected.delete(comboKey);
-                                      }
-                                      setSelectedRiskItems(newSelected);
-                                    }}
-                                    data-testid={`checkbox-risk-${index}`}
-                                  />
-                                  
-                                  <div className="flex-1 min-w-0 space-y-2">
-                                    {/* Header: Make/Model + Risk Badge */}
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold truncate">
-                                          {combo.make} {combo.model}
+                            <CardContent className="p-4">
+                              <div className="flex gap-3">
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => {
+                                    const newSelected = new Set(selectedRiskItems);
+                                    if (checked) {
+                                      newSelected.add(comboKey);
+                                    } else {
+                                      newSelected.delete(comboKey);
+                                    }
+                                    setSelectedRiskItems(newSelected);
+                                  }}
+                                  data-testid={`checkbox-risk-${index}`}
+                                  className="mt-1"
+                                />
+                                
+                                <div className="flex-1 min-w-0 space-y-4">
+                                  {/* Header: Make/Model + Risk Badge */}
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <h3 className="text-base font-semibold truncate leading-tight">
+                                        {combo.make} {combo.model}
+                                      </h3>
+                                      {combo.processor && (
+                                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                          {combo.processor}
                                         </p>
-                                        {combo.processor && (
-                                          <p className="text-xs text-muted-foreground truncate">
-                                            {combo.processor}
-                                          </p>
-                                        )}
-                                      </div>
-                                      <Badge className={riskBadgeClass(combo.risk_level)} variant="outline">
-                                        {combo.risk_level}
-                                      </Badge>
+                                      )}
                                     </div>
-                                    
-                                    {/* Critical Alert: Time to stockout + Uncovered units */}
-                                    <div className="bg-muted/40 rounded-lg p-2 space-y-1.5">
-                                      <Badge className={`${urgency.class} font-bold text-xs w-full justify-center py-1`} variant="outline">
-                                        {urgency.text}
-                                      </Badge>
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="text-muted-foreground font-medium">Units at Risk</span>
-                                        <span className="font-bold text-base">{uncoveredUnits}</span>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Compact stats: Demand / Supply */}
-                                    <div className="grid grid-cols-3 gap-1.5 text-xs">
-                                      <div className="text-center p-1.5 bg-background rounded border">
-                                        <p className="text-muted-foreground mb-0.5 text-[10px]">Coverage</p>
-                                        <p className="font-bold">{coverageRatio.toFixed(1)}%</p>
-                                      </div>
-                                      <div className="text-center p-1.5 bg-background rounded border">
-                                        <p className="text-muted-foreground mb-0.5 text-[10px]">Demand</p>
-                                        <p className="font-bold">{runRate.toFixed(1)}/mo</p>
-                                      </div>
-                                      <div className="text-center p-1.5 bg-background rounded border">
-                                        <p className="text-muted-foreground mb-0.5 text-[10px]">Spares</p>
-                                        <p className="font-bold">{spareCount}</p>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Regional stock availability */}
-                                    <div className="flex items-center gap-2 text-xs bg-background rounded-lg p-2 border">
-                                      <Package className="w-3.5 h-3.5 text-muted-foreground" />
-                                      <span className="text-muted-foreground font-medium">Available:</span>
-                                      <div className="flex items-center gap-2 ml-auto">
-                                        <div className="flex items-center gap-1">
-                                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                          <span className="font-semibold">{ukAvailable} UK</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                                          <span className="font-semibold">{uaeAvailable} UAE</span>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {!hasBulkSelection && (
-                                      <div className="flex items-center gap-1.5 pt-1">
-                                        <Button 
-                                          size="sm" 
-                                          variant="default" 
-                                          className="flex-1 gap-1 h-8"
-                                          onClick={() => handleSendAlert(combo)}
-                                          data-testid={`button-send-alert-${index}`}
-                                        >
-                                          <Bell className="w-3 h-3" />
-                                          Alert
-                                        </Button>
-                                        <Button 
-                                          size="sm" 
-                                          variant="outline" 
-                                          className="flex-1 gap-1 h-8"
-                                          onClick={() => handleCreatePool(combo)}
-                                          data-testid={`button-create-pool-${index}`}
-                                        >
-                                          <FolderPlus className="w-3 h-3" />
-                                          Pool
-                                        </Button>
-                                      </div>
-                                    )}
+                                    <Badge className={riskBadgeClass(combo.risk_level)} variant="outline">
+                                      {combo.risk_level}
+                                    </Badge>
                                   </div>
+                                  
+                                  {/* Primary Metrics: Time to stockout + Units at Risk */}
+                                  <div className="bg-muted/10 rounded-lg p-3 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-muted-foreground font-medium">Time to Stockout</span>
+                                      <span className={`text-lg font-bold ${
+                                        urgency.class.includes('red') ? 'text-red-600 dark:text-red-400' :
+                                        urgency.class.includes('orange') ? 'text-orange-600 dark:text-orange-400' :
+                                        urgency.class.includes('amber') ? 'text-amber-600 dark:text-amber-500' :
+                                        'text-green-600 dark:text-green-400'
+                                      }`}>
+                                        {urgency.text}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-muted-foreground font-medium">Units at Risk</span>
+                                      <span className="text-2xl font-bold">{uncoveredUnits}</span>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Secondary Metrics Grid */}
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                      <p className="text-xs text-muted-foreground mb-1">Coverage</p>
+                                      <p className="text-sm font-bold">{coverageRatio.toFixed(1)}%</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-muted-foreground mb-1">Demand</p>
+                                      <p className="text-sm font-bold">{runRate.toFixed(1)}/mo</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-muted-foreground mb-1">Spares</p>
+                                      <p className="text-sm font-bold">{spareCount}</p>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Regional Availability */}
+                                  <div className="pt-3 border-t">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                                        <Package className="w-3.5 h-3.5" />
+                                        Available Stock
+                                      </span>
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-1.5">
+                                          <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                          <span className="font-semibold">{ukAvailable}</span>
+                                          <span className="text-muted-foreground">UK</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                          <div className="w-2 h-2 rounded-full bg-purple-500" />
+                                          <span className="font-semibold">{uaeAvailable}</span>
+                                          <span className="text-muted-foreground">UAE</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {!hasBulkSelection && (
+                                    <div className="flex items-center gap-2 pt-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="default" 
+                                        className="flex-1 gap-1.5"
+                                        onClick={() => handleSendAlert(combo)}
+                                        data-testid={`button-send-alert-${index}`}
+                                      >
+                                        <Bell className="w-3.5 h-3.5" />
+                                        Send Alert
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        className="flex-1 gap-1.5"
+                                        onClick={() => handleCreatePool(combo)}
+                                        data-testid={`button-create-pool-${index}`}
+                                      >
+                                        <FolderPlus className="w-3.5 h-3.5" />
+                                        Create Pool
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </CardContent>
