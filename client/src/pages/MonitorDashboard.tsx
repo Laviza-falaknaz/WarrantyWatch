@@ -406,34 +406,42 @@ export default function MonitorDashboard() {
   }, [heatmapData]);
 
   const monthHeaders = useMemo(() => {
+    if (heatmapWeeks.length === 0) return [];
+    
     const headers: { weekIndex: number; month: string; weekCount: number }[] = [];
-    let lastMonth = -1;
-    let lastHeaderIndex = -1;
+    let currentMonth = -1;
+    let monthStartWeek = 0;
 
     heatmapWeeks.forEach((week, weekIndex) => {
-      const firstRealDay = week.find(cell => cell.count !== -1);
-      if (firstRealDay) {
-        const month = firstRealDay.date.getMonth();
-        if (month !== lastMonth) {
-          // Update previous header's weekCount
-          if (lastHeaderIndex >= 0) {
-            headers[lastHeaderIndex].weekCount = weekIndex - headers[lastHeaderIndex].weekIndex;
+      // Find the first real cell (non-padding) in this week
+      const firstRealCell = week.find(cell => cell.count !== -1);
+      
+      if (firstRealCell) {
+        const month = firstRealCell.date.getMonth();
+        
+        // If we've encountered a new month
+        if (month !== currentMonth) {
+          // Finalize the previous month's week count
+          if (headers.length > 0) {
+            headers[headers.length - 1].weekCount = weekIndex - monthStartWeek;
           }
           
+          // Start a new month header
           headers.push({
             weekIndex,
-            month: format(firstRealDay.date, 'MMM'),
-            weekCount: 1,
+            month: format(firstRealCell.date, 'MMM'),
+            weekCount: 1, // Will be updated when next month starts or at the end
           });
-          lastMonth = month;
-          lastHeaderIndex = headers.length - 1;
+          
+          currentMonth = month;
+          monthStartWeek = weekIndex;
         }
       }
     });
 
-    // Update last header's weekCount
-    if (lastHeaderIndex >= 0 && headers[lastHeaderIndex]) {
-      headers[lastHeaderIndex].weekCount = heatmapWeeks.length - headers[lastHeaderIndex].weekIndex;
+    // Finalize the last month's week count
+    if (headers.length > 0) {
+      headers[headers.length - 1].weekCount = heatmapWeeks.length - monthStartWeek;
     }
 
     return headers;
