@@ -1327,11 +1327,27 @@ export class DatabaseStorage implements IStorage {
     // Build filter conditions for pool matching
     const buildFilterConditions = (table: typeof claim | typeof replacement | typeof spareUnit | typeof coveredUnit | typeof availableStock) => {
       const conditions = [];
-      if (filterCriteria.make?.length) conditions.push(inArray(table.make, filterCriteria.make));
-      if (filterCriteria.model?.length) conditions.push(inArray(table.model, filterCriteria.model));
-      if (filterCriteria.processor?.length) conditions.push(inArray(table.processor, filterCriteria.processor));
-      if (filterCriteria.ram?.length) conditions.push(inArray(table.ram, filterCriteria.ram));
-      if (filterCriteria.category?.length) conditions.push(inArray(table.category, filterCriteria.category));
+      // Handle both string and array formats for filter criteria
+      if (filterCriteria.make) {
+        const makeArray = Array.isArray(filterCriteria.make) ? filterCriteria.make : [filterCriteria.make];
+        conditions.push(inArray(table.make, makeArray));
+      }
+      if (filterCriteria.model) {
+        const modelArray = Array.isArray(filterCriteria.model) ? filterCriteria.model : [filterCriteria.model];
+        conditions.push(inArray(table.model, modelArray));
+      }
+      if (filterCriteria.processor) {
+        const processorArray = Array.isArray(filterCriteria.processor) ? filterCriteria.processor : [filterCriteria.processor];
+        conditions.push(inArray(table.processor, processorArray));
+      }
+      if (filterCriteria.ram) {
+        const ramArray = Array.isArray(filterCriteria.ram) ? filterCriteria.ram : [filterCriteria.ram];
+        conditions.push(inArray(table.ram, ramArray));
+      }
+      if (filterCriteria.category) {
+        const categoryArray = Array.isArray(filterCriteria.category) ? filterCriteria.category : [filterCriteria.category];
+        conditions.push(inArray(table.category, categoryArray));
+      }
       return conditions;
     };
     
@@ -1386,9 +1402,25 @@ export class DatabaseStorage implements IStorage {
       .from(availableStock)
       .where(availableConditions.length > 0 ? and(...availableConditions) : undefined);
     
+    // Get UK available stock
+    const ukConditions = [sql`UPPER(${availableStock.areaId}) = 'UK'`, ...availableConditions];
+    const [ukAvailableResult] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(availableStock)
+      .where(and(...ukConditions));
+    
+    // Get UAE available stock
+    const uaeConditions = [sql`UPPER(${availableStock.areaId}) = 'UAE'`, ...availableConditions];
+    const [uaeAvailableResult] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(availableStock)
+      .where(and(...uaeConditions));
+    
     const currentSpareCount = currentSpareResult?.count || 0;
     const currentCoveredCount = currentCoveredResult?.count || 0;
     const currentAvailableStockCount = currentAvailableResult?.count || 0;
+    const currentUkAvailableCount = ukAvailableResult?.count || 0;
+    const currentUaeAvailableCount = uaeAvailableResult?.count || 0;
     const currentCoverageRatio = currentCoveredCount > 0 ? (currentSpareCount / currentCoveredCount) * 100 : 0;
     
     // Generate monthly data array with all months in range
@@ -1523,6 +1555,8 @@ export class DatabaseStorage implements IStorage {
       currentSpareCount,
       currentCoveredCount,
       currentAvailableStockCount,
+      currentUkAvailableCount,
+      currentUaeAvailableCount,
       currentCoverageRatio,
       targetCoverageRatio: targetCoveragePercent,
       

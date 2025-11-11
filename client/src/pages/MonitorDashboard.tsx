@@ -195,7 +195,7 @@ export default function MonitorDashboard() {
   const [selectedDateCell, setSelectedDateCell] = useState<HeatmapCell | null>(null);
   const [dialogSearch, setDialogSearch] = useState("");
 
-  const endDate = useMemo(() => addMonths(startDate, 12), [startDate]);
+  const endDate = useMemo(() => addMonths(startDate, 15), [startDate]);
   const hasBulkSelection = selectedRiskItems.size > 1;
 
   const { data: coveredUnits, isLoading } = useQuery<CoveredUnit[]>({
@@ -358,7 +358,7 @@ export default function MonitorDashboard() {
     const filtered = coveredUnits.filter((unit) => {
       if (!unit.isCoverageActive) return false;
       const endDate = new Date(unit.coverageEndDate);
-      if (endDate < startDate || endDate > addMonths(startDate, 12)) return false;
+      if (endDate < startDate || endDate > addMonths(startDate, 15)) return false;
 
       if (filters.orderNumber && unit.orderNumber !== filters.orderNumber) return false;
       if (filters.customerName && unit.customerName !== filters.customerName) return false;
@@ -368,7 +368,7 @@ export default function MonitorDashboard() {
       return true;
     });
 
-    const days = eachDayOfInterval({ start: startDate, end: addMonths(startDate, 12) });
+    const days = eachDayOfInterval({ start: startDate, end: addMonths(startDate, 15) });
     
     return days.map((date) => {
       const unitsExpiringOnDay = filtered.filter((unit) => {
@@ -463,7 +463,7 @@ export default function MonitorDashboard() {
           // Start a new month header
           headers.push({
             weekIndex,
-            month: format(firstRealCell.date, 'MMM'),
+            month: format(firstRealCell.date, 'MMM yy'),
             weekCount: 1, // Will be updated when next month starts or at the end
           });
           
@@ -914,6 +914,11 @@ export default function MonitorDashboard() {
                     
                     const coverageRatio = Number(pool.coverageRatio) || 0;
 
+                    const runRate = Number(pool.runRate) || 0;
+                    const inventoryRunway = runRate > 0 ? pool.spareCount / runRate : 0; // months of inventory
+                    const ukAvailable = Number(pool.ukAvailableCount) || 0;
+                    const uaeAvailable = Number(pool.uaeAvailableCount) || 0;
+
                     return (
                       <Link key={pool.id} href={`/pools/${pool.id}`}>
                         <Card className="rounded-2xl hover-elevate cursor-pointer" data-testid={`card-pool-${pool.id}`}>
@@ -926,8 +931,31 @@ export default function MonitorDashboard() {
                                 </span>
                               </div>
                               
-                              <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>{pool.spareCount} spare / {pool.coveredCount} covered</span>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <p className="text-muted-foreground">Spare / Covered</p>
+                                  <p className="font-medium">{pool.spareCount} / {pool.coveredCount}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Run Rate</p>
+                                  <p className="font-medium">{runRate.toFixed(1)}/mo</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Warranty Cov.</p>
+                                  <p className="font-medium">{coverageRatio.toFixed(1)}%</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Runway</p>
+                                  <p className="font-medium">{inventoryRunway.toFixed(1)}mo</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Available UK</p>
+                                  <p className="font-medium">{ukAvailable}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Available UAE</p>
+                                  <p className="font-medium">{uaeAvailable}</p>
+                                </div>
                               </div>
                               
                               <Progress value={coverageRatio} className="h-1" />
@@ -1121,6 +1149,14 @@ export default function MonitorDashboard() {
                                       <div>
                                         <p className="text-muted-foreground">Spare</p>
                                         <p className="font-medium">{Number(combo.spare_count) || 0}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Available UK</p>
+                                        <p className="font-medium">{Number(combo.uk_available_count) || 0}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Available UAE</p>
+                                        <p className="font-medium">{Number(combo.uae_available_count) || 0}</p>
                                       </div>
                                     </div>
 

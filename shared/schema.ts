@@ -324,6 +324,8 @@ export type CoveragePoolWithStats = CoveragePool & {
   coveredCount: number; // units in field under coverage
   coverageRatio: number; // spareCount / coveredCount
   availableStockCount?: number; // available stock matching pool criteria
+  ukAvailableCount?: number; // UK available stock matching pool criteria
+  uaeAvailableCount?: number; // UAE available stock matching pool criteria
   claimsLast6Months?: number; // claims in last 6 months matching pool criteria
   runRate?: number; // claims per month
 };
@@ -365,6 +367,8 @@ export interface CoveragePoolAnalytics {
   currentSpareCount: number;
   currentCoveredCount: number;
   currentAvailableStockCount: number;
+  currentUkAvailableCount?: number; // UK available stock
+  currentUaeAvailableCount?: number; // UAE available stock
   currentCoverageRatio: number; // percentage
   targetCoverageRatio: number; // percentage (from configuration)
   

@@ -289,7 +289,77 @@ export default function PoolDetail() {
         </Alert>
       )}
 
-      {/* KPI Cards */}
+      {/* Basic Count Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* Total Claims */}
+        <Card data-testid="card-total-claims">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Total Claims</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="value-total-claims">{analytics.totalClaims}</div>
+          </CardContent>
+        </Card>
+
+        {/* Total Replacements */}
+        <Card data-testid="card-total-replacements">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Replacements</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="value-total-replacements">{analytics.totalReplacements}</div>
+          </CardContent>
+        </Card>
+
+        {/* Run Rate */}
+        <Card data-testid="card-run-rate">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Run Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="value-run-rate">{analytics.averageMonthlyClaimRate.toFixed(1)}</div>
+            <p className="text-xs text-muted-foreground">claims/month</p>
+          </CardContent>
+        </Card>
+
+        {/* Pool Stock (Spare Units) */}
+        <Card data-testid="card-pool-stock">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Pool Stock</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="value-pool-stock">{analytics.currentSpareCount}</div>
+            <p className="text-xs text-muted-foreground">spare units</p>
+          </CardContent>
+        </Card>
+
+        {/* Covered Stock */}
+        <Card data-testid="card-covered-stock">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Covered Stock</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="value-covered-stock">{analytics.currentCoveredCount}</div>
+            <p className="text-xs text-muted-foreground">covered units</p>
+          </CardContent>
+        </Card>
+
+        {/* Available Stock Combined */}
+        <Card data-testid="card-available-combined">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Available Stock</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="value-available-combined">{analytics.currentAvailableStockCount}</div>
+            <div className="text-xs text-muted-foreground space-y-0.5">
+              <div>UK: {analytics.currentUkAvailableCount || 0}</div>
+              <div>UAE: {analytics.currentUaeAvailableCount || 0}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Detailed KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Coverage Ratio */}
         <Card data-testid="card-coverage-ratio">
