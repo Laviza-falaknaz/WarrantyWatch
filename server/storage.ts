@@ -26,7 +26,7 @@ import {
   appConfiguration
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, like, or, sql, desc, inArray, gte, lte } from "drizzle-orm";
+import { eq, and, like, or, sql, desc, inArray, gte, lte, isNotNull } from "drizzle-orm";
 
 // Helper: Returns SQL condition to filter out expired covered units
 // Only includes units where coverageEndDate >= today
@@ -34,6 +34,34 @@ function nonExpiredCoveredUnitsCondition() {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Start of today
   return gte(coveredUnit.coverageEndDate, today);
+}
+
+// Helper: Creates case-insensitive IN condition using UPPER()
+// Normalizes values to uppercase and deduplicates before building SQL
+// Guards against NULL columns to preserve NULL row semantics
+function caseInsensitiveIn(column: any, values: string[]) {
+  if (!values || values.length === 0) {
+    return undefined;
+  }
+  
+  // Filter out falsy/whitespace-only values and normalize to uppercase (locale-aware)
+  const normalizedValues = values
+    .filter(v => v && typeof v === 'string' && v.trim().length > 0)
+    .map(v => v.toLocaleUpperCase('en-US'));
+  
+  // Deduplicate
+  const upperValues = [...new Set(normalizedValues)];
+  
+  if (upperValues.length === 0) {
+    return undefined;
+  }
+  
+  // Build UPPER(column) IN (val1, val2, ...) using sql.join
+  const sqlValues = upperValues.map(v => sql`${v}`);
+  const inClause = sql`UPPER(${column}) IN (${sql.join(sqlValues, sql`, `)})`;
+  
+  // Combine with isNotNull check to preserve NULL row semantics
+  return and(isNotNull(column), inClause);
 }
 
 export interface IStorage {
@@ -410,38 +438,31 @@ export class DatabaseStorage implements IStorage {
     
     // Note: Expired units are now included in results to enable comprehensive filtering
     // Users can filter by status or date ranges to control whether expired units appear
+    // Case-insensitive filtering using helper function
     
-    if (filters?.make && filters.make.length > 0) {
-      conditions.push(inArray(coveredUnit.make, filters.make));
-    }
+    const makeCondition = caseInsensitiveIn(coveredUnit.make, filters?.make || []);
+    if (makeCondition) conditions.push(makeCondition);
     
-    if (filters?.model && filters.model.length > 0) {
-      conditions.push(inArray(coveredUnit.model, filters.model));
-    }
+    const modelCondition = caseInsensitiveIn(coveredUnit.model, filters?.model || []);
+    if (modelCondition) conditions.push(modelCondition);
     
-    if (filters?.processor && filters.processor.length > 0) {
-      conditions.push(inArray(coveredUnit.processor, filters.processor));
-    }
+    const processorCondition = caseInsensitiveIn(coveredUnit.processor, filters?.processor || []);
+    if (processorCondition) conditions.push(processorCondition);
     
-    if (filters?.ram && filters.ram.length > 0) {
-      conditions.push(inArray(coveredUnit.ram, filters.ram));
-    }
+    const ramCondition = caseInsensitiveIn(coveredUnit.ram, filters?.ram || []);
+    if (ramCondition) conditions.push(ramCondition);
     
-    if (filters?.category && filters.category.length > 0) {
-      conditions.push(inArray(coveredUnit.category, filters.category));
-    }
+    const categoryCondition = caseInsensitiveIn(coveredUnit.category, filters?.category || []);
+    if (categoryCondition) conditions.push(categoryCondition);
     
-    if (filters?.customerName && filters.customerName.length > 0) {
-      conditions.push(inArray(coveredUnit.customerName, filters.customerName));
-    }
+    const customerCondition = caseInsensitiveIn(coveredUnit.customerName, filters?.customerName || []);
+    if (customerCondition) conditions.push(customerCondition);
     
-    if (filters?.orderNumber && filters.orderNumber.length > 0) {
-      conditions.push(inArray(coveredUnit.orderNumber, filters.orderNumber));
-    }
+    const orderCondition = caseInsensitiveIn(coveredUnit.orderNumber, filters?.orderNumber || []);
+    if (orderCondition) conditions.push(orderCondition);
     
-    if (filters?.coverageDescription && filters.coverageDescription.length > 0) {
-      conditions.push(inArray(coveredUnit.coverageDescription, filters.coverageDescription));
-    }
+    const descriptionCondition = caseInsensitiveIn(coveredUnit.coverageDescription, filters?.coverageDescription || []);
+    if (descriptionCondition) conditions.push(descriptionCondition);
     
     if (filters?.coverageStartDateFrom) {
       const startDate = new Date(filters.coverageStartDateFrom);
@@ -700,7 +721,7 @@ export class DatabaseStorage implements IStorage {
     orders: string[];
     coverageDescriptions: string[];
   }> {
-    // Get filter options from covered units only
+    // Get filter options from covered units only (case-insensitive)
     const items = await db.select({
       make: coveredUnit.make,
       model: coveredUnit.model,
@@ -709,11 +730,11 @@ export class DatabaseStorage implements IStorage {
       coverageDescription: coveredUnit.coverageDescription,
     }).from(coveredUnit).where(nonExpiredCoveredUnitsCondition());
     
-    const makes = Array.from(new Set(items.map(i => i.make).filter(Boolean) as string[])).sort();
-    const models = Array.from(new Set(items.map(i => i.model).filter(Boolean) as string[])).sort();
-    const customers = Array.from(new Set(items.map(i => i.customerName).filter(Boolean) as string[])).sort();
-    const orders = Array.from(new Set(items.map(i => i.orderNumber).filter(Boolean) as string[])).sort();
-    const coverageDescriptions = Array.from(new Set(items.map(i => i.coverageDescription).filter(Boolean) as string[])).sort();
+    const makes = Array.from(new Set(items.map(i => i.make?.toUpperCase()).filter(Boolean) as string[])).sort();
+    const models = Array.from(new Set(items.map(i => i.model?.toUpperCase()).filter(Boolean) as string[])).sort();
+    const customers = Array.from(new Set(items.map(i => i.customerName?.toUpperCase()).filter(Boolean) as string[])).sort();
+    const orders = Array.from(new Set(items.map(i => i.orderNumber?.toUpperCase()).filter(Boolean) as string[])).sort();
+    const coverageDescriptions = Array.from(new Set(items.map(i => i.coverageDescription?.toUpperCase()).filter(Boolean) as string[])).sort();
     
     return { makes, models, customers, orders, coverageDescriptions };
   }
@@ -805,40 +826,32 @@ export class DatabaseStorage implements IStorage {
     const config = await this.getConfiguration();
     const expiringDays = config.expiringCoverageDays;
     
-    // Build filter conditions (same as getCoveredUnits but for COUNT queries)
+    // Build filter conditions (same as getCoveredUnits but for COUNT queries) - case-insensitive
     const conditions = [];
     
-    if (filters?.make && filters.make.length > 0) {
-      conditions.push(inArray(coveredUnit.make, filters.make));
-    }
+    const makeCondition = caseInsensitiveIn(coveredUnit.make, filters?.make || []);
+    if (makeCondition) conditions.push(makeCondition);
     
-    if (filters?.model && filters.model.length > 0) {
-      conditions.push(inArray(coveredUnit.model, filters.model));
-    }
+    const modelCondition = caseInsensitiveIn(coveredUnit.model, filters?.model || []);
+    if (modelCondition) conditions.push(modelCondition);
     
-    if (filters?.processor && filters.processor.length > 0) {
-      conditions.push(inArray(coveredUnit.processor, filters.processor));
-    }
+    const processorCondition = caseInsensitiveIn(coveredUnit.processor, filters?.processor || []);
+    if (processorCondition) conditions.push(processorCondition);
     
-    if (filters?.ram && filters.ram.length > 0) {
-      conditions.push(inArray(coveredUnit.ram, filters.ram));
-    }
+    const ramCondition = caseInsensitiveIn(coveredUnit.ram, filters?.ram || []);
+    if (ramCondition) conditions.push(ramCondition);
     
-    if (filters?.category && filters.category.length > 0) {
-      conditions.push(inArray(coveredUnit.category, filters.category));
-    }
+    const categoryCondition = caseInsensitiveIn(coveredUnit.category, filters?.category || []);
+    if (categoryCondition) conditions.push(categoryCondition);
     
-    if (filters?.customerName && filters.customerName.length > 0) {
-      conditions.push(inArray(coveredUnit.customerName, filters.customerName));
-    }
+    const customerCondition = caseInsensitiveIn(coveredUnit.customerName, filters?.customerName || []);
+    if (customerCondition) conditions.push(customerCondition);
     
-    if (filters?.orderNumber && filters.orderNumber.length > 0) {
-      conditions.push(inArray(coveredUnit.orderNumber, filters.orderNumber));
-    }
+    const orderCondition = caseInsensitiveIn(coveredUnit.orderNumber, filters?.orderNumber || []);
+    if (orderCondition) conditions.push(orderCondition);
     
-    if (filters?.coverageDescription && filters.coverageDescription.length > 0) {
-      conditions.push(inArray(coveredUnit.coverageDescription, filters.coverageDescription));
-    }
+    const descriptionCondition = caseInsensitiveIn(coveredUnit.coverageDescription, filters?.coverageDescription || []);
+    if (descriptionCondition) conditions.push(descriptionCondition);
     
     if (filters?.coverageStartDateFrom) {
       const startDate = new Date(filters.coverageStartDateFrom);

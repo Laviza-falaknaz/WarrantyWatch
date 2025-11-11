@@ -351,19 +351,26 @@ export default function MonitorDashboard() {
     });
   };
 
-  // Filter and map warranty expiration data
+  // Filter and map warranty expiration data (case-insensitive filtering)
   const heatmapData = useMemo(() => {
     if (!coveredUnits) return [];
+
+    // Cache normalized filter values (locale-aware uppercasing)
+    const orderNumberUpper = filters.orderNumber?.toLocaleUpperCase('en-US');
+    const customerNameUpper = filters.customerName?.toLocaleUpperCase('en-US');
+    const makeUpper = filters.make?.toLocaleUpperCase('en-US');
+    const modelUpper = filters.model?.toLocaleUpperCase('en-US');
 
     const filtered = coveredUnits.filter((unit) => {
       if (!unit.isCoverageActive) return false;
       const endDate = new Date(unit.coverageEndDate);
       if (endDate < startDate || endDate > addMonths(startDate, 13)) return false;
 
-      if (filters.orderNumber && unit.orderNumber !== filters.orderNumber) return false;
-      if (filters.customerName && unit.customerName !== filters.customerName) return false;
-      if (filters.make && unit.make !== filters.make) return false;
-      if (filters.model && unit.model !== filters.model) return false;
+      // Case-insensitive comparisons using cached uppercase values
+      if (orderNumberUpper && unit.orderNumber?.toLocaleUpperCase('en-US') !== orderNumberUpper) return false;
+      if (customerNameUpper && unit.customerName?.toLocaleUpperCase('en-US') !== customerNameUpper) return false;
+      if (makeUpper && unit.make?.toLocaleUpperCase('en-US') !== makeUpper) return false;
+      if (modelUpper && unit.model?.toLocaleUpperCase('en-US') !== modelUpper) return false;
 
       return true;
     });
@@ -481,16 +488,34 @@ export default function MonitorDashboard() {
     return headers;
   }, [heatmapWeeks]);
 
-  // Extract unique filter options from covered units
+  // Extract unique filter options from covered units (preserving original casing)
+  // Case-insensitive deduplication by comparing uppercased values
   const filterOptions = useMemo(() => {
     if (!coveredUnits) {
       return { makes: [], models: [], customers: [], orders: [] };
     }
 
-    const makes = Array.from(new Set(coveredUnits.map(u => u.make).filter((v): v is string => Boolean(v)))).sort();
-    const models = Array.from(new Set(coveredUnits.map(u => u.model).filter((v): v is string => Boolean(v)))).sort();
-    const customers = Array.from(new Set(coveredUnits.map(u => u.customerName).filter((v): v is string => Boolean(v)))).sort();
-    const orders = Array.from(new Set(coveredUnits.map(u => u.orderNumber).filter((v): v is string => Boolean(v)))).sort();
+    // Deduplicate case-insensitively but preserve first occurrence's original casing
+    const deduplicateCaseInsensitive = (values: (string | undefined | null)[]) => {
+      const seen = new Set<string>();
+      const result: string[] = [];
+      
+      for (const val of values) {
+        if (!val) continue;
+        const upper = val.toUpperCase();
+        if (!seen.has(upper)) {
+          seen.add(upper);
+          result.push(val); // Preserve original casing
+        }
+      }
+      
+      return result.sort((a, b) => a.toUpperCase().localeCompare(b.toUpperCase()));
+    };
+
+    const makes = deduplicateCaseInsensitive(coveredUnits.map(u => u.make));
+    const models = deduplicateCaseInsensitive(coveredUnits.map(u => u.model));
+    const customers = deduplicateCaseInsensitive(coveredUnits.map(u => u.customerName));
+    const orders = deduplicateCaseInsensitive(coveredUnits.map(u => u.orderNumber));
 
     return { makes, models, customers, orders };
   }, [coveredUnits]);
