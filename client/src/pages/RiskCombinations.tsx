@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -92,6 +92,13 @@ export default function RiskCombinations() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredCombinations.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredCombinations, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when filters change and current page is out of bounds
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
 
   // Mutations for creating pools and sending alerts
   const createPoolMutation = useMutation({
