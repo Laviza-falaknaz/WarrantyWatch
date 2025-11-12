@@ -828,10 +828,14 @@ export default function MonitorDashboard() {
                 <div className="overflow-x-auto">
                   <div className="flex gap-2 min-w-max">
                     {/* Day Labels */}
-                    <div className="flex flex-col justify-around text-xs text-muted-foreground font-medium pt-6" style={{ width: '32px' }}>
-                      <div>Mon</div>
-                      <div>Wed</div>
-                      <div>Fri</div>
+                    <div className="flex flex-col gap-0.5 text-xs text-muted-foreground font-medium" style={{ paddingTop: '32px', width: '32px' }}>
+                      <div className="h-4 flex items-center">Mon</div>
+                      <div className="h-4" />
+                      <div className="h-4 flex items-center">Wed</div>
+                      <div className="h-4" />
+                      <div className="h-4 flex items-center">Fri</div>
+                      <div className="h-4" />
+                      <div className="h-4" />
                     </div>
 
                     {/* Grid with Month Headers */}
