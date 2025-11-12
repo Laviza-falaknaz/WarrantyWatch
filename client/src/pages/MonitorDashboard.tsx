@@ -1003,97 +1003,126 @@ export default function MonitorDashboard() {
                         )}
                         data-testid={`model-item-${index}`}
                       >
-                        <CardContent className="p-4 space-y-3">
-                          {/* Header: Checkbox + Days Badge */}
-                          <div className="flex items-start gap-2">
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={() => toggleModelSelection(model)}
-                              data-testid={`checkbox-model-${index}`}
-                              className="mt-1"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className={cn(
-                                  "flex items-center justify-center px-3 py-1 rounded-lg font-bold text-sm shadow-sm",
-                                  model.risk_level === 'critical' && "bg-red-600 text-white",
-                                  model.risk_level === 'high' && "bg-orange-500 text-white",
-                                  model.risk_level === 'medium' && "bg-amber-400 text-amber-950",
-                                  model.risk_level === 'low' && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                )}>
-                                  {model.days_of_supply !== null 
-                                    ? `${Math.floor(Number(model.days_of_supply) || 0)} days` 
-                                    : 'No demand'}
-                                </div>
-                                <Badge 
-                                  variant={hasCoverage ? "default" : "destructive"}
-                                  className="text-xs font-semibold"
-                                >
-                                  {hasCoverage ? "Coverage" : "No Coverage"}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Model Info */}
-                          <div className="space-y-2">
-                            <h3 className="font-semibold text-base leading-tight line-clamp-2">
-                              {model.make} {model.model}
-                            </h3>
-                            
-                            {/* Metrics Grid */}
-                            <div className="grid grid-cols-3 gap-2 text-center">
-                              <div className="bg-muted/30 rounded-md p-2">
-                                <p className="text-xs text-muted-foreground mb-0.5">Active</p>
-                                <p className="font-bold text-sm">{model.covered_count || 0}</p>
-                              </div>
-                              <div className="bg-muted/30 rounded-md p-2">
-                                <p className="text-xs text-muted-foreground mb-0.5">Spare</p>
-                                <p className="font-bold text-sm">{model.spare_count || 0}</p>
-                              </div>
-                              <div className="bg-muted/30 rounded-md p-2">
-                                <p className="text-xs text-muted-foreground mb-0.5">Run/mo</p>
-                                <p className="font-bold text-sm">{(Number(model.run_rate) || 0).toFixed(1)}</p>
-                              </div>
-                            </div>
-
-                            {/* Regional Stock */}
-                            <div className="flex items-center justify-between text-xs bg-muted/20 rounded-md p-2">
-                              <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1">
-                                  <div className="w-2 h-2 rounded-full bg-blue-500" />
-                                  <span className="font-semibold">UK: {model.uk_available_count || 0}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <div className="w-2 h-2 rounded-full bg-purple-500" />
-                                  <span className="font-semibold">UAE: {model.uae_available_count || 0}</span>
+                        <CardContent className="p-0">
+                          {/* Header Section with Color Coding */}
+                          <div className={cn(
+                            "p-3 rounded-t-2xl border-b-2",
+                            model.risk_level === 'critical' && "bg-red-50 dark:bg-red-950/20 border-red-600",
+                            model.risk_level === 'high' && "bg-orange-50 dark:bg-orange-950/20 border-orange-500",
+                            model.risk_level === 'medium' && "bg-amber-50 dark:bg-amber-950/20 border-amber-400",
+                            model.risk_level === 'low' && "bg-green-50 dark:bg-green-950/20 border-green-500"
+                          )}>
+                            <div className="flex items-start gap-2">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleModelSelection(model)}
+                                data-testid={`checkbox-model-${index}`}
+                                className="mt-0.5"
+                              />
+                              <div className="flex-1 min-w-0 space-y-1.5">
+                                {/* Model Title with Processor/Gen */}
+                                <h3 className="font-bold text-sm leading-tight">
+                                  {model.make} {model.model}
+                                  {(model.processor || model.generation) && (
+                                    <span className="text-muted-foreground font-normal">
+                                      {' '}({[model.processor, model.generation].filter(Boolean).join(' • ')})
+                                    </span>
+                                  )}
+                                </h3>
+                                
+                                {/* Status Badges Row */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <div className={cn(
+                                    "inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs",
+                                    model.risk_level === 'critical' && "bg-red-600 text-white",
+                                    model.risk_level === 'high' && "bg-orange-500 text-white",
+                                    model.risk_level === 'medium' && "bg-amber-500 text-white",
+                                    model.risk_level === 'low' && "bg-green-600 text-white"
+                                  )}>
+                                    {model.days_of_supply !== null 
+                                      ? `${Math.floor(Number(model.days_of_supply) || 0)} days left` 
+                                      : 'No demand'}
+                                  </div>
+                                  <Badge 
+                                    variant={hasCoverage ? "default" : "destructive"}
+                                    className="text-xs font-semibold"
+                                  >
+                                    {hasCoverage ? "✓ Coverage" : "✗ No Coverage"}
+                                  </Badge>
                                 </div>
                               </div>
                             </div>
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="flex gap-2 pt-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="flex-1 gap-1.5"
-                              onClick={() => handleSendAlert(model)}
-                              data-testid={`button-alert-${index}`}
-                            >
-                              <Bell className="w-3.5 h-3.5" />
-                              Alert
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="flex-1 gap-1.5"
-                              onClick={() => handleCreatePool(model)}
-                              data-testid={`button-pool-${index}`}
-                            >
-                              <FolderPlus className="w-3.5 h-3.5" />
-                              Pool
-                            </Button>
+                          {/* Inventory Metrics Section */}
+                          <div className="p-3 space-y-2.5">
+                            {/* Key Metrics Grid */}
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1.5">Inventory Status</p>
+                              <div className="grid grid-cols-3 gap-2">
+                                <div className="bg-background border rounded-lg p-2 text-center">
+                                  <p className="text-xs text-muted-foreground mb-0.5">Active Units</p>
+                                  <p className="font-bold text-base">{model.covered_count || 0}</p>
+                                </div>
+                                <div className="bg-background border rounded-lg p-2 text-center">
+                                  <p className="text-xs text-muted-foreground mb-0.5">Spare Units</p>
+                                  <p className="font-bold text-base">{model.spare_count || 0}</p>
+                                </div>
+                                <div className="bg-background border rounded-lg p-2 text-center">
+                                  <p className="text-xs text-muted-foreground mb-0.5">Run Rate</p>
+                                  <p className="font-bold text-base">{(Number(model.run_rate) || 0).toFixed(1)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Regional Stock Distribution */}
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1.5">Available Stock by Region</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                      <span className="text-xs font-medium">UK</span>
+                                    </div>
+                                    <span className="text-sm font-bold">{model.uk_available_count || 0}</span>
+                                  </div>
+                                </div>
+                                <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900 rounded-lg p-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="w-2 h-2 rounded-full bg-purple-500" />
+                                      <span className="text-xs font-medium">UAE</span>
+                                    </div>
+                                    <span className="text-sm font-bold">{model.uae_available_count || 0}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-2 pt-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 gap-1.5"
+                                onClick={() => handleSendAlert(model)}
+                                data-testid={`button-alert-${index}`}
+                              >
+                                <Bell className="w-3.5 h-3.5" />
+                                Alert
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 gap-1.5"
+                                onClick={() => handleCreatePool(model)}
+                                data-testid={`button-pool-${index}`}
+                              >
+                                <FolderPlus className="w-3.5 h-3.5" />
+                                Pool
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
