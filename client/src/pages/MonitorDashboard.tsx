@@ -87,10 +87,6 @@ interface HeatmapCell {
   units: CoveredUnit[];
 }
 
-// Helper to create stable identifier for risk combinations
-const getRiskComboKey = (combo: RiskCombination): string => {
-  return `${combo.make}|${combo.model}|${combo.processor || 'null'}|${combo.generation || 'null'}`;
-};
 
 const riskBadgeClass = (level: RiskLevel) => {
   switch (level) {
@@ -185,26 +181,10 @@ export default function MonitorDashboard() {
     make: "",
     model: "",
   });
-  const [selectedRiskItems, setSelectedRiskItems] = useState<Set<string>>(new Set());
-  const [excludeZeroCovered, setExcludeZeroCovered] = useState(true);
-  const [riskFilters, setRiskFilters] = useState({
-    search: "",
-    riskLevel: "all",
-  });
   const [selectedDateCell, setSelectedDateCell] = useState<HeatmapCell | null>(null);
   const [dialogSearch, setDialogSearch] = useState("");
   
-  // Pagination, sorting, and advanced filtering for Units Running Out
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [sortBy, setSortBy] = useState<'coverage_ratio' | 'risk_score' | 'covered_count' | 'spare_count' | 'run_rate'>('coverage_ratio');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [riskLevels, setRiskLevels] = useState<RiskLevel[]>([]);
-  const [coverageRatioMin, setCoverageRatioMin] = useState<number | undefined>();
-  const [coverageRatioMax, setCoverageRatioMax] = useState<number | undefined>();
-
   const endDate = useMemo(() => addMonths(startDate, 13), [startDate]);
-  const hasBulkSelection = selectedRiskItems.size > 1;
 
   // Fetch aggregated heatmap data (server-side filtering for all 100k+ records)
   const { data: heatmapExpirations, isLoading } = useQuery<Array<{ date: string; count: number }>>({
@@ -246,7 +226,8 @@ export default function MonitorDashboard() {
     queryKey: ["/api/coverage-pools-with-stats"],
   });
 
-  const { data: riskCombinationsData, isLoading: isLoadingRiskCombinations } = useQuery<{ 
+  // Fetch top 10 worst-performing models for dashboard summary
+  const { data: riskSummaryData, isLoading: isLoadingRiskSummary } = useQuery<{ 
     data: RiskCombination[]; 
     total: number;
     stats: {
@@ -258,34 +239,16 @@ export default function MonitorDashboard() {
     };
   }>({
     queryKey: ['/api/risk-combinations', { 
-      sortBy: sortBy, 
-      sortOrder: sortOrder, 
-      limit: pageSize,
-      offset: (page - 1) * pageSize,
-      excludeZeroCovered: excludeZeroCovered,
-      search: riskFilters.search || undefined,
-      riskLevels: riskLevels.length > 0 ? riskLevels : undefined,
-      coverageRatioMin: coverageRatioMin,
-      coverageRatioMax: coverageRatioMax,
+      sortBy: 'coverage_of_run_rate', 
+      sortOrder: 'asc', 
+      limit: 10,
+      offset: 0,
+      excludeZeroCovered: true,
     }],
   });
 
-  const riskCombinations = riskCombinationsData?.data || [];
-  const totalRiskCombinations = riskCombinationsData?.total || 0;
-  const totalPages = Math.ceil(totalRiskCombinations / pageSize);
-  const riskMetrics = riskCombinationsData?.stats || { critical: 0, high: 0, medium: 0, low: 0, worstDeficit: null };
-
-  // Reset pagination to page 1 when filters, search, sort, or page size change
-  useEffect(() => {
-    setPage(1);
-  }, [riskFilters.search, sortBy, sortOrder, pageSize, riskLevels, coverageRatioMin, coverageRatioMax, excludeZeroCovered]);
-
-  // Clamp page if it exceeds totalPages
-  useEffect(() => {
-    if (page > totalPages && totalPages > 0) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
+  const topRiskModels = riskSummaryData?.data || [];
+  const riskStats = riskSummaryData?.stats || { critical: 0, high: 0, medium: 0, low: 0, worstDeficit: null };
 
   // Mutations for creating pools and sending alerts
   const createPoolMutation = useMutation({
@@ -351,108 +314,6 @@ export default function MonitorDashboard() {
     sendAlertMutation.mutate([combo]);
   };
 
-  const handleCreateCombinedPool = () => {
-    if (selectedRiskItems.size === 0) return;
-    
-    const selectedCombinations = riskCombinations?.filter(combo => 
-      selectedRiskItems.has(getRiskComboKey(combo))
-    ) || [];
-    
-    if (selectedCombinations.length === 0) return;
-    
-    // Create a combined filter criteria with arrays of makes, models, etc.
-    const makes = Array.from(new Set(selectedCombinations.map(c => c.make)));
-    const models = Array.from(new Set(selectedCombinations.map(c => c.model)));
-    const processors = Array.from(new Set(selectedCombinations.map(c => c.processor).filter(Boolean)));
-    const generations = Array.from(new Set(selectedCombinations.map(c => c.generation).filter(Boolean)));
-    
-    const poolName = `Combined Risk Pool (${selectedCombinations.length} combinations)`;
-    const filterCriteria = JSON.stringify({
-      make: makes.length > 0 ? makes : undefined,
-      model: models.length > 0 ? models : undefined,
-      processor: processors.length > 0 ? processors : undefined,
-      generation: generations.length > 0 ? generations : undefined,
-    });
-    
-    createPoolMutation.mutate(
-      {
-        name: poolName,
-        description: `Combined pool covering ${makes.join(", ")} with ${selectedCombinations.length} risk combinations`,
-        filterCriteria,
-      },
-      {
-        onSuccess: () => {
-          setSelectedRiskItems(new Set()); // Clear selection after success
-        },
-      }
-    );
-  };
-
-  const handleSendCombinedAlert = () => {
-    if (selectedRiskItems.size === 0) return;
-    
-    const selectedCombinations = riskCombinations?.filter(combo => 
-      selectedRiskItems.has(getRiskComboKey(combo))
-    ) || [];
-    
-    if (selectedCombinations.length === 0) return;
-    
-    sendAlertMutation.mutate(selectedCombinations, {
-      onSuccess: () => {
-        setSelectedRiskItems(new Set()); // Clear selection after success
-      },
-    });
-  };
-  
-  // CSV Export handler for risk combinations
-  const handleExportRiskCombinations = async () => {
-    try {
-      // Build query params for export (same filters as current view)
-      const params = new URLSearchParams({
-        sortBy: sortBy,
-        sortOrder: sortOrder,
-        excludeZeroCovered: String(excludeZeroCovered),
-      });
-      
-      if (riskFilters.search) params.append('search', riskFilters.search);
-      if (riskLevels.length > 0) {
-        riskLevels.forEach(level => params.append('riskLevels', level));
-      }
-      if (coverageRatioMin !== undefined) params.append('coverageRatioMin', String(coverageRatioMin));
-      if (coverageRatioMax !== undefined) params.append('coverageRatioMax', String(coverageRatioMax));
-      
-      // Trigger CSV download from dedicated export endpoint
-      const exportUrl = `/api/risk-combinations/export?${params.toString()}`;
-      const link = document.createElement('a');
-      link.href = exportUrl;
-      link.download = `risk-combinations-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        title: "Export Started",
-        description: "Downloading CSV file with all filtered risk combinations",
-      });
-    } catch (error) {
-      toast({
-        title: "Export Failed",
-        description: "Failed to export data. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Column sorting handler
-  const handleSort = (column: typeof sortBy) => {
-    if (sortBy === column) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(column);
-      setSortOrder('asc');
-    }
-    setPage(1); // Reset to first page when sorting changes
-  };
 
   // Filter and map warranty expiration data (case-insensitive filtering)
   const heatmapData = useMemo(() => {
@@ -1151,16 +1012,16 @@ export default function MonitorDashboard() {
             </div>
           </div>
 
-          {/* Right Column: lg:col-span-4 - Units Running Out */}
+          {/* Right Column: lg:col-span-4 - Units Running Out Summary */}
           <div className="lg:col-span-4 space-y-4" ref={riskCombinationsRef}>
-            {/* Risk Metrics Summary */}
+            {/* KPI Cards */}
             <div className="grid grid-cols-2 gap-3">
               <Card className="rounded-2xl border-l-4 border-l-red-600">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground font-medium">Critical</p>
-                      <p className="text-2xl font-bold" data-testid="text-critical-count">{riskMetrics.critical}</p>
+                      <p className="text-xs text-muted-foreground font-medium">Critical Risk</p>
+                      <p className="text-2xl font-bold" data-testid="text-critical-count">{riskStats.critical}</p>
                     </div>
                     <AlertTriangle className="w-6 h-6 text-red-600" />
                   </div>
@@ -1171,421 +1032,99 @@ export default function MonitorDashboard() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground font-medium">High</p>
-                      <p className="text-2xl font-bold" data-testid="text-high-count">{riskMetrics.high}</p>
+                      <p className="text-xs text-muted-foreground font-medium">High Risk</p>
+                      <p className="text-2xl font-bold" data-testid="text-high-count">{riskStats.high}</p>
                     </div>
                     <TrendingDown className="w-6 h-6 text-orange-500" />
                   </div>
                 </CardContent>
               </Card>
-              
-              <Card className="rounded-2xl border-l-4 border-l-amber-400">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground font-medium">Medium</p>
-                      <p className="text-2xl font-bold" data-testid="text-medium-count">{riskMetrics.medium}</p>
-                    </div>
-                    <Activity className="w-6 h-6 text-amber-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="rounded-2xl border-l-4 border-l-green-500">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground font-medium">Low</p>
-                      <p className="text-2xl font-bold" data-testid="text-low-count">{riskMetrics.low}</p>
-                    </div>
-                    <Shield className="w-6 h-6 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
-            {/* Main Table Card */}
+            {/* Models Needing Attention */}
             <Card className="rounded-2xl">
               <CardHeader>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Units Running Out</CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleExportRiskCombinations}
-                        className="gap-1.5"
-                        data-testid="button-export-csv"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        Export
-                      </Button>
-                      <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                        <Switch
-                          checked={!excludeZeroCovered}
-                          onCheckedChange={(checked) => {
-                            setExcludeZeroCovered(!checked);
-                            setPage(1);
-                          }}
-                          data-testid="toggle-include-zero-covered"
-                        />
-                        Show Zero
-                      </label>
-                    </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Models Needing Attention</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Top {topRiskModels.length} models with lowest spare-to-demand coverage
+                    </p>
                   </div>
-                  
-                  {/* Filters */}
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search make, model, processor..."
-                        value={riskFilters.search}
-                        onChange={(e) => {
-                          setRiskFilters({ ...riskFilters, search: e.target.value });
-                          setPage(1);
-                        }}
-                        className="pl-9 text-sm"
-                        data-testid="input-risk-search"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label className="text-xs text-muted-foreground mb-2 block">Risk Level</Label>
-                      <div className="space-y-2">
-                        {(['critical', 'high', 'medium', 'low'] as RiskLevel[]).map((level) => (
-                          <div key={level} className="flex items-center gap-2">
-                            <Checkbox
-                              id={`risk-${level}`}
-                              checked={riskLevels.includes(level)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setRiskLevels([...riskLevels, level]);
-                                } else {
-                                  setRiskLevels(riskLevels.filter(l => l !== level));
-                                }
-                                setPage(1);
-                              }}
-                              data-testid={`checkbox-risk-${level}`}
-                            />
-                            <label
-                              htmlFor={`risk-${level}`}
-                              className="text-sm capitalize cursor-pointer"
-                            >
-                              {level}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Min Coverage %"
-                        value={coverageRatioMin ?? ''}
-                        onChange={(e) => {
-                          setCoverageRatioMin(e.target.value ? Number(e.target.value) : undefined);
-                          setPage(1);
-                        }}
-                        className="text-sm"
-                        data-testid="input-coverage-min"
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Max Coverage %"
-                        value={coverageRatioMax ?? ''}
-                        onChange={(e) => {
-                          setCoverageRatioMax(e.target.value ? Number(e.target.value) : undefined);
-                          setPage(1);
-                        }}
-                        className="text-sm"
-                        data-testid="input-coverage-max"
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Bulk Actions */}
-                  {selectedRiskItems.size > 0 && (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="flex-1 gap-1"
-                        onClick={handleSendCombinedAlert}
-                        data-testid="button-send-combined-alert"
-                      >
-                        <Bell className="w-3 h-3" />
-                        Alert ({selectedRiskItems.size})
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 gap-1"
-                        onClick={handleCreateCombinedPool}
-                        data-testid="button-create-combined-pool"
-                      >
-                        <FolderPlus className="w-3 h-3" />
-                        Pool ({selectedRiskItems.size})
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setSelectedRiskItems(new Set())}
-                        data-testid="button-clear-selection"
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
+                  <Link href="/risk-combinations">
+                    <Button variant="outline" size="sm" className="gap-1" data-testid="button-view-all">
+                      View All
+                      <ChevronRightIcon className="w-4 h-4" />
+                    </Button>
+                  </Link>
                 </div>
               </CardHeader>
-              
-              <CardContent className="p-0">
-                {isLoadingRiskCombinations ? (
-                  <div className="p-8 text-center">
+              <CardContent className="space-y-3">
+                {isLoadingRiskSummary ? (
+                  <div className="text-center py-8 text-muted-foreground">
                     <Skeleton className="h-64 w-full" />
                   </div>
-                ) : !riskCombinations || riskCombinations.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-12">
-                    <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No risk combinations found</p>
+                ) : topRiskModels.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">All models have adequate coverage</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-12">
-                            <Checkbox
-                              checked={riskCombinations.every(combo => selectedRiskItems.has(getRiskComboKey(combo)))}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  const newSelected = new Set(selectedRiskItems);
-                                  riskCombinations.forEach(combo => newSelected.add(getRiskComboKey(combo)));
-                                  setSelectedRiskItems(newSelected);
-                                } else {
-                                  const newSelected = new Set(selectedRiskItems);
-                                  riskCombinations.forEach(combo => newSelected.delete(getRiskComboKey(combo)));
-                                  setSelectedRiskItems(newSelected);
-                                }
-                              }}
-                              data-testid="checkbox-select-all"
-                            />
-                          </TableHead>
-                          <TableHead 
-                            className="cursor-pointer hover-elevate"
-                            onClick={() => handleSort('coverage_ratio')}
-                            data-testid="header-coverage-ratio"
-                          >
-                            <div className="flex items-center gap-1">
-                              Coverage %
-                              {sortBy === 'coverage_ratio' && (
-                                <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                              )}
-                            </div>
-                          </TableHead>
-                          <TableHead>Make/Model</TableHead>
-                          <TableHead>Risk</TableHead>
-                          <TableHead 
-                            className="cursor-pointer hover-elevate text-right"
-                            onClick={() => handleSort('covered_count')}
-                            data-testid="header-covered"
-                          >
-                            <div className="flex items-center justify-end gap-1">
-                              Covered
-                              {sortBy === 'covered_count' && (
-                                <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                              )}
-                            </div>
-                          </TableHead>
-                          <TableHead 
-                            className="cursor-pointer hover-elevate text-right"
-                            onClick={() => handleSort('spare_count')}
-                            data-testid="header-spares"
-                          >
-                            <div className="flex items-center justify-end gap-1">
-                              Spares
-                              {sortBy === 'spare_count' && (
-                                <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                              )}
-                            </div>
-                          </TableHead>
-                          <TableHead 
-                            className="cursor-pointer hover-elevate text-right"
-                            onClick={() => handleSort('run_rate')}
-                            data-testid="header-demand"
-                          >
-                            <div className="flex items-center justify-end gap-1">
-                              Demand
-                              {sortBy === 'run_rate' && (
-                                <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                              )}
-                            </div>
-                          </TableHead>
-                          <TableHead className="w-24">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {riskCombinations.map((combo, index) => {
-                          const comboKey = getRiskComboKey(combo);
-                          const isSelected = selectedRiskItems.has(comboKey);
-                          const coverageRatio = Number(combo.coverage_ratio) || 0;
-                          
-                          const borderClass = 
-                            coverageRatio < 25 ? 'border-l-4 border-l-red-600 bg-red-50/30 dark:bg-red-950/10' :
-                            coverageRatio < 50 ? 'border-l-4 border-l-orange-500 bg-orange-50/30 dark:bg-orange-950/10' :
-                            coverageRatio < 75 ? 'border-l-4 border-l-amber-400 bg-amber-50/20 dark:bg-amber-950/10' :
-                            '';
-                          
-                          return (
-                            <TableRow 
-                              key={comboKey} 
-                              className={cn(borderClass, "hover-elevate")}
-                              data-testid={`row-risk-${index}`}
-                            >
-                              <TableCell>
-                                <Checkbox
-                                  checked={isSelected}
-                                  onCheckedChange={(checked) => {
-                                    const newSelected = new Set(selectedRiskItems);
-                                    if (checked) {
-                                      newSelected.add(comboKey);
-                                    } else {
-                                      newSelected.delete(comboKey);
-                                    }
-                                    setSelectedRiskItems(newSelected);
-                                  }}
-                                  data-testid={`checkbox-risk-${index}`}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Progress value={coverageRatio} className="w-16 h-2" />
-                                  <span className={cn(
-                                    "text-sm font-semibold",
-                                    coverageRatio < 25 ? "text-red-600 dark:text-red-400" :
-                                    coverageRatio < 50 ? "text-orange-600 dark:text-orange-400" :
-                                    coverageRatio < 75 ? "text-amber-600 dark:text-amber-500" :
-                                    "text-green-600 dark:text-green-500"
-                                  )}>
-                                    {coverageRatio.toFixed(0)}%
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div>
-                                  <p className="text-sm font-medium">{combo.make} {combo.model}</p>
-                                  {combo.processor && (
-                                    <p className="text-xs text-muted-foreground">{combo.processor}</p>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={riskBadgeClass(combo.risk_level)} variant="outline">
-                                  {combo.risk_level}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right font-medium">
-                                {combo.covered_count}
-                              </TableCell>
-                              <TableCell className="text-right font-medium">
-                                {combo.spare_count}
-                              </TableCell>
-                              <TableCell className="text-right font-medium">
-                                {(Number(combo.run_rate) || 0).toFixed(1)}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        onClick={() => handleSendAlert(combo)}
-                                        data-testid={`button-alert-${index}`}
-                                      >
-                                        <Bell className="w-3.5 h-3.5" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Send Alert</TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        onClick={() => handleCreatePool(combo)}
-                                        data-testid={`button-pool-${index}`}
-                                      >
-                                        <FolderPlus className="w-3.5 h-3.5" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Create Pool</TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-                
-                {/* Pagination */}
-                {totalRiskCombinations > 0 && (
-                  <div className="border-t p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm text-muted-foreground">
-                          Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalRiskCombinations)} of {totalRiskCombinations}
-                        </p>
-                        <Select
-                          value={String(pageSize)}
-                          onValueChange={(value) => {
-                            setPageSize(Number(value));
-                            setPage(1);
-                          }}
-                        >
-                          <SelectTrigger className="w-24 text-sm" data-testid="select-page-size">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="10">10</SelectItem>
-                            <SelectItem value="25">25</SelectItem>
-                            <SelectItem value="50">50</SelectItem>
-                            <SelectItem value="100">100</SelectItem>
-                          </SelectContent>
-                        </Select>
+                  topRiskModels.map((model, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 border rounded-lg hover-elevate" data-testid={`model-item-${index}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="font-medium truncate">{model.make} {model.model}</p>
+                          <Badge className={riskBadgeClass(model.risk_level)} data-testid={`badge-risk-${index}`}>
+                            {formatRiskLevel(model.risk_level)}
+                          </Badge>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Coverage: {(Number(model.coverage_ratio) || 0).toFixed(1)}%</span>
+                            <span>{model.spare_count || 0} spare / {(Number(model.run_rate) || 0).toFixed(1)} demand/mo</span>
+                          </div>
+                          <Progress 
+                            value={Math.min(Number(model.coverage_ratio) || 0, 100)} 
+                            className="h-2"
+                            data-testid={`progress-${index}`}
+                          />
+                        </div>
                       </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setPage(Math.max(1, page - 1))}
-                          disabled={page === 1}
-                          data-testid="button-prev-page"
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </Button>
-                        <span className="text-sm font-medium px-2">
-                          Page {page} of {totalPages}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setPage(Math.min(totalPages, page + 1))}
-                          disabled={page >= totalPages}
-                          data-testid="button-next-page"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </Button>
+                      <div className="flex items-center gap-1">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleSendAlert(model)}
+                                data-testid={`button-alert-${index}`}
+                              >
+                                <Bell className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Send Alert</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleCreatePool(model)}
+                                data-testid={`button-pool-${index}`}
+                              >
+                                <FolderPlus className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Create Pool</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </div>
-                  </div>
+                  ))
                 )}
               </CardContent>
             </Card>
