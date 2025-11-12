@@ -246,6 +246,16 @@ export interface IStorage {
     forecastMonths?: number;
   }): Promise<CoveragePoolAnalytics>;
   
+  // Heatmap Data
+  getWarrantyExpirations(filters: {
+    startDate: string;
+    endDate: string;
+    make?: string;
+    model?: string;
+    customerName?: string;
+    orderNumber?: string;
+  }): Promise<Array<{ date: string; count: number }>>;
+
   // Risk Analysis
   getRiskCombinations(options?: {
     sortBy?: 'riskScore' | 'riskLevel' | 'runRate' | 'coverageRatio' | 'coveredCount' | 'coverageOfRunRate';
@@ -254,6 +264,7 @@ export interface IStorage {
     offset?: number;
     search?: string;
     excludeZeroCovered?: boolean;
+    status?: 'active' | 'inactive' | 'all';
     riskLevels?: string[];
     runRateMin?: number;
     runRateMax?: number;
@@ -1867,6 +1878,51 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  async getWarrantyExpirations(filters: {
+    startDate: string;
+    endDate: string;
+    make?: string;
+    model?: string;
+    customerName?: string;
+    orderNumber?: string;
+  }): Promise<Array<{ date: string; count: number }>> {
+    const conditions = [
+      sql`is_coverage_active = true`,
+      sql`coverage_end_date >= ${filters.startDate}::timestamp`,
+      sql`coverage_end_date <= ${filters.endDate}::timestamp`
+    ];
+
+    if (filters?.make) {
+      conditions.push(sql`UPPER(make) = UPPER(${filters.make})`);
+    }
+    if (filters?.model) {
+      conditions.push(sql`UPPER(model) = UPPER(${filters.model})`);
+    }
+    if (filters?.customerName) {
+      conditions.push(sql`UPPER(customer_name) = UPPER(${filters.customerName})`);
+    }
+    if (filters?.orderNumber) {
+      conditions.push(sql`UPPER(order_number) = UPPER(${filters.orderNumber})`);
+    }
+
+    const whereClause = and(...conditions);
+
+    const result = await db.execute(sql`
+      SELECT 
+        DATE(coverage_end_date) as date,
+        COUNT(*) as count
+      FROM ${coveredUnit}
+      WHERE ${whereClause}
+      GROUP BY DATE(coverage_end_date)
+      ORDER BY date
+    `);
+
+    return result.rows.map((row: any) => ({
+      date: row.date,
+      count: parseInt(row.count)
+    }));
+  }
+
   async getRiskCombinations(options?: {
     sortBy?: 'riskScore' | 'riskLevel' | 'runRate' | 'coverageRatio' | 'coveredCount' | 'coverageOfRunRate';
     sortOrder?: 'asc' | 'desc';
@@ -1874,6 +1930,7 @@ export class DatabaseStorage implements IStorage {
     offset?: number;
     search?: string;
     excludeZeroCovered?: boolean;
+    status?: 'active' | 'inactive' | 'all';
     riskLevels?: string[];
     runRateMin?: number;
     runRateMax?: number;
@@ -1907,6 +1964,8 @@ export class DatabaseStorage implements IStorage {
           COUNT(*) as covered_count
         FROM ${coveredUnit}
         WHERE coverage_end_date >= CURRENT_DATE
+          ${options?.status === 'active' ? sql`AND is_coverage_active = true` : sql``}
+          ${options?.status === 'inactive' ? sql`AND is_coverage_active = false` : sql``}
         GROUP BY make, model, processor, generation
       ),
       spare_metrics AS (

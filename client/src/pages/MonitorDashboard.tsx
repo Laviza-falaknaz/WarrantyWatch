@@ -198,8 +198,16 @@ export default function MonitorDashboard() {
   const endDate = useMemo(() => addMonths(startDate, 13), [startDate]);
   const hasBulkSelection = selectedRiskItems.size > 1;
 
-  const { data: coveredUnits, isLoading } = useQuery<CoveredUnit[]>({
-    queryKey: ["/api/covered-units"],
+  // Fetch aggregated heatmap data (server-side filtering)
+  const { data: heatmapExpirations, isLoading } = useQuery<Array<{ date: string; count: number }>>({
+    queryKey: ["/api/covered-units/expirations", {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      make: filters.make || undefined,
+      model: filters.model || undefined,
+      customerName: filters.customerName || undefined,
+      orderNumber: filters.orderNumber || undefined,
+    }],
   });
 
   const { data: pools } = useQuery<CoveragePoolWithStats[]>({

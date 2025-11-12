@@ -36,6 +36,7 @@ export default function RiskCombinations() {
   // State management
   const [search, setSearch] = useState("");
   const [riskLevelFilter, setRiskLevelFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [excludeZeroCovered, setExcludeZeroCovered] = useState(true);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField>("risk_score");
@@ -51,6 +52,7 @@ export default function RiskCombinations() {
       limit: 1000,
       offset: 0,
       excludeZeroCovered: excludeZeroCovered,
+      status: statusFilter,
     }],
   });
 
@@ -315,7 +317,7 @@ export default function RiskCombinations() {
       <Card className="rounded-2xl border">
         <CardHeader>
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -343,6 +345,20 @@ export default function RiskCombinations() {
                   <SelectItem value="High">High</SelectItem>
                   <SelectItem value="Medium">Medium</SelectItem>
                   <SelectItem value="Low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={statusFilter} onValueChange={(value) => {
+                setStatusFilter(value);
+                setCurrentPage(1);
+              }}>
+                <SelectTrigger data-testid="select-status">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Warranties</SelectItem>
+                  <SelectItem value="active">Active Only</SelectItem>
+                  <SelectItem value="inactive">Inactive Only</SelectItem>
                 </SelectContent>
               </Select>
 

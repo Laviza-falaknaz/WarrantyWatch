@@ -192,6 +192,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Heatmap expirations endpoint (server-side aggregation for MonitorDashboard)
+  app.get("/api/covered-units/expirations", async (req, res) => {
+    try {
+      const startDate = req.query.startDate as string;
+      const endDate = req.query.endDate as string;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "startDate and endDate are required" });
+      }
+
+      const filters = {
+        startDate,
+        endDate,
+        make: req.query.make as string | undefined,
+        model: req.query.model as string | undefined,
+        customerName: req.query.customerName as string | undefined,
+        orderNumber: req.query.orderNumber as string | undefined,
+      };
+
+      const expirations = await storage.getWarrantyExpirations(filters);
+      res.json(expirations);
+    } catch (error) {
+      console.error("Error fetching warranty expirations:", error);
+      res.status(500).json({ error: "Failed to fetch warranty expirations" });
+    }
+  });
+
   // Analytics endpoint for Warranty Explorer (server-side aggregation for large datasets)
   app.get("/api/covered-units/analytics", async (req, res) => {
     try {
@@ -497,6 +524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Parse filter parameters
       const excludeZeroCovered = req.query.excludeZeroCovered === 'true';
+      const status = (req.query.status as string) || 'all';
       const riskLevels = req.query.riskLevels 
         ? (Array.isArray(req.query.riskLevels) ? req.query.riskLevels as string[] : [req.query.riskLevels as string])
         : undefined;
@@ -516,6 +544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         offset,
         search,
         excludeZeroCovered,
+        status: status as any,
         riskLevels,
         runRateMin,
         runRateMax,
