@@ -393,7 +393,16 @@ export default function MonitorDashboard() {
       expirationMap.set(dateStr, exp.count);
     });
 
-    const days = eachDayOfInterval({ start: startDate, end: addMonths(startDate, 13) });
+    // Calculate the actual range to display
+    const rangeEnd = addMonths(startDate, 13);
+    
+    // Start from the Monday of the week containing startDate
+    const actualStart = startOfWeek(startDate, { weekStartsOn: 1 }); // 1 = Monday
+    
+    // End on the Sunday of the week containing rangeEnd
+    const actualEnd = endOfWeek(rangeEnd, { weekStartsOn: 1 });
+    
+    const days = eachDayOfInterval({ start: actualStart, end: actualEnd });
     
     return days.map((date) => {
       const dateStr = format(date, 'yyyy-MM-dd');
@@ -431,14 +440,7 @@ export default function MonitorDashboard() {
     const weeks: HeatmapCell[][] = [];
     let currentWeek: HeatmapCell[] = [];
     
-    const firstDay = heatmapData[0];
-    if (firstDay) {
-      const dayOfWeek = firstDay.date.getDay();
-      for (let i = 0; i < dayOfWeek; i++) {
-        currentWeek.push({ date: new Date(), count: -1, units: [] });
-      }
-    }
-
+    // Since we start on Monday and end on Sunday, no padding needed
     heatmapData.forEach((cell) => {
       currentWeek.push(cell);
       
@@ -448,6 +450,7 @@ export default function MonitorDashboard() {
       }
     });
 
+    // This shouldn't happen since we aligned to week boundaries, but just in case
     if (currentWeek.length > 0) {
       while (currentWeek.length < 7) {
         currentWeek.push({ date: new Date(), count: -1, units: [] });
@@ -827,7 +830,7 @@ export default function MonitorDashboard() {
                 {/* Heatmap Grid */}
                 <div className="overflow-x-auto">
                   <div className="flex gap-2 min-w-max">
-                    {/* Day Labels */}
+                    {/* Day Labels - Aligned with Mon-Sun grid */}
                     <div className="flex flex-col gap-0.5 text-xs text-muted-foreground font-medium" style={{ paddingTop: '32px', width: '32px' }}>
                       <div className="h-4 flex items-center">Mon</div>
                       <div className="h-4" />
