@@ -274,7 +274,17 @@ export interface IStorage {
     spareRateMax?: number;
     coveredCountMin?: number;
     coveredCountMax?: number;
-  }): Promise<{ data: any[]; total: number }>; // Returns paginated data with total count
+  }): Promise<{ 
+    data: any[]; 
+    total: number;
+    stats: {
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+      worstDeficit: number | null;
+    };
+  }>; // Returns paginated data with total count and aggregated stats
   
   // Configuration
   getConfiguration(): Promise<AppConfiguration>;
@@ -2082,55 +2092,94 @@ export class DatabaseStorage implements IStorage {
             LOWER(COALESCE(c.processor, '')) LIKE LOWER(${'%' + options.search + '%'}) OR
             LOWER(COALESCE(c.generation, '')) LIKE LOWER(${'%' + options.search + '%'})
           )` : sql``}
+      ),
+      filtered_combinations AS (
+        SELECT *, COUNT(*) OVER() as total_count FROM base_combinations
+        WHERE 1=1
+          ${options?.riskLevels && options.riskLevels.length > 0 ? 
+            sql`AND risk_level IN (${sql.join(options.riskLevels.map(level => sql`${level}`), sql`, `)})` 
+          : sql``}
+          ${options?.runRateMin !== undefined && !isNaN(options.runRateMin) ? 
+            sql`AND run_rate >= ${options.runRateMin}` 
+          : sql``}
+          ${options?.runRateMax !== undefined && !isNaN(options.runRateMax) ? 
+            sql`AND run_rate <= ${options.runRateMax}` 
+          : sql``}
+          ${options?.coverageRatioMin !== undefined && !isNaN(options.coverageRatioMin) ? 
+            sql`AND coverage_ratio >= ${options.coverageRatioMin}` 
+          : sql``}
+          ${options?.coverageRatioMax !== undefined && !isNaN(options.coverageRatioMax) ? 
+            sql`AND coverage_ratio <= ${options.coverageRatioMax}` 
+          : sql``}
+          ${options?.spareRateMin !== undefined && !isNaN(options.spareRateMin) ? 
+            sql`AND coverage_of_run_rate >= ${options.spareRateMin}` 
+          : sql``}
+          ${options?.spareRateMax !== undefined && !isNaN(options.spareRateMax) ? 
+            sql`AND coverage_of_run_rate <= ${options.spareRateMax}` 
+          : sql``}
+          ${options?.coveredCountMin !== undefined && !isNaN(options.coveredCountMin) ? 
+            sql`AND covered_count >= ${options.coveredCountMin}` 
+          : sql``}
+          ${options?.coveredCountMax !== undefined && !isNaN(options.coveredCountMax) ? 
+            sql`AND covered_count <= ${options.coveredCountMax}` 
+          : sql``}
+      ),
+      stats_agg AS (
+        SELECT 
+          COUNT(CASE WHEN risk_level = 'critical' THEN 1 END)::int as critical_count,
+          COUNT(CASE WHEN risk_level = 'high' THEN 1 END)::int as high_count,
+          COUNT(CASE WHEN risk_level = 'medium' THEN 1 END)::int as medium_count,
+          COUNT(CASE WHEN risk_level = 'low' THEN 1 END)::int as low_count,
+          MIN(coverage_ratio) as worst_deficit
+        FROM filtered_combinations
       )
-      SELECT *, COUNT(*) OVER() as total_count FROM base_combinations
-      WHERE 1=1
-        ${options?.riskLevels && options.riskLevels.length > 0 ? 
-          sql`AND risk_level IN (${sql.join(options.riskLevels.map(level => sql`${level}`), sql`, `)})` 
-        : sql``}
-        ${options?.runRateMin !== undefined && !isNaN(options.runRateMin) ? 
-          sql`AND run_rate >= ${options.runRateMin}` 
-        : sql``}
-        ${options?.runRateMax !== undefined && !isNaN(options.runRateMax) ? 
-          sql`AND run_rate <= ${options.runRateMax}` 
-        : sql``}
-        ${options?.coverageRatioMin !== undefined && !isNaN(options.coverageRatioMin) ? 
-          sql`AND coverage_ratio >= ${options.coverageRatioMin}` 
-        : sql``}
-        ${options?.coverageRatioMax !== undefined && !isNaN(options.coverageRatioMax) ? 
-          sql`AND coverage_ratio <= ${options.coverageRatioMax}` 
-        : sql``}
-        ${options?.spareRateMin !== undefined && !isNaN(options.spareRateMin) ? 
-          sql`AND coverage_of_run_rate >= ${options.spareRateMin}` 
-        : sql``}
-        ${options?.spareRateMax !== undefined && !isNaN(options.spareRateMax) ? 
-          sql`AND coverage_of_run_rate <= ${options.spareRateMax}` 
-        : sql``}
-        ${options?.coveredCountMin !== undefined && !isNaN(options.coveredCountMin) ? 
-          sql`AND covered_count >= ${options.coveredCountMin}` 
-        : sql``}
-        ${options?.coveredCountMax !== undefined && !isNaN(options.coveredCountMax) ? 
-          sql`AND covered_count <= ${options.coveredCountMax}` 
-        : sql``}
+      SELECT 
+        fc.*,
+        sa.critical_count,
+        sa.high_count,
+        sa.medium_count,
+        sa.low_count,
+        sa.worst_deficit
+      FROM filtered_combinations fc
+      CROSS JOIN stats_agg sa
       ORDER BY ${sql.raw(
-        options?.sortBy === 'runRate' ? 'run_rate' : 
-        options?.sortBy === 'coverageRatio' ? 'coverage_ratio' : 
-        options?.sortBy === 'coveredCount' ? 'covered_count' :
-        options?.sortBy === 'coverageOfRunRate' ? 'coverage_of_run_rate' :
-        options?.sortBy === 'riskLevel' ? `CASE risk_level WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 END` :
-        'risk_score'
+        options?.sortBy === 'runRate' ? 'fc.run_rate' : 
+        options?.sortBy === 'coverageRatio' ? 'fc.coverage_ratio' : 
+        options?.sortBy === 'coveredCount' ? 'fc.covered_count' :
+        options?.sortBy === 'coverageOfRunRate' ? 'fc.coverage_of_run_rate' :
+        options?.sortBy === 'riskLevel' ? `CASE fc.risk_level WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 END` :
+        'fc.risk_score'
       )} ${sql.raw(options?.sortOrder === 'asc' ? 'ASC' : 'DESC')}
-      LIMIT ${options?.limit || 100}
-      OFFSET ${options?.offset || 0}
+      ${options?.limit !== undefined ? sql`LIMIT ${options.limit}` : sql``}
+      ${options?.offset !== undefined && options?.offset > 0 ? sql`OFFSET ${options.offset}` : sql``}
     `);
     
     const total = combinations.rows.length > 0 ? parseInt(String((combinations.rows[0] as any).total_count)) : 0;
+    
+    // Extract stats from the first row (same for all rows due to CROSS JOIN)
+    const stats = combinations.rows.length > 0 ? {
+      critical: parseInt(String((combinations.rows[0] as any).critical_count)) || 0,
+      high: parseInt(String((combinations.rows[0] as any).high_count)) || 0,
+      medium: parseInt(String((combinations.rows[0] as any).medium_count)) || 0,
+      low: parseInt(String((combinations.rows[0] as any).low_count)) || 0,
+      worstDeficit: (combinations.rows[0] as any).worst_deficit !== null 
+        ? Number((combinations.rows[0] as any).worst_deficit)
+        : null
+    } : {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      worstDeficit: null
+    };
+    
+    // Remove stats and total_count columns from data rows
     const data = combinations.rows.map((row: any) => {
-      const { total_count, ...rest } = row;
+      const { total_count, critical_count, high_count, medium_count, low_count, worst_deficit, ...rest } = row;
       return rest;
     });
     
-    return { data, total };
+    return { data, total, stats };
   }
 
   async getConfiguration(): Promise<AppConfiguration> {

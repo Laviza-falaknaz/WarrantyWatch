@@ -563,6 +563,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export risk combinations as CSV
+  app.get("/api/risk-combinations/export", async (req, res) => {
+    try {
+      const sortBy = (req.query.sortBy as string) || 'riskScore';
+      const sortOrder = (req.query.sortOrder as string) || 'desc';
+      const search = (req.query.search as string) || '';
+      
+      // Parse filter parameters (same as main endpoint)
+      const excludeZeroCovered = req.query.excludeZeroCovered === 'true';
+      const status = (req.query.status as string) || 'all';
+      const riskLevels = req.query.riskLevels 
+        ? (Array.isArray(req.query.riskLevels) ? req.query.riskLevels as string[] : [req.query.riskLevels as string])
+        : undefined;
+      const runRateMin = req.query.runRateMin ? parseFloat(req.query.runRateMin as string) : undefined;
+      const runRateMax = req.query.runRateMax ? parseFloat(req.query.runRateMax as string) : undefined;
+      const coverageRatioMin = req.query.coverageRatioMin ? parseFloat(req.query.coverageRatioMin as string) : undefined;
+      const coverageRatioMax = req.query.coverageRatioMax ? parseFloat(req.query.coverageRatioMax as string) : undefined;
+      const spareRateMin = req.query.spareRateMin ? parseFloat(req.query.spareRateMin as string) : undefined;
+      const spareRateMax = req.query.spareRateMax ? parseFloat(req.query.spareRateMax as string) : undefined;
+      const coveredCountMin = req.query.coveredCountMin ? parseFloat(req.query.coveredCountMin as string) : undefined;
+      const coveredCountMax = req.query.coveredCountMax ? parseFloat(req.query.coveredCountMax as string) : undefined;
+      
+      // Fetch ALL filtered results (no limit for export - truly unpaginated)
+      const result = await storage.getRiskCombinations({
+        sortBy: sortBy as any,
+        sortOrder: sortOrder as any,
+        // Explicitly omit limit and offset to fetch all results
+        search,
+        excludeZeroCovered,
+        status: status as any,
+        riskLevels,
+        runRateMin,
+        runRateMax,
+        coverageRatioMin,
+        coverageRatioMax,
+        spareRateMin,
+        spareRateMax,
+        coveredCountMin,
+        coveredCountMax,
+      });
+      
+      // Helper to sanitize CSV fields against formula injection
+      const sanitizeCSVField = (value: any): string => {
+        const str = String(value);
+        // Prefix with single quote if starts with dangerous characters that could be interpreted as formulas
+        if (str.match(/^[=+\-@]/)) {
+          return `'${str}`;
+        }
+        return str;
+      };
+      
+      // Generate CSV with injection protection
+      const csvHeader = "Make,Model,Processor,Generation,Covered Units,Spare Units,Coverage %,Run Rate,Risk Level,Risk Score\n";
+      const csvRows = result.data.map((combo: any) => {
+        return [
+          sanitizeCSVField(combo.make || ''),
+          sanitizeCSVField(combo.model || ''),
+          sanitizeCSVField(combo.processor || ''),
+          sanitizeCSVField(combo.generation || ''),
+          combo.covered_count || 0,
+          combo.spare_count || 0,
+          Number(combo.coverage_ratio || 0).toFixed(2),
+          Number(combo.run_rate || 0).toFixed(2),
+          sanitizeCSVField(combo.risk_level || ''),
+          combo.risk_score || 0
+        ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(',');
+      }).join('\n');
+      
+      const csv = csvHeader + csvRows;
+      
+      // Set response headers for CSV download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="risk-combinations-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting risk combinations:", error);
+      res.status(500).json({ error: "Failed to export risk combinations" });
+    }
+  });
+
   // Send alert for high-risk combination(s) to Power Automate webhook
   app.post("/api/risk-combinations/send-alert", async (req, res) => {
     try {

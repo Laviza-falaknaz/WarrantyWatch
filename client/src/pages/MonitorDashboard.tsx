@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
@@ -246,7 +246,17 @@ export default function MonitorDashboard() {
     queryKey: ["/api/coverage-pools-with-stats"],
   });
 
-  const { data: riskCombinationsData, isLoading: isLoadingRiskCombinations } = useQuery<{ data: RiskCombination[]; total: number }>({
+  const { data: riskCombinationsData, isLoading: isLoadingRiskCombinations } = useQuery<{ 
+    data: RiskCombination[]; 
+    total: number;
+    stats: {
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+      worstDeficit: number | null;
+    };
+  }>({
     queryKey: ['/api/risk-combinations', { 
       sortBy: sortBy, 
       sortOrder: sortOrder, 
@@ -263,16 +273,19 @@ export default function MonitorDashboard() {
   const riskCombinations = riskCombinationsData?.data || [];
   const totalRiskCombinations = riskCombinationsData?.total || 0;
   const totalPages = Math.ceil(totalRiskCombinations / pageSize);
+  const riskMetrics = riskCombinationsData?.stats || { critical: 0, high: 0, medium: 0, low: 0, worstDeficit: null };
 
-  // Calculate metrics summary from current data
-  const riskMetrics = useMemo(() => {
-    if (!riskCombinations) return { critical: 0, high: 0, medium: 0, low: 0 };
-    
-    return riskCombinations.reduce((acc, combo) => {
-      acc[combo.risk_level] = (acc[combo.risk_level] || 0) + 1;
-      return acc;
-    }, { critical: 0, high: 0, medium: 0, low: 0 } as Record<RiskLevel, number>);
-  }, [riskCombinations]);
+  // Reset pagination to page 1 when filters, search, sort, or page size change
+  useEffect(() => {
+    setPage(1);
+  }, [riskFilters.search, sortBy, sortOrder, pageSize, riskLevels, coverageRatioMin, coverageRatioMax, excludeZeroCovered]);
+
+  // Clamp page if it exceeds totalPages
+  useEffect(() => {
+    if (page > totalPages && totalPages > 0) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   // Mutations for creating pools and sending alerts
   const createPoolMutation = useMutation({
@@ -394,51 +407,32 @@ export default function MonitorDashboard() {
   // CSV Export handler for risk combinations
   const handleExportRiskCombinations = async () => {
     try {
-      // Fetch all filtered results (not just current page)
-      const response = await fetch(`/api/risk-combinations?${new URLSearchParams({
+      // Build query params for export (same filters as current view)
+      const params = new URLSearchParams({
         sortBy: sortBy,
         sortOrder: sortOrder,
-        limit: '10000', // Fetch all results
-        offset: '0',
         excludeZeroCovered: String(excludeZeroCovered),
-        ...(riskFilters.search && { search: riskFilters.search }),
-        ...(riskLevels.length > 0 && { riskLevels: riskLevels.join(',') }),
-        ...(coverageRatioMin !== undefined && { coverageRatioMin: String(coverageRatioMin) }),
-        ...(coverageRatioMax !== undefined && { coverageRatioMax: String(coverageRatioMax) }),
-      })}`);
+      });
       
-      const result = await response.json();
-      const allCombinations = result.data || [];
+      if (riskFilters.search) params.append('search', riskFilters.search);
+      if (riskLevels.length > 0) {
+        riskLevels.forEach(level => params.append('riskLevels', level));
+      }
+      if (coverageRatioMin !== undefined) params.append('coverageRatioMin', String(coverageRatioMin));
+      if (coverageRatioMax !== undefined) params.append('coverageRatioMax', String(coverageRatioMax));
       
-      const exportData = allCombinations.map((combo: RiskCombination) => ({
-        'Make': combo.make,
-        'Model': combo.model,
-        'Processor': combo.processor || '',
-        'Generation': combo.generation || '',
-        'Risk Level': combo.risk_level,
-        'Risk Score': combo.risk_score,
-        'Covered Count': combo.covered_count,
-        'Spare Count': combo.spare_count,
-        'Coverage Ratio %': (Number(combo.coverage_ratio) || 0).toFixed(1),
-        'Run Rate': (Number(combo.run_rate) || 0).toFixed(1),
-        'Coverage of Run Rate %': (Number(combo.coverage_of_run_rate) || 0).toFixed(1),
-        'UK Available': combo.uk_available_count,
-        'UAE Available': combo.uae_available_count,
-        'Total Available': combo.available_stock_count,
-        'Claims (6mo)': combo.claims_last_6_months,
-        'Replacements (6mo)': combo.replacements_last_6_months,
-        'Fulfillment Rate %': (Number(combo.fulfillment_rate) || 0).toFixed(1),
-      }));
-      
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Risk Combinations');
-      
-      XLSX.writeFile(wb, `risk-combinations-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+      // Trigger CSV download from dedicated export endpoint
+      const exportUrl = `/api/risk-combinations/export?${params.toString()}`;
+      const link = document.createElement('a');
+      link.href = exportUrl;
+      link.download = `risk-combinations-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
       toast({
-        title: "Export Successful",
-        description: `Exported ${exportData.length} risk combination(s) to Excel`,
+        title: "Export Started",
+        description: "Downloading CSV file with all filtered risk combinations",
       });
     } catch (error) {
       toast({

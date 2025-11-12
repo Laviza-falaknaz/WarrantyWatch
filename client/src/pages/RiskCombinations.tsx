@@ -45,7 +45,17 @@ export default function RiskCombinations() {
   const itemsPerPage = 50;
 
   // Fetch all risk combinations
-  const { data: riskData, isLoading } = useQuery<{ data: RiskCombination[], total: number }>({
+  const { data: riskData, isLoading } = useQuery<{ 
+    data: RiskCombination[]; 
+    total: number;
+    stats: {
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+      worstDeficit: number | null;
+    };
+  }>({
     queryKey: ['/api/risk-combinations', { 
       sortBy: sortField, 
       sortOrder: sortOrder,
