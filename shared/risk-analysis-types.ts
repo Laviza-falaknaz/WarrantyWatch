@@ -14,12 +14,13 @@ export interface RiskCombination {
   model: string;
   processor: string | null;
   generation: string | null;
-  covered_count: number;
+  covered_count: number; // Active warranty count
   spare_count: number;
-  uk_available_count: number;
-  uae_available_count: number;
+  uk_available_count: number; // UK regional stock
+  uae_available_count: number; // UAE regional stock
   available_stock_count: number;
-  run_rate: number;
+  run_rate: number; // Claims per month
+  days_of_supply: number | null; // Days until spare stock runs out (null if no demand)
   coverage_ratio: number; // Warranty Coverage: % of spare vs covered units (0-100)
   coverage_of_run_rate: number; // Spare Coverage: % of spare vs run rate (0-100)
   fulfillment_rate: number;

@@ -239,7 +239,7 @@ export default function MonitorDashboard() {
     };
   }>({
     queryKey: ['/api/risk-combinations', { 
-      sortBy: 'coverage_of_run_rate', 
+      sortBy: 'daysOfSupply', 
       sortOrder: 'asc', 
       limit: 10,
       offset: 0,
@@ -1048,10 +1048,9 @@ export default function MonitorDashboard() {
                   <div>
                     <CardTitle className="text-lg">Models Needing Attention</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Top {topRiskModels.length} models with lowest spare-to-demand coverage
+                      Top {topRiskModels.length} models running out soonest (sorted by days of supply remaining)
                     </p>
-                  </div>
-                  <Link href="/risk-combinations">
+                  </div>                  <Link href="/risk-combinations">
                     <Button variant="outline" size="sm" className="gap-1" data-testid="button-view-all">
                       View All
                       <ChevronRightIcon className="w-4 h-4" />
@@ -1078,14 +1077,30 @@ export default function MonitorDashboard() {
                           <Badge className={riskBadgeClass(model.risk_level)} data-testid={`badge-risk-${index}`}>
                             {formatRiskLevel(model.risk_level)}
                           </Badge>
+                          {model.covered_count > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              {model.covered_count} active
+                            </Badge>
+                          )}
                         </div>
                         <div className="space-y-1">
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>Coverage: {(Number(model.coverage_ratio) || 0).toFixed(1)}%</span>
-                            <span>{model.spare_count || 0} spare / {(Number(model.run_rate) || 0).toFixed(1)} demand/mo</span>
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium">
+                                {model.days_of_supply !== null 
+                                  ? `${(Number(model.days_of_supply) || 0).toFixed(0)} days left`
+                                  : 'No demand'}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {model.spare_count || 0} spare / {(Number(model.run_rate) || 0).toFixed(1)}/mo
+                              </span>
+                            </div>
+                            <span className="text-muted-foreground text-xs">
+                              UK: {model.uk_available_count || 0} • UAE: {model.uae_available_count || 0}
+                            </span>
                           </div>
                           <Progress 
-                            value={Math.min(Number(model.coverage_ratio) || 0, 100)} 
+                            value={model.days_of_supply !== null ? Math.min((Number(model.days_of_supply) / 120) * 100, 100) : 100} 
                             className="h-2"
                             data-testid={`progress-${index}`}
                           />

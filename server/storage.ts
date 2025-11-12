@@ -1934,7 +1934,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRiskCombinations(options?: {
-    sortBy?: 'riskScore' | 'riskLevel' | 'runRate' | 'coverageRatio' | 'coveredCount' | 'coverageOfRunRate';
+    sortBy?: 'riskScore' | 'riskLevel' | 'runRate' | 'coverageRatio' | 'coveredCount' | 'coverageOfRunRate' | 'daysOfSupply';
     sortOrder?: 'asc' | 'desc';
     limit?: number;
     offset?: number;
@@ -2038,43 +2038,39 @@ export class DatabaseStorage implements IStorage {
           THEN ROUND((COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 100, 2) 
           ELSE 0 
         END as coverage_of_run_rate,
+        -- Days of supply: spare_count / (run_rate / 30) = days until stock depletes
+        CASE 
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 
+          THEN ROUND((COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30, 1) 
+          ELSE NULL 
+        END as days_of_supply,
         CASE
-          -- Critical: Spare units less than 5% of monthly run rate (insufficient buffer for high-demand models)
-          WHEN COALESCE(cl.claims_count, 0) > 0 AND 
-               COALESCE(sp.spare_count, 0) < ((COALESCE(cl.claims_count, 0)::numeric / 6.0) * 0.05)
+          -- Critical: Less than 30 days of supply (immediate action needed)
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 < 30
           THEN 'critical'
-          -- High: Coverage ratio below 50% OR high run rate (≥4/mo) with coverage below 75%
-          WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
-                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 50) OR
-               (COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 4 AND
-                COALESCE(cov.covered_count, 0) > 0 AND
-                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 75)
+          -- High: 30-60 days of supply (1-2 months)
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 BETWEEN 30 AND 60
           THEN 'high'
-          -- Medium: Moderate coverage (50-110%) with some claim activity OR run rate ≥1/mo
-          WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
-                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 BETWEEN 50 AND 110 AND
-                COALESCE(cl.claims_count, 0) > 0) OR 
-               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 
+          -- Medium: 60-120 days of supply (2-4 months)
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 BETWEEN 60 AND 120
           THEN 'medium'
           ELSE 'low'
         END as risk_level,
         CASE
-          -- Critical: Spare units less than 5% of monthly run rate
-          WHEN COALESCE(cl.claims_count, 0) > 0 AND 
-               COALESCE(sp.spare_count, 0) < ((COALESCE(cl.claims_count, 0)::numeric / 6.0) * 0.05)
+          -- Critical: Less than 30 days
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 < 30
           THEN 95
-          -- High: Coverage ratio below 50% OR high run rate with low coverage
-          WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
-                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 50) OR
-               (COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 4 AND
-                COALESCE(cov.covered_count, 0) > 0 AND
-                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 < 75)
+          -- High: 30-60 days
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 BETWEEN 30 AND 60
           THEN 75
-          -- Medium: Moderate coverage with claim activity OR significant run rate
-          WHEN (COALESCE(cov.covered_count, 0) > 0 AND 
-                (COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100 BETWEEN 50 AND 110 AND
-                COALESCE(cl.claims_count, 0) > 0) OR 
-               COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 
+          -- Medium: 60-120 days
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 BETWEEN 60 AND 120
           THEN 50
           ELSE 20
         END as risk_score
@@ -2147,9 +2143,12 @@ export class DatabaseStorage implements IStorage {
         options?.sortBy === 'coverageRatio' ? 'fc.coverage_ratio' : 
         options?.sortBy === 'coveredCount' ? 'fc.covered_count' :
         options?.sortBy === 'coverageOfRunRate' ? 'fc.coverage_of_run_rate' :
+        options?.sortBy === 'daysOfSupply' ? 'fc.days_of_supply' :
         options?.sortBy === 'riskLevel' ? `CASE fc.risk_level WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 END` :
-        'fc.risk_score'
-      )} ${sql.raw(options?.sortOrder === 'asc' ? 'ASC' : 'DESC')}
+        'fc.days_of_supply'
+      )} ${sql.raw(options?.sortOrder === 'asc' ? 'ASC' : 'DESC')} ${sql.raw(
+        options?.sortBy === 'daysOfSupply' || !options?.sortBy ? 'NULLS LAST' : ''
+      )}
       ${options?.limit !== undefined ? sql`LIMIT ${options.limit}` : sql``}
       ${options?.offset !== undefined && options?.offset > 0 ? sql`OFFSET ${options.offset}` : sql``}
     `);

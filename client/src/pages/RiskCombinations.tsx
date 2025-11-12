@@ -29,7 +29,7 @@ import {
 import type { RiskCombination, RiskLevel } from "@shared/risk-analysis-types";
 import { formatRiskLevel } from "@shared/risk-analysis-types";
 
-type SortField = "risk_score" | "spare_count" | "run_rate" | "coverage_ratio" | "coverage_of_run_rate" | "covered_count";
+type SortField = "risk_score" | "spare_count" | "run_rate" | "coverage_ratio" | "coverage_of_run_rate" | "covered_count" | "days_of_supply";
 type SortOrder = "asc" | "desc";
 
 const getRiskComboKey = (combo: RiskCombination) => 
@@ -53,7 +53,7 @@ export default function RiskCombinations() {
   const [riskLevels, setRiskLevels] = useState<RiskLevel[]>([]);
   const [coverageRatioMin, setCoverageRatioMin] = useState<number | undefined>();
   const [coverageRatioMax, setCoverageRatioMax] = useState<number | undefined>();
-  const [sortField, setSortField] = useState<SortField>("coverage_ratio");
+  const [sortField, setSortField] = useState<SortField>("days_of_supply");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -437,32 +437,21 @@ export default function RiskCombinations() {
                         {getSortIcon("covered_count")}
                       </Button>
                     </TableHead>
-                    <TableHead className="text-right">Fleet Size</TableHead>
-                    <TableHead className="text-right">Spare Available</TableHead>
                     <TableHead>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleSort("coverage_ratio")}
+                        onClick={() => handleSort("days_of_supply")}
                         className="gap-1 h-auto p-0 hover:bg-transparent"
-                        data-testid="sort-coverage"
+                        data-testid="sort-days-remaining"
                       >
-                        Coverage %
-                        {getSortIcon("coverage_ratio")}
+                        Days Remaining
+                        {getSortIcon("days_of_supply")}
                       </Button>
                     </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSort("run_rate")}
-                        className="gap-1 h-auto p-0 hover:bg-transparent"
-                        data-testid="sort-run-rate"
-                      >
-                        Run Rate
-                        {getSortIcon("run_rate")}
-                      </Button>
-                    </TableHead>
+                    <TableHead className="text-right">Active Units</TableHead>
+                    <TableHead className="text-right">Spare / Demand</TableHead>
+                    <TableHead>Regional Stock</TableHead>
                     <TableHead>Risk Level</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -502,19 +491,32 @@ export default function RiskCombinations() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-medium">{combo.covered_count || 0}</TableCell>
-                        <TableCell className="text-right font-medium">{combo.spare_count || 0}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={
-                            (Number(combo.coverage_ratio) || 0) < 50 ? "text-red-600 border-red-600" :
-                            (Number(combo.coverage_ratio) || 0) < 80 ? "text-amber-600 border-amber-600" :
-                            "text-green-600 border-green-600"
-                          }>
-                            {(Number(combo.coverage_ratio) || 0).toFixed(1)}%
-                          </Badge>
+                          <div className="font-medium">
+                            {combo.days_of_supply !== null && combo.days_of_supply !== undefined
+                              ? `${Number(combo.days_of_supply).toFixed(0)} days`
+                              : <span className="text-muted-foreground">No demand</span>
+                            }
+                          </div>
                         </TableCell>
-                        <TableCell className="text-sm">
-                          {combo.run_rate ? `${(Number(combo.run_rate) || 0).toFixed(1)}/mo` : "N/A"}
+                        <TableCell className="text-right font-medium">{combo.covered_count || 0}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="text-sm">
+                            <div className="font-medium">{combo.spare_count || 0} spare</div>
+                            <div className="text-xs text-muted-foreground">
+                              {combo.run_rate ? `${Number(combo.run_rate).toFixed(1)}/mo` : "No demand"}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-xs">
+                            <Badge variant="outline" className="text-xs">
+                              UK: {combo.uk_available_count || 0}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              UAE: {combo.uae_available_count || 0}
+                            </Badge>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge className={getRiskBadgeVariant(combo.risk_level)}>
