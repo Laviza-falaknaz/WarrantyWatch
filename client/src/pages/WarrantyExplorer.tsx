@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -217,19 +217,45 @@ export default function WarrantyExplorer() {
     queryKey: ["/api/covered-units/filter-options"],
   });
 
-  // Extract unique values for additional filters
-  const uniqueProcessors = useMemo(() => 
-    Array.from(new Set(allUnits.filter(u => u.processor).map(u => u.processor!))).sort(),
-    [allUnits]
-  );
-  const uniqueRam = useMemo(() => 
-    Array.from(new Set(allUnits.filter(u => u.ram).map(u => u.ram!))).sort(),
-    [allUnits]
-  );
-  const uniqueCategories = useMemo(() => 
-    Array.from(new Set(allUnits.filter(u => u.category).map(u => u.category!))).sort(),
-    [allUnits]
-  );
+  // Extract unique values for additional filters (case-insensitive)
+  const uniqueProcessors = useMemo(() => {
+    const uniqueMap = new Map<string, string>();
+    allUnits.forEach(u => {
+      if (u.processor) {
+        const key = u.processor.toUpperCase();
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, u.processor);
+        }
+      }
+    });
+    return Array.from(uniqueMap.values()).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  }, [allUnits]);
+  
+  const uniqueRam = useMemo(() => {
+    const uniqueMap = new Map<string, string>();
+    allUnits.forEach(u => {
+      if (u.ram) {
+        const key = u.ram.toUpperCase();
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, u.ram);
+        }
+      }
+    });
+    return Array.from(uniqueMap.values()).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  }, [allUnits]);
+  
+  const uniqueCategories = useMemo(() => {
+    const uniqueMap = new Map<string, string>();
+    allUnits.forEach(u => {
+      if (u.category) {
+        const key = u.category.toUpperCase();
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, u.category);
+        }
+      }
+    });
+    return Array.from(uniqueMap.values()).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  }, [allUnits]);
 
   // Analytics: Coverage Timeline
   const coverageTimeline = useMemo(() => {
@@ -268,25 +294,35 @@ export default function WarrantyExplorer() {
 
   // Analytics: Customer Distribution (top 10 for chart)
   const customerDistribution = useMemo(() => {
-    const customerMap = new Map<string, number>();
+    const customerMap = new Map<string, { name: string; count: number }>();
     allUnits.forEach(unit => {
       const customer = unit.customerName || "Unknown";
-      customerMap.set(customer, (customerMap.get(customer) || 0) + 1);
+      const key = customer.toUpperCase();
+      const existing = customerMap.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        customerMap.set(key, { name: customer, count: 1 });
+      }
     });
-    return Array.from(customerMap.entries())
-      .map(([name, count]) => ({ name, count }))
+    return Array.from(customerMap.values())
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
   }, [allUnits]);
 
-  // Analytics: Make Distribution
+  // Analytics: Make Distribution (case-insensitive aggregation)
   const makeDistribution = useMemo(() => {
-    const makeMap = new Map<string, number>();
+    const makeMap = new Map<string, { name: string; count: number }>();
     allUnits.forEach(unit => {
-      makeMap.set(unit.make, (makeMap.get(unit.make) || 0) + 1);
+      const key = unit.make.toUpperCase();
+      const existing = makeMap.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        makeMap.set(key, { name: unit.make, count: 1 });
+      }
     });
-    return Array.from(makeMap.entries())
-      .map(([name, count]) => ({ name, count }))
+    return Array.from(makeMap.values())
       .sort((a, b) => b.count - a.count);
   }, [allUnits]);
 
@@ -411,29 +447,36 @@ export default function WarrantyExplorer() {
   const groupedUnits = useMemo(() => {
     if (groupBy === "none") return null;
 
-    const groups = new Map<string, CoveredUnit[]>();
+    // Use case-insensitive grouping by storing both normalized key and display name
+    const groups = new Map<string, { displayName: string; items: CoveredUnit[] }>();
     units.forEach(unit => {
-      let key = "";
+      let displayName = "";
       switch (groupBy) {
         case "customer":
-          key = unit.customerName || "Unknown";
+          displayName = unit.customerName || "Unknown";
           break;
         case "make":
-          key = unit.make;
+          displayName = unit.make;
           break;
         case "model":
-          key = unit.model;
+          displayName = unit.model;
           break;
         case "status":
-          key = unit.isCoverageActive ? "Active" : "Inactive";
+          displayName = unit.isCoverageActive ? "Active" : "Inactive";
           break;
       }
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(unit);
+      
+      const normalizedKey = displayName.toUpperCase();
+      const existing = groups.get(normalizedKey);
+      if (existing) {
+        existing.items.push(unit);
+      } else {
+        groups.set(normalizedKey, { displayName, items: [unit] });
+      }
     });
 
-    return Array.from(groups.entries())
-      .map(([key, items]) => ({ key, items, count: items.length }))
+    return Array.from(groups.values())
+      .map(({ displayName, items }) => ({ key: displayName, items, count: items.length }))
       .sort((a, b) => b.count - a.count);
   }, [units, groupBy]);
 
@@ -1129,8 +1172,8 @@ export default function WarrantyExplorer() {
                   </TableRow>
                 ) : groupBy !== "none" && groupedUnits ? (
                   groupedUnits.map(group => (
-                    <>
-                      <TableRow key={`group-${group.key}`} className="bg-muted/30 font-semibold">
+                    <Fragment key={`group-${group.key}`}>
+                      <TableRow className="bg-muted/30 font-semibold">
                         <TableCell colSpan={7}>
                           {group.key} ({group.count} records)
                         </TableCell>
@@ -1183,7 +1226,7 @@ export default function WarrantyExplorer() {
                           </TableCell>
                         </TableRow>
                       ))}
-                    </>
+                    </Fragment>
                   ))
                 ) : units.length > 0 ? (
                   units.map(unit => (

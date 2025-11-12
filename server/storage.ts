@@ -721,20 +721,34 @@ export class DatabaseStorage implements IStorage {
     orders: string[];
     coverageDescriptions: string[];
   }> {
-    // Get filter options from covered units only (case-insensitive)
+    // Get filter options from ALL covered units (not just non-expired)
     const items = await db.select({
       make: coveredUnit.make,
       model: coveredUnit.model,
       customerName: coveredUnit.customerName,
       orderNumber: coveredUnit.orderNumber,
       coverageDescription: coveredUnit.coverageDescription,
-    }).from(coveredUnit).where(nonExpiredCoveredUnitsCondition());
+    }).from(coveredUnit);
     
-    const makes = Array.from(new Set(items.map(i => i.make?.toUpperCase()).filter(Boolean) as string[])).sort();
-    const models = Array.from(new Set(items.map(i => i.model?.toUpperCase()).filter(Boolean) as string[])).sort();
-    const customers = Array.from(new Set(items.map(i => i.customerName?.toUpperCase()).filter(Boolean) as string[])).sort();
-    const orders = Array.from(new Set(items.map(i => i.orderNumber?.toUpperCase()).filter(Boolean) as string[])).sort();
-    const coverageDescriptions = Array.from(new Set(items.map(i => i.coverageDescription?.toUpperCase()).filter(Boolean) as string[])).sort();
+    // Helper to get unique values case-insensitively, preserving original case
+    const getUniqueValues = (values: (string | null)[]) => {
+      const uniqueMap = new Map<string, string>();
+      values.forEach(val => {
+        if (val) {
+          const key = val.toUpperCase();
+          if (!uniqueMap.has(key)) {
+            uniqueMap.set(key, val); // Keep the first occurrence's original case
+          }
+        }
+      });
+      return Array.from(uniqueMap.values()).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    };
+    
+    const makes = getUniqueValues(items.map(i => i.make));
+    const models = getUniqueValues(items.map(i => i.model));
+    const customers = getUniqueValues(items.map(i => i.customerName));
+    const orders = getUniqueValues(items.map(i => i.orderNumber));
+    const coverageDescriptions = getUniqueValues(items.map(i => i.coverageDescription));
     
     return { makes, models, customers, orders, coverageDescriptions };
   }
