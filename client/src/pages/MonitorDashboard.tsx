@@ -107,16 +107,22 @@ const riskBadgeClass = (level: RiskLevel) => {
   }
 };
 
-// Vibrant color palette for heatmap - poppy and bold
+// 10-shade gradient: gray → green → yellow → orange → red
 function getCellColor(count: number, maxCount: number): string {
-  if (count === 0) return "bg-slate-100 dark:bg-slate-800";
+  if (count === 0) return "bg-slate-200 dark:bg-slate-800";
   const intensity = maxCount > 0 ? (count / maxCount) * 100 : 0;
   
-  if (intensity < 20) return "bg-indigo-300 dark:bg-indigo-400";
-  if (intensity < 40) return "bg-indigo-500 dark:bg-indigo-600";
-  if (intensity < 60) return "bg-purple-500 dark:bg-purple-600";
-  if (intensity < 80) return "bg-fuchsia-600 dark:bg-fuchsia-700";
-  return "bg-rose-700 dark:bg-rose-800";
+  // 10 shades for better data segregation
+  if (intensity < 10) return "bg-emerald-200 dark:bg-emerald-900";    // Light green
+  if (intensity < 20) return "bg-emerald-300 dark:bg-emerald-800";    // Green
+  if (intensity < 30) return "bg-green-400 dark:bg-green-700";        // Medium green
+  if (intensity < 40) return "bg-lime-400 dark:bg-lime-700";          // Lime/yellow-green
+  if (intensity < 50) return "bg-yellow-300 dark:bg-yellow-600";      // Yellow
+  if (intensity < 60) return "bg-amber-400 dark:bg-amber-600";        // Amber
+  if (intensity < 70) return "bg-orange-400 dark:bg-orange-600";      // Orange
+  if (intensity < 80) return "bg-orange-500 dark:bg-orange-700";      // Dark orange
+  if (intensity < 90) return "bg-red-500 dark:bg-red-700";            // Red
+  return "bg-red-600 dark:bg-red-800";                                // Deep red
 }
 
 function HeatmapDay({
@@ -831,7 +837,7 @@ export default function MonitorDashboard() {
                     {/* Grid with Month Headers */}
                     <div className="flex-1">
                       {/* Month Headers */}
-                      <div className="flex gap-1 mb-2 h-6">
+                      <div className="flex gap-0.5 mb-2 h-6">
                         {monthHeaders.map((header, index) => (
                           <div
                             key={index}
@@ -847,9 +853,9 @@ export default function MonitorDashboard() {
                       </div>
 
                       {/* Week Columns */}
-                      <div className="flex gap-1">
+                      <div className="flex gap-0.5">
                         {heatmapWeeks.map((week, weekIndex) => (
-                          <div key={weekIndex} className="flex flex-col gap-1">
+                          <div key={weekIndex} className="flex flex-col gap-0.5">
                             {week.map((cell, dayIndex) => (
                               <div key={dayIndex}>
                                 {cell.count === -1 ? (
@@ -874,16 +880,21 @@ export default function MonitorDashboard() {
                     </div>
                   </div>
 
-                  {/* Legend */}
-                  <div className="flex items-center gap-3 mt-6 text-xs text-muted-foreground">
+                  {/* Legend - 10 shade gradient */}
+                  <div className="flex items-center gap-2 mt-6 text-xs text-muted-foreground">
                     <span className="font-medium">Less</span>
-                    <div className="flex gap-1.5">
-                      <div className="w-4 h-4 rounded-sm bg-slate-100 dark:bg-slate-800 shadow-sm" />
-                      <div className="w-4 h-4 rounded-sm bg-indigo-300 dark:bg-indigo-400 shadow-sm" />
-                      <div className="w-4 h-4 rounded-sm bg-indigo-500 dark:bg-indigo-600 shadow-sm" />
-                      <div className="w-4 h-4 rounded-sm bg-purple-500 dark:bg-purple-600 shadow-sm" />
-                      <div className="w-4 h-4 rounded-sm bg-fuchsia-600 dark:bg-fuchsia-700 shadow-sm" />
-                      <div className="w-4 h-4 rounded-sm bg-rose-700 dark:bg-rose-800 shadow-sm" />
+                    <div className="flex gap-1">
+                      <div className="w-3.5 h-3.5 rounded-sm bg-slate-200 dark:bg-slate-800 shadow-sm" title="0%" />
+                      <div className="w-3.5 h-3.5 rounded-sm bg-emerald-200 dark:bg-emerald-900 shadow-sm" title="1-10%" />
+                      <div className="w-3.5 h-3.5 rounded-sm bg-emerald-300 dark:bg-emerald-800 shadow-sm" title="11-20%" />
+                      <div className="w-3.5 h-3.5 rounded-sm bg-green-400 dark:bg-green-700 shadow-sm" title="21-30%" />
+                      <div className="w-3.5 h-3.5 rounded-sm bg-lime-400 dark:bg-lime-700 shadow-sm" title="31-40%" />
+                      <div className="w-3.5 h-3.5 rounded-sm bg-yellow-300 dark:bg-yellow-600 shadow-sm" title="41-50%" />
+                      <div className="w-3.5 h-3.5 rounded-sm bg-amber-400 dark:bg-amber-600 shadow-sm" title="51-60%" />
+                      <div className="w-3.5 h-3.5 rounded-sm bg-orange-400 dark:bg-orange-600 shadow-sm" title="61-70%" />
+                      <div className="w-3.5 h-3.5 rounded-sm bg-orange-500 dark:bg-orange-700 shadow-sm" title="71-80%" />
+                      <div className="w-3.5 h-3.5 rounded-sm bg-red-500 dark:bg-red-700 shadow-sm" title="81-90%" />
+                      <div className="w-3.5 h-3.5 rounded-sm bg-red-600 dark:bg-red-800 shadow-sm" title="91-100%" />
                     </div>
                     <span className="font-medium">More</span>
                   </div>
