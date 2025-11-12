@@ -198,16 +198,8 @@ export default function MonitorDashboard() {
   const endDate = useMemo(() => addMonths(startDate, 13), [startDate]);
   const hasBulkSelection = selectedRiskItems.size > 1;
 
-  // Fetch aggregated heatmap data (server-side filtering)
-  const { data: heatmapExpirations, isLoading } = useQuery<Array<{ date: string; count: number }>>({
-    queryKey: ["/api/covered-units/expirations", {
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      make: filters.make || undefined,
-      model: filters.model || undefined,
-      customerName: filters.customerName || undefined,
-      orderNumber: filters.orderNumber || undefined,
-    }],
+  const { data: coveredUnits, isLoading } = useQuery<CoveredUnit[]>({
+    queryKey: ["/api/covered-units"],
   });
 
   const { data: pools } = useQuery<CoveragePoolWithStats[]>({
@@ -628,7 +620,7 @@ export default function MonitorDashboard() {
           transition={{ duration: 0.2 }}
         >
           <div>
-            <h1 className="text-3xl font-bold mb-2">Monitor</h1>
+            <h1 className="text-3xl font-bold mb-2">Monitor Expiries</h1>
             <p className="text-muted-foreground">
               Track warranty expirations and units running out
             </p>
