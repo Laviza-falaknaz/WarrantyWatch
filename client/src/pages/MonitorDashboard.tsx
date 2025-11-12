@@ -998,131 +998,107 @@ export default function MonitorDashboard() {
                       <Card 
                         key={index} 
                         className={cn(
-                          "rounded-2xl hover-elevate transition-all",
-                          isSelected && "ring-2 ring-primary"
+                          "rounded-lg hover-elevate transition-all border-l-4",
+                          isSelected && "ring-2 ring-primary",
+                          model.risk_level === 'critical' && "border-l-red-600",
+                          model.risk_level === 'high' && "border-l-orange-500",
+                          model.risk_level === 'medium' && "border-l-amber-400",
+                          model.risk_level === 'low' && "border-l-green-500"
                         )}
                         data-testid={`model-item-${index}`}
                       >
-                        <CardContent className="p-0">
-                          {/* Header Section with Color Coding */}
-                          <div className={cn(
-                            "p-3 rounded-t-2xl border-b-2",
-                            model.risk_level === 'critical' && "bg-red-50 dark:bg-red-950/20 border-red-600",
-                            model.risk_level === 'high' && "bg-orange-50 dark:bg-orange-950/20 border-orange-500",
-                            model.risk_level === 'medium' && "bg-amber-50 dark:bg-amber-950/20 border-amber-400",
-                            model.risk_level === 'low' && "bg-green-50 dark:bg-green-950/20 border-green-500"
-                          )}>
-                            <div className="flex items-start gap-2">
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => toggleModelSelection(model)}
-                                data-testid={`checkbox-model-${index}`}
-                                className="mt-0.5"
-                              />
-                              <div className="flex-1 min-w-0 space-y-1.5">
-                                {/* Model Title with Processor/Gen */}
-                                <h3 className="font-bold text-sm leading-tight">
-                                  {model.make} {model.model}
-                                  {(model.processor || model.generation) && (
-                                    <span className="text-muted-foreground font-normal">
-                                      {' '}({[model.processor, model.generation].filter(Boolean).join(' • ')})
-                                    </span>
-                                  )}
-                                </h3>
-                                
-                                {/* Status Badges Row */}
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <div className={cn(
-                                    "inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs",
-                                    model.risk_level === 'critical' && "bg-red-600 text-white",
-                                    model.risk_level === 'high' && "bg-orange-500 text-white",
-                                    model.risk_level === 'medium' && "bg-amber-500 text-white",
-                                    model.risk_level === 'low' && "bg-green-600 text-white"
-                                  )}>
-                                    {model.days_of_supply !== null 
-                                      ? `${Math.floor(Number(model.days_of_supply) || 0)} days left` 
-                                      : 'No demand'}
-                                  </div>
-                                  <Badge 
-                                    variant={hasCoverage ? "default" : "destructive"}
-                                    className="text-xs font-semibold"
-                                  >
-                                    {hasCoverage ? "✓ Coverage" : "✗ No Coverage"}
-                                  </Badge>
-                                </div>
-                              </div>
+                        <CardContent className="p-3 space-y-2">
+                          {/* Header: Checkbox + Title */}
+                          <div className="flex items-start gap-2">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleModelSelection(model)}
+                              data-testid={`checkbox-model-${index}`}
+                              className="mt-0.5"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-xs leading-tight line-clamp-2">
+                                {model.make} {model.model}
+                                {(model.processor || model.generation) && (
+                                  <span className="text-muted-foreground font-normal text-[10px]">
+                                    {' '}({[model.processor, model.generation].filter(Boolean).join(' • ')})
+                                  </span>
+                                )}
+                              </h3>
                             </div>
                           </div>
 
-                          {/* Inventory Metrics Section */}
-                          <div className="p-3 space-y-2.5">
-                            {/* Key Metrics Grid */}
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-1.5">Inventory Status</p>
-                              <div className="grid grid-cols-3 gap-2">
-                                <div className="bg-background border rounded-lg p-2 text-center">
-                                  <p className="text-xs text-muted-foreground mb-0.5">Active Units</p>
-                                  <p className="font-bold text-base">{model.covered_count || 0}</p>
-                                </div>
-                                <div className="bg-background border rounded-lg p-2 text-center">
-                                  <p className="text-xs text-muted-foreground mb-0.5">Spare Units</p>
-                                  <p className="font-bold text-base">{model.spare_count || 0}</p>
-                                </div>
-                                <div className="bg-background border rounded-lg p-2 text-center">
-                                  <p className="text-xs text-muted-foreground mb-0.5">Run Rate</p>
-                                  <p className="font-bold text-base">{(Number(model.run_rate) || 0).toFixed(1)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
-                                </div>
-                              </div>
+                          {/* Status Badges */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className={cn(
+                              "inline-flex items-center px-1.5 py-0.5 rounded font-bold text-[10px]",
+                              model.risk_level === 'critical' && "bg-red-600 text-white",
+                              model.risk_level === 'high' && "bg-orange-500 text-white",
+                              model.risk_level === 'medium' && "bg-amber-500 text-white",
+                              model.risk_level === 'low' && "bg-green-600 text-white"
+                            )}>
+                              {model.days_of_supply !== null 
+                                ? `${Math.floor(Number(model.days_of_supply) || 0)}d` 
+                                : '∞'}
                             </div>
+                            <Badge 
+                              variant={hasCoverage ? "default" : "destructive"}
+                              className="text-[9px] font-semibold h-4 px-1.5"
+                            >
+                              {hasCoverage ? "Has Active Warranties" : "No Active Warranties"}
+                            </Badge>
+                          </div>
 
-                            {/* Regional Stock Distribution */}
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-1.5">Available Stock by Region</p>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-2">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-1.5">
-                                      <div className="w-2 h-2 rounded-full bg-blue-500" />
-                                      <span className="text-xs font-medium">UK</span>
-                                    </div>
-                                    <span className="text-sm font-bold">{model.uk_available_count || 0}</span>
-                                  </div>
-                                </div>
-                                <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900 rounded-lg p-2">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-1.5">
-                                      <div className="w-2 h-2 rounded-full bg-purple-500" />
-                                      <span className="text-xs font-medium">UAE</span>
-                                    </div>
-                                    <span className="text-sm font-bold">{model.uae_available_count || 0}</span>
-                                  </div>
-                                </div>
-                              </div>
+                          {/* Compact Metrics */}
+                          <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                            <div className="text-center">
+                              <div className="text-muted-foreground">Active</div>
+                              <div className="font-bold text-xs">{model.covered_count || 0}</div>
                             </div>
+                            <div className="text-center">
+                              <div className="text-muted-foreground">Spare</div>
+                              <div className="font-bold text-xs">{model.spare_count || 0}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-muted-foreground">Run/mo</div>
+                              <div className="font-bold text-xs">{(Number(model.run_rate) || 0).toFixed(1)}</div>
+                            </div>
+                          </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex gap-2 pt-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="flex-1 gap-1.5"
-                                onClick={() => handleSendAlert(model)}
-                                data-testid={`button-alert-${index}`}
-                              >
-                                <Bell className="w-3.5 h-3.5" />
-                                Alert
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="flex-1 gap-1.5"
-                                onClick={() => handleCreatePool(model)}
-                                data-testid={`button-pool-${index}`}
-                              >
-                                <FolderPlus className="w-3.5 h-3.5" />
-                                Pool
-                              </Button>
+                          {/* Regional Stock */}
+                          <div className="flex items-center justify-center gap-3 text-[10px] bg-muted/30 rounded py-1">
+                            <div className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                              <span className="font-semibold">UK {model.uk_available_count || 0}</span>
                             </div>
+                            <div className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                              <span className="font-semibold">UAE {model.uae_available_count || 0}</span>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 h-7 text-[10px]"
+                              onClick={() => handleSendAlert(model)}
+                              data-testid={`button-alert-${index}`}
+                            >
+                              <Bell className="w-3 h-3 mr-1" />
+                              Alert
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 h-7 text-[10px]"
+                              onClick={() => handleCreatePool(model)}
+                              data-testid={`button-pool-${index}`}
+                            >
+                              <FolderPlus className="w-3 h-3 mr-1" />
+                              Pool
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>
