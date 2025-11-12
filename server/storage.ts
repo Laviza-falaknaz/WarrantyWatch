@@ -2082,7 +2082,7 @@ export class DatabaseStorage implements IStorage {
         LEFT JOIN available_metrics av USING (make, model, processor, generation)
         LEFT JOIN claims_metrics cl USING (make, model, processor, generation)
         LEFT JOIN replacement_metrics rep USING (make, model, processor, generation)
-        WHERE (COALESCE(cl.claims_count, 0) > 0 OR COALESCE(cov.covered_count, 0) > 0)
+        WHERE (COALESCE(cl.claims_count, 0) > 0 OR COALESCE(cov.covered_count, 0) > 0 OR COALESCE(sp.spare_count, 0) > 0)
           ${options?.excludeZeroCovered ? sql`AND COALESCE(cov.covered_count, 0) > 0` : sql``}
           ${options?.search ? sql`AND (
             LOWER(c.make) LIKE LOWER(${'%' + options.search + '%'}) OR
