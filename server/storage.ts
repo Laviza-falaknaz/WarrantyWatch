@@ -1121,10 +1121,10 @@ export class DatabaseStorage implements IStorage {
       expiration_buckets AS (
         SELECT 
           CASE 
-            WHEN coverage_end_date - CURRENT_DATE BETWEEN 0 AND 30 THEN '0-30 days'
-            WHEN coverage_end_date - CURRENT_DATE BETWEEN 31 AND 90 THEN '31-90 days'
-            WHEN coverage_end_date - CURRENT_DATE BETWEEN 91 AND 180 THEN '91-180 days'
-            WHEN coverage_end_date - CURRENT_DATE > 180 THEN '180+ days'
+            WHEN EXTRACT(EPOCH FROM (coverage_end_date - CURRENT_TIMESTAMP))/86400 BETWEEN 0 AND 30 THEN '0-30 days'
+            WHEN EXTRACT(EPOCH FROM (coverage_end_date - CURRENT_TIMESTAMP))/86400 BETWEEN 31 AND 90 THEN '31-90 days'
+            WHEN EXTRACT(EPOCH FROM (coverage_end_date - CURRENT_TIMESTAMP))/86400 BETWEEN 91 AND 180 THEN '91-180 days'
+            WHEN EXTRACT(EPOCH FROM (coverage_end_date - CURRENT_TIMESTAMP))/86400 > 180 THEN '180+ days'
           END as range,
           COUNT(*) as count
         FROM filtered_units
