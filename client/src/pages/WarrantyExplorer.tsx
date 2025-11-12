@@ -1,13 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -26,1074 +21,791 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, RefreshCw, Laptop, Tags, Box, Shield, ChevronDown, Check } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Search,
+  RefreshCw,
+  Laptop,
+  Users,
+  ShieldCheck,
+  Calendar,
+  ChevronDown,
+  Check,
+  X,
+  Download,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from 'chart.js';
-import { Bar, Line, Doughnut } from 'react-chartjs-2';
+import * as XLSX from 'xlsx';
 
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
-
-// API endpoint from the HTML file
-const API_URL = 'https://01f7d87362b64cf3a95fbd0a0c6bc1.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/6669a738385d413f9d33e10155e5a2cd/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=DwpZjBG08rpwV2uwqeQlve3naP1kzp3kbw-Jn2Wv388';
-
-interface WarrantySummaryData {
-  Make: string;
-  CleanedModelNum: string;
-  Category: string;
-  WarrantyCount: number;
+interface CoveredUnit {
+  id: string;
+  serialNumber: string;
+  areaId: string;
+  itemId: string;
+  make: string;
+  model: string;
+  processor: string | null;
+  generation: string | null;
+  ram: string | null;
+  hdd: string | null;
+  displaySize: string | null;
+  touchscreen: boolean | null;
+  category: string | null;
+  customerName: string | null;
+  orderNumber: string | null;
+  orderDate: string | null;
+  coverageDescription: string | null;
+  coverageStartDate: string;
+  coverageEndDate: string;
+  coverageStatus: string | null;
+  coverageDurationDays: number | null;
+  isCoverageActive: boolean | null;
+  createdOn: string;
+  modifiedOn: string;
 }
 
-interface DrillData {
-  a2c_acinvent_inventserialid: string;
-  a2c_acinvent_areaid: string;
-  a2c_acinvent_gradeuae: string;
-  a2c_acinvent_processor_txt: string;
-  a2c_acinvent_processorgen_txt: string;
-  a2c_acinvent_currram: number;
-  a2c_acinvent_currhdd: number;
-  warrantydescription: string;
-  warrantystartdate: string;
-  warrantyenddate: string;
-  warrantystatus: string;
-  dayspending: number;
+interface FilterOptions {
+  makes: string[];
+  models: string[];
+  customers: string[];
+  orders: string[];
+  coverageDescriptions: string[];
+}
+
+interface FilterState {
+  make: string[];
+  model: string[];
+  processor: string[];
+  ram: string[];
+  category: string[];
+  customerName: string[];
+  orderNumber: string[];
+  coverageDescription: string[];
+  status: string[];
+  search: string;
+}
+
+interface StatsResponse {
+  total: number;
+  active: number;
+  expiring: number;
+  expired: number;
 }
 
 export default function WarrantyExplorer() {
   const { toast } = useToast();
-  
-  // State management
-  const [data, setData] = useState<WarrantySummaryData[]>([]);
-  const [filteredData, setFilteredData] = useState<WarrantySummaryData[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Filter states
-  const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
-  const [selectedModels, setSelectedModels] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [warrantyFilter, setWarrantyFilter] = useState<string>('');
-  
-  // Drill-down modal states
-  const [drillModalOpen, setDrillModalOpen] = useState(false);
-  const [drillData, setDrillData] = useState<DrillData[]>([]);
-  const [drillLoading, setDrillLoading] = useState(false);
-  const [drillModalTitle, setDrillModalTitle] = useState('');
-  const [drillSearchQuery, setDrillSearchQuery] = useState('');
-  
-  // Sorting state
-  const [sortColumn, setSortColumn] = useState<string>('');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // Fetch data from API
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          "operation": "summary"
-        })
-      });
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>({
+    make: [],
+    model: [],
+    processor: [],
+    ram: [],
+    category: [],
+    customerName: [],
+    orderNumber: [],
+    coverageDescription: [],
+    status: [],
+    search: "",
+  });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
+  // Fetch filter options
+  const { data: filterOptions } = useQuery<FilterOptions>({
+    queryKey: ["/api/covered-units/filter-options"],
+  });
+
+  // Build filter params object for API calls
+  const filterParams = useMemo(() => {
+    const params: Record<string, any> = {};
+    
+    Object.entries(filters).forEach(([key, value]) => {
+      if (Array.isArray(value) && value.length > 0) {
+        params[key] = value;
+      } else if (typeof value === "string" && value) {
+        params[key] = value;
       }
+    });
 
-      const apiData = await response.json();
-      setData(apiData);
-      setFilteredData(apiData);
-      
-      // Initialize filters - all makes, all models, but only Reman and Circular categories
-      const makes = Array.from(new Set(apiData.map((item: WarrantySummaryData) => item.Make))) as string[];
-      const models = Array.from(new Set(apiData.map((item: WarrantySummaryData) => item.CleanedModelNum))) as string[];
-      const categories = Array.from(new Set(apiData.map((item: WarrantySummaryData) => item.Category))) as string[];
-      
-      setSelectedMakes(makes);
-      setSelectedModels(models);
-      // Default to only Reman and Circular
-      const defaultCategories = categories.filter(cat => 
-        cat.toLowerCase() === 'reman' || cat.toLowerCase() === 'circular'
-      );
-      setSelectedCategories(defaultCategories.length > 0 ? defaultCategories : categories);
-      
-      setLastUpdated(new Date().toLocaleTimeString());
-      
-      toast({
-        title: "Success",
-        description: "Data loaded successfully",
-      });
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast({
-        title: "Error",
-        description: `Failed to load data: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+    return params;
+  }, [filters]);
 
-  // Load data on mount
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Fetch covered units stats
+  const { data: stats } = useQuery<StatsResponse>({
+    queryKey: ["/api/covered-units/stats", filterParams],
+    enabled: true,
+  });
 
-  // Apply filters
-  useEffect(() => {
-    let filtered = [...data];
-
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(item =>
-        item.Make.toLowerCase().includes(query) ||
-        item.CleanedModelNum.toLowerCase().includes(query) ||
-        item.Category.toLowerCase().includes(query)
-      );
-    }
-
-    // Make filter
-    if (selectedMakes.length > 0) {
-      filtered = filtered.filter(item => selectedMakes.includes(item.Make));
-    }
-
-    // Model filter
-    if (selectedModels.length > 0) {
-      filtered = filtered.filter(item => selectedModels.includes(item.CleanedModelNum));
-    }
-
-    // Category filter
-    if (selectedCategories.length > 0) {
-      filtered = filtered.filter(item => selectedCategories.includes(item.Category));
-    }
-
-    // Warranty count filter
-    if (warrantyFilter) {
-      filtered = filtered.filter(item => {
-        if (warrantyFilter === 'low') return item.WarrantyCount >= 1 && item.WarrantyCount <= 19;
-        if (warrantyFilter === 'medium') return item.WarrantyCount >= 20 && item.WarrantyCount <= 49;
-        if (warrantyFilter === 'high') return item.WarrantyCount >= 50;
-        return true;
-      });
-    }
-
-    // Apply sorting
-    if (sortColumn) {
-      filtered.sort((a, b) => {
-        const aVal = a[sortColumn as keyof WarrantySummaryData];
-        const bVal = b[sortColumn as keyof WarrantySummaryData];
-        
-        if (typeof aVal === 'string' && typeof bVal === 'string') {
-          return sortDirection === 'asc' 
-            ? aVal.localeCompare(bVal)
-            : bVal.localeCompare(aVal);
-        }
-        
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
-          return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-        }
-        
-        return 0;
-      });
-    }
-
-    setFilteredData(filtered);
-  }, [data, searchQuery, selectedMakes, selectedModels, selectedCategories, warrantyFilter, sortColumn, sortDirection]);
+  // Fetch covered units with filters
+  const {
+    data: coveredUnits = [],
+    isLoading,
+    refetch,
+  } = useQuery<CoveredUnit[]>({
+    queryKey: [
+      "/api/covered-units",
+      {
+        ...filterParams,
+        limit: itemsPerPage,
+        offset: (currentPage - 1) * itemsPerPage,
+      },
+    ],
+  });
 
   // Calculate summary metrics
   const summaryMetrics = useMemo(() => {
-    const totalWarranties = filteredData.reduce((sum, item) => sum + item.WarrantyCount, 0);
-    const uniqueMakes = new Set(filteredData.map(item => item.Make)).size;
-    const uniqueModels = new Set(filteredData.map(item => item.CleanedModelNum)).size;
-    const uniqueCategories = new Set(filteredData.map(item => item.Category)).size;
-
-    return { totalWarranties, uniqueMakes, uniqueModels, uniqueCategories };
-  }, [filteredData]);
-
-  // Prepare chart data
-  const warrantyByMakeData = useMemo(() => {
-    const makes: Record<string, number> = {};
-    filteredData.forEach(item => {
-      makes[item.Make] = (makes[item.Make] || 0) + item.WarrantyCount;
-    });
+    if (!stats) return { total: 0, active: 0, expiringSoon: 0, uniqueCustomers: 0 };
     
-    const sorted = Object.entries(makes)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10);
-
     return {
-      labels: sorted.map(item => item[0]),
-      datasets: [{
-        label: 'Warranty Count',
-        data: sorted.map(item => item[1]),
-        backgroundColor: 'rgba(59, 130, 246, 0.7)',
-        borderColor: 'rgba(59, 130, 246, 1)',
-        borderWidth: 2,
-      }]
+      total: stats.total || 0,
+      active: stats.active || 0,
+      expiringSoon: stats.expiring || 0,
+      uniqueCustomers: filterOptions?.customers.length || 0,
     };
-  }, [filteredData]);
+  }, [stats, filterOptions]);
 
-  const topCategoriesData = useMemo(() => {
-    const categories: Record<string, number> = {};
-    filteredData.forEach(item => {
-      categories[item.Category] = (categories[item.Category] || 0) + item.WarrantyCount;
-    });
+  // Get all available filter values from covered units (from entire dataset)
+  const { data: allCoveredUnitsForFilters = [] } = useQuery<CoveredUnit[]>({
+    queryKey: ["/api/covered-units", { limit: 10000 }],
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  // Get unique values for multi-select filters from all data
+  const dynamicFilterOptions = useMemo(() => {
+    const processors = Array.from(new Set(allCoveredUnitsForFilters.map(u => u.processor).filter(Boolean))).sort() as string[];
+    const rams = Array.from(new Set(allCoveredUnitsForFilters.map(u => u.ram).filter(Boolean))).sort() as string[];
+    const categories = Array.from(new Set(allCoveredUnitsForFilters.map(u => u.category).filter(Boolean))).sort() as string[];
     
-    const sorted = Object.entries(categories)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
+    return { processors, rams, categories };
+  }, [allCoveredUnitsForFilters]);
 
-    return {
-      labels: sorted.map(item => item[0]),
-      datasets: [{
-        data: sorted.map(item => item[1]),
-        backgroundColor: [
-          'rgba(59, 130, 246, 0.85)',
-          'rgba(16, 185, 129, 0.85)',
-          'rgba(251, 146, 60, 0.85)',
-          'rgba(147, 51, 234, 0.85)',
-          'rgba(236, 72, 153, 0.85)',
-        ],
-        borderWidth: 0,
-      }]
-    };
-  }, [filteredData]);
+  // Update filter
+  const updateFilter = useCallback((key: keyof FilterState, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setCurrentPage(1); // Reset to first page when filters change
+  }, []);
 
-  const topModelsData = useMemo(() => {
-    const models: Record<string, number> = {};
-    filteredData.forEach(item => {
-      models[item.CleanedModelNum] = (models[item.CleanedModelNum] || 0) + item.WarrantyCount;
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    setFilters({
+      make: [],
+      model: [],
+      processor: [],
+      ram: [],
+      category: [],
+      customerName: [],
+      orderNumber: [],
+      coverageDescription: [],
+      status: [],
+      search: "",
     });
-    
-    const sorted = Object.entries(models)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10);
+    setCurrentPage(1);
+  }, []);
 
-    return {
-      labels: sorted.map(item => item[0]),
-      datasets: [{
-        label: 'Warranty Count',
-        data: sorted.map(item => item[1]),
-        backgroundColor: 'rgba(16, 185, 129, 0.7)',
-        borderColor: 'rgba(16, 185, 129, 1)',
-        borderWidth: 2,
-      }]
-    };
-  }, [filteredData]);
-
-  // Drill-down functionality
-  const handleDrillDown = async (make: string, model: string, category: string) => {
-    setDrillModalTitle(`${make} - ${model} (${category})`);
-    setDrillModalOpen(true);
-    setDrillLoading(true);
-    setDrillSearchQuery('');
-
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          "operation": "drill",
-          "make": make,
-          "model": model,
-          "category": category
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const drillResult = await response.json();
-      setDrillData(drillResult);
-    } catch (error) {
-      console.error('Error fetching drill data:', error);
+  // Export to Excel
+  const handleExport = useCallback(() => {
+    if (coveredUnits.length === 0) {
       toast({
-        title: "Error",
-        description: `Failed to load device details: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        title: "No data to export",
+        description: "There are no warranty records to export.",
         variant: "destructive",
       });
-    } finally {
-      setDrillLoading(false);
+      return;
+    }
+
+    const exportData = coveredUnits.map(unit => ({
+      "Serial Number": unit.serialNumber,
+      "Make": unit.make,
+      "Model": unit.model,
+      "Processor": unit.processor || "",
+      "RAM": unit.ram || "",
+      "Category": unit.category || "",
+      "Customer": unit.customerName || "",
+      "Order Number": unit.orderNumber || "",
+      "Coverage Description": unit.coverageDescription || "",
+      "Start Date": unit.coverageStartDate ? new Date(unit.coverageStartDate).toLocaleDateString() : "",
+      "End Date": unit.coverageEndDate ? new Date(unit.coverageEndDate).toLocaleDateString() : "",
+      "Status": unit.isCoverageActive ? "Active" : "Inactive",
+      "Area": unit.areaId,
+      "Item ID": unit.itemId,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Warranty Records");
+    
+    const timestamp = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(workbook, `warranty-explorer-${timestamp}.xlsx`);
+
+    toast({
+      title: "Export successful",
+      description: `Exported ${coveredUnits.length} warranty records to Excel.`,
+    });
+  }, [coveredUnits, toast]);
+
+  // Format date helper
+  const formatDate = (date: string | null) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  // Calculate days until expiration
+  const getDaysUntilExpiration = (endDate: string) => {
+    const today = new Date();
+    const end = new Date(endDate);
+    const diffTime = end.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  // Get expiration status badge
+  const getExpirationBadge = (unit: CoveredUnit) => {
+    if (!unit.isCoverageActive) {
+      return <Badge variant="secondary" className="text-xs">Expired</Badge>;
+    }
+    
+    const daysLeft = getDaysUntilExpiration(unit.coverageEndDate);
+    
+    if (daysLeft <= 30) {
+      return <Badge variant="destructive" className="text-xs">Expires in {daysLeft}d</Badge>;
+    } else if (daysLeft <= 90) {
+      return <Badge className="bg-orange-500 hover:bg-orange-600 text-xs">Expires in {daysLeft}d</Badge>;
+    } else {
+      return <Badge variant="default" className="text-xs">Active</Badge>;
     }
   };
 
-  // Drill data summary metrics
-  const drillSummaryMetrics = useMemo(() => {
-    const totalDevices = drillData.length;
-    const activeWarranties = drillData.filter(item => item.warrantystatus === 'Active').length;
-    const avgDaysPending = drillData.length > 0
-      ? Math.round(drillData.reduce((sum, item) => sum + item.dayspending, 0) / drillData.length)
-      : 0;
-    const uniqueWarrantyTypes = new Set(drillData.map(item => item.warrantydescription)).size;
+  // Active filter count
+  const activeFilterCount = useMemo(() => {
+    return Object.values(filters).filter(v => 
+      (Array.isArray(v) && v.length > 0) || (typeof v === "string" && v)
+    ).length;
+  }, [filters]);
 
-    return { totalDevices, activeWarranties, avgDaysPending, uniqueWarrantyTypes };
-  }, [drillData]);
-
-  // Drill data chart preparations
-  const drillTimelineData = useMemo(() => {
-    const months: Record<string, number> = {};
-    
-    drillData.forEach(item => {
-      if (item.warrantystartdate) {
-        const date = new Date(item.warrantystartdate);
-        const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-        months[monthYear] = (months[monthYear] || 0) + 1;
-      }
-    });
-
-    const sorted = Object.entries(months).sort((a, b) => a[0].localeCompare(b[0]));
-    const labels = sorted.map(([monthYear]) => {
-      const [year, month] = monthYear.split('-');
-      const date = new Date(parseInt(year), parseInt(month) - 1);
-      return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    });
-
-    return {
-      labels,
-      datasets: [{
-        label: 'Warranty Starts',
-        data: sorted.map(([, count]) => count),
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        borderColor: 'rgba(59, 130, 246, 1)',
-        borderWidth: 3,
-        tension: 0.4,
-        fill: true,
-        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-      }]
-    };
-  }, [drillData]);
-
-  const drillWarrantyTypesData = useMemo(() => {
-    const descriptions: Record<string, number> = {};
-    
-    drillData.forEach(item => {
-      const description = item.warrantydescription || 'Unknown';
-      descriptions[description] = (descriptions[description] || 0) + 1;
-    });
-
-    const sorted = Object.entries(descriptions).sort((a, b) => b[1] - a[1]);
-
-    return {
-      labels: sorted.map(item => item[0]),
-      datasets: [{
-        label: 'Device Count',
-        data: sorted.map(item => item[1]),
-        backgroundColor: sorted.map((_, index) => {
-          const colors = [
-            'rgba(59, 130, 246, 0.7)',
-            'rgba(16, 185, 129, 0.7)',
-            'rgba(251, 146, 60, 0.7)',
-            'rgba(147, 51, 234, 0.7)',
-            'rgba(236, 72, 153, 0.7)',
-          ];
-          return colors[index % colors.length];
-        }),
-        borderWidth: 0,
-        barThickness: 12,
-      }]
-    };
-  }, [drillData]);
-
-  // Filtered drill data based on search
-  const filteredDrillData = useMemo(() => {
-    if (!drillSearchQuery) return drillData;
-    
-    const query = drillSearchQuery.toLowerCase();
-    return drillData.filter(item =>
-      item.a2c_acinvent_inventserialid?.toLowerCase().includes(query) ||
-      item.a2c_acinvent_areaid?.toLowerCase().includes(query) ||
-      item.warrantydescription?.toLowerCase().includes(query)
-    );
-  }, [drillData, drillSearchQuery]);
-
-  // Handle sorting
-  const handleSort = useCallback((column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
-  }, [sortColumn, sortDirection]);
-
-  // Reset filters
-  const resetFilters = useCallback(() => {
-    const makes = Array.from(new Set(data.map(item => item.Make)));
-    const models = Array.from(new Set(data.map(item => item.CleanedModelNum)));
-    const categories = Array.from(new Set(data.map(item => item.Category)));
-    
-    setSelectedMakes(makes);
-    setSelectedModels(models);
-    // Reset to default: only Reman and Circular
-    const defaultCategories = categories.filter(cat => 
-      cat.toLowerCase() === 'reman' || cat.toLowerCase() === 'circular'
-    );
-    setSelectedCategories(defaultCategories.length > 0 ? defaultCategories : categories);
-    setWarrantyFilter('');
-    setSearchQuery('');
-  }, [data]);
-
-  // Get unique filter options
-  const filterOptions = useMemo(() => {
-    const makes = Array.from(new Set(data.map(item => item.Make))).sort();
-    const allModels = Array.from(new Set(data.map(item => item.CleanedModelNum))).sort();
-    const categories = Array.from(new Set(data.map(item => item.Category))).sort();
-    
-    // Filter models based on selected makes (Make-Model hierarchy)
-    const models = selectedMakes.length === 0 || selectedMakes.length === makes.length
-      ? allModels
-      : Array.from(new Set(
-          data
-            .filter(item => selectedMakes.includes(item.Make))
-            .map(item => item.CleanedModelNum)
-        )).sort();
-    
-    return { makes, models, categories };
-  }, [data, selectedMakes]);
+  // Calculate total pages
+  const totalPages = Math.ceil((stats?.total || 0) / itemsPerPage);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="page-warranty-explorer">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Warranty Explorer</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Comprehensive warranty analytics and device tracking
+            View and analyze warranty coverage for deployed devices
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by make, model or category..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-              data-testid="input-search"
-            />
-          </div>
           <Button
-            onClick={fetchData}
-            disabled={loading}
+            variant="outline"
+            onClick={handleExport}
+            disabled={coveredUnits.length === 0}
+            data-testid="button-export"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={isLoading}
             data-testid="button-refresh"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Loading...' : 'Refresh Data'}
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+            Refresh
           </Button>
         </div>
       </div>
 
-      <div className="space-y-6">
-          {/* Summary Cards */}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card data-testid="card-total-warranties">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Warranties</CardTitle>
+            <Laptop className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="value-total-warranties">
+              {(summaryMetrics?.total || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Deployed units under coverage
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-active-warranties">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Coverage</CardTitle>
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="value-active-warranties">
+              {(summaryMetrics?.active || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Currently covered devices
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-expiring-soon">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="value-expiring-soon">
+              {(summaryMetrics?.expiringSoon || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Within 90 days
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-unique-customers">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Customers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="value-unique-customers">
+              {(summaryMetrics?.uniqueCustomers || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Unique customer accounts
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters and Search */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4" />
+              <CardTitle className="text-base">Filters</CardTitle>
+              {activeFilterCount > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {activeFilterCount} active
+                </Badge>
+              )}
+            </div>
+            {activeFilterCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                data-testid="button-clear-filters"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear all
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card data-testid="card-total-warranties">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Warranties</CardTitle>
-                <Laptop className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="value-total-warranties">
-                  {summaryMetrics.totalWarranties.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">All active warranties</p>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-unique-makes">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Unique Makes</CardTitle>
-                <Tags className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="value-unique-makes">
-                  {summaryMetrics.uniqueMakes}
-                </div>
-                <p className="text-xs text-muted-foreground">Different manufacturers</p>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-unique-models">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Unique Models</CardTitle>
-                <Box className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="value-unique-models">
-                  {summaryMetrics.uniqueModels}
-                </div>
-                <p className="text-xs text-muted-foreground">Different device models</p>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-unique-categories">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Categories</CardTitle>
-                <Shield className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="value-unique-categories">
-                  {summaryMetrics.uniqueCategories}
-                </div>
-                <p className="text-xs text-muted-foreground">Different categories</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card data-testid="chart-warranty-by-make">
-              <CardHeader>
-                <CardTitle>Warranty Distribution by Make</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <Bar
-                    data={warrantyByMakeData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: { display: false },
-                      },
-                      scales: {
-                        y: { beginAtZero: true },
-                      },
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="chart-top-categories">
-              <CardHeader>
-                <CardTitle>Top Categories by Warranties</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <Doughnut
-                    data={topCategoriesData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: { position: 'bottom' },
-                      },
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card data-testid="chart-top-models">
-            <CardHeader>
-              <CardTitle>Top 10 Models by Warranties</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <Bar
-                  data={topModelsData}
-                  options={{
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { display: false },
-                    },
-                    scales: {
-                      x: { beginAtZero: true },
-                    },
-                  }}
+            {/* Search */}
+            <div className="lg:col-span-2">
+              <label className="text-sm font-medium mb-2 block">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Serial number, customer, order..."
+                  value={filters.search}
+                  onChange={(e) => updateFilter("search", e.target.value)}
+                  className="pl-10"
+                  data-testid="input-search"
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Data Table with Filters */}
-          <Card data-testid="table-warranty-summary">
-            <CardHeader>
-              <CardTitle>Warranty Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* Filters */}
-              <div className="flex flex-wrap gap-4 p-4 mb-4 bg-muted/50 rounded-lg border">
-                <div className="flex-1 min-w-[200px]">
-                  <label className="text-xs font-semibold uppercase mb-2 block">Make</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between" data-testid="select-make-filter">
-                        <span className="truncate">
-                          {selectedMakes.length === 0
-                            ? "None selected"
-                            : selectedMakes.length === filterOptions.makes.length
-                            ? `All Makes (${filterOptions.makes.length})`
-                            : `${selectedMakes.length} selected`}
-                        </span>
-                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[250px] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Search makes..." />
-                        <CommandEmpty>No make found.</CommandEmpty>
-                        <CommandGroup className="max-h-[300px] overflow-auto">
-                          {filterOptions.makes.map((make) => (
-                            <CommandItem
-                              key={make}
-                              onSelect={() => {
-                                setSelectedMakes(prev =>
-                                  prev.includes(make)
-                                    ? prev.filter(m => m !== make)
-                                    : [...prev, make]
-                                );
-                              }}
-                            >
-                              <Checkbox
-                                checked={selectedMakes.includes(make)}
-                                className="mr-2"
-                              />
-                              {make}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+            {/* Status */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Status</label>
+              <Select
+                value={filters.status[0] || "all"}
+                onValueChange={(value) => updateFilter("status", value === "all" ? [] : [value])}
+              >
+                <SelectTrigger data-testid="select-status">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Expired</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                <div className="flex-1 min-w-[200px]">
-                  <label className="text-xs font-semibold uppercase mb-2 block">Model</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between" data-testid="select-model-filter">
-                        <span className="truncate">
-                          {selectedModels.length === 0
-                            ? "None selected"
-                            : selectedModels.length === filterOptions.models.length
-                            ? `All Models (${filterOptions.models.length})`
-                            : `${selectedModels.length} selected`}
-                        </span>
-                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[250px] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Search models..." />
-                        <CommandEmpty>No model found.</CommandEmpty>
-                        <CommandGroup className="max-h-[300px] overflow-auto">
-                          {filterOptions.models.map((model) => (
-                            <CommandItem
-                              key={model}
-                              onSelect={() => {
-                                setSelectedModels(prev =>
-                                  prev.includes(model)
-                                    ? prev.filter(m => m !== model)
-                                    : [...prev, model]
-                                );
-                              }}
-                            >
-                              <Checkbox
-                                checked={selectedModels.includes(model)}
-                                className="mr-2"
-                              />
-                              {model}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+            {/* Make */}
+            <MultiSelectFilter
+              label="Make"
+              options={filterOptions?.makes || []}
+              selected={filters.make}
+              onChange={(value) => updateFilter("make", value)}
+              placeholder="Select makes"
+              testId="filter-make"
+            />
 
-                <div className="flex-1 min-w-[200px]">
-                  <label className="text-xs font-semibold uppercase mb-2 block">Category</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between" data-testid="select-category-filter">
-                        <span className="truncate">
-                          {selectedCategories.length === 0
-                            ? "None selected"
-                            : selectedCategories.length === filterOptions.categories.length
-                            ? `All Categories (${filterOptions.categories.length})`
-                            : `${selectedCategories.length} selected`}
-                        </span>
-                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[250px] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Search categories..." />
-                        <CommandEmpty>No category found.</CommandEmpty>
-                        <CommandGroup className="max-h-[300px] overflow-auto">
-                          {filterOptions.categories.map((category) => (
-                            <CommandItem
-                              key={category}
-                              onSelect={() => {
-                                setSelectedCategories(prev =>
-                                  prev.includes(category)
-                                    ? prev.filter(c => c !== category)
-                                    : [...prev, category]
-                                );
-                              }}
-                            >
-                              <Checkbox
-                                checked={selectedCategories.includes(category)}
-                                className="mr-2"
-                              />
-                              {category}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+            {/* Model */}
+            <MultiSelectFilter
+              label="Model"
+              options={filterOptions?.models || []}
+              selected={filters.model}
+              onChange={(value) => updateFilter("model", value)}
+              placeholder="Select models"
+              testId="filter-model"
+            />
 
-                <div className="flex-1 min-w-[200px]">
-                  <label className="text-xs font-semibold uppercase mb-2 block">Warranty Count</label>
-                  <Select value={warrantyFilter || "all"} onValueChange={(value) => setWarrantyFilter(value === "all" ? "" : value)}>
-                    <SelectTrigger data-testid="select-warranty-count-filter">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="low">Low (1-19)</SelectItem>
-                      <SelectItem value="medium">Medium (20-49)</SelectItem>
-                      <SelectItem value="high">High (50+)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+            {/* Customer */}
+            <MultiSelectFilter
+              label="Customer"
+              options={filterOptions?.customers || []}
+              selected={filters.customerName}
+              onChange={(value) => updateFilter("customerName", value)}
+              placeholder="Select customers"
+              testId="filter-customer"
+            />
 
-                <div className="flex items-end gap-2">
-                  <Button variant="outline" onClick={resetFilters} data-testid="button-reset-filters">
-                    Reset
-                  </Button>
-                </div>
-              </div>
+            {/* Order Number */}
+            <MultiSelectFilter
+              label="Order Number"
+              options={filterOptions?.orders || []}
+              selected={filters.orderNumber}
+              onChange={(value) => updateFilter("orderNumber", value)}
+              placeholder="Select orders"
+              testId="filter-order"
+            />
 
-              {/* Table */}
-              <div className="border rounded-md">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th
-                        className="p-3 text-left font-medium cursor-pointer hover:bg-muted transition-colors"
-                        onClick={() => handleSort('Make')}
-                        data-testid="header-make"
-                      >
-                        Make {sortColumn === 'Make' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th
-                        className="p-3 text-left font-medium cursor-pointer hover:bg-muted transition-colors"
-                        onClick={() => handleSort('CleanedModelNum')}
-                        data-testid="header-model"
-                      >
-                        Model {sortColumn === 'CleanedModelNum' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th
-                        className="p-3 text-left font-medium cursor-pointer hover:bg-muted transition-colors"
-                        onClick={() => handleSort('Category')}
-                        data-testid="header-category"
-                      >
-                        Category {sortColumn === 'Category' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th
-                        className="p-3 text-left font-medium cursor-pointer hover:bg-muted transition-colors"
-                        onClick={() => handleSort('WarrantyCount')}
-                        data-testid="header-warranty-count"
-                      >
-                        Warranty Count {sortColumn === 'WarrantyCount' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th className="p-3 text-left font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan={5} className="p-12 text-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-                            <p className="text-muted-foreground">Loading warranty data...</p>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : filteredData.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="p-12 text-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <Shield className="h-12 w-12 text-muted-foreground/50" />
-                            <h3 className="font-semibold">No devices found</h3>
-                            <p className="text-sm text-muted-foreground">Try adjusting your search criteria</p>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredData.map((item, index) => (
-                        <tr key={index} className="border-b hover:bg-muted/50 transition-colors" data-testid={`row-warranty-${index}`}>
-                          <td className="p-3">{item.Make}</td>
-                          <td className="p-3">{item.CleanedModelNum}</td>
-                          <td className="p-3">{item.Category}</td>
-                          <td className="p-3">
-                            <Badge
-                              variant={
-                                item.WarrantyCount >= 50 ? "default" :
-                                item.WarrantyCount >= 20 ? "secondary" :
-                                "outline"
-                              }
-                              data-testid={`badge-warranty-count-${index}`}
-                            >
-                              {item.WarrantyCount}
-                            </Badge>
-                          </td>
-                          <td className="p-3">
-                            <Button
-                              size="sm"
-                              onClick={() => handleDrillDown(item.Make, item.CleanedModelNum, item.Category)}
-                              data-testid={`button-drill-${index}`}
-                            >
-                              View Details
-                            </Button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            {/* Processor */}
+            <MultiSelectFilter
+              label="Processor"
+              options={dynamicFilterOptions.processors}
+              selected={filters.processor}
+              onChange={(value) => updateFilter("processor", value)}
+              placeholder="Select processors"
+              testId="filter-processor"
+            />
 
-        {/* Drill-Down Modal */}
-        <Dialog open={drillModalOpen} onOpenChange={setDrillModalOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle data-testid="drill-modal-title">{drillModalTitle}</DialogTitle>
-          </DialogHeader>
+            {/* RAM */}
+            <MultiSelectFilter
+              label="RAM"
+              options={dynamicFilterOptions.rams}
+              selected={filters.ram}
+              onChange={(value) => updateFilter("ram", value)}
+              placeholder="Select RAM"
+              testId="filter-ram"
+            />
 
-          {drillLoading ? (
-            <div className="flex flex-col items-center justify-center p-12 gap-4">
-              <RefreshCw className="h-12 w-12 animate-spin text-primary" />
-              <p className="text-muted-foreground">Loading device details...</p>
+            {/* Category */}
+            <MultiSelectFilter
+              label="Category"
+              options={dynamicFilterOptions.categories}
+              selected={filters.category}
+              onChange={(value) => updateFilter("category", value)}
+              placeholder="Select categories"
+              testId="filter-category"
+            />
+
+            {/* Coverage Description */}
+            <MultiSelectFilter
+              label="Coverage Type"
+              options={filterOptions?.coverageDescriptions || []}
+              selected={filters.coverageDescription}
+              onChange={(value) => updateFilter("coverageDescription", value)}
+              placeholder="Select coverage types"
+              testId="filter-coverage"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Data Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              Warranty Records
+              {stats && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  ({stats.total.toLocaleString()} total)
+                </span>
+              )}
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Loading warranty records...</span>
+            </div>
+          ) : coveredUnits.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Laptop className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-lg font-medium">No warranty records found</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Try adjusting your filters or search criteria
+              </p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Drill Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <div className="text-3xl font-bold text-primary" data-testid="drill-total-devices">
-                      {drillSummaryMetrics.totalDevices}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">Total Devices</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <div className="text-3xl font-bold text-primary" data-testid="drill-active-warranties">
-                      {drillSummaryMetrics.activeWarranties}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">Active Warranties</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <div className="text-3xl font-bold text-primary" data-testid="drill-avg-days">
-                      {drillSummaryMetrics.avgDaysPending}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">Avg Days Pending</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <div className="text-3xl font-bold text-primary" data-testid="drill-warranty-types">
-                      {drillSummaryMetrics.uniqueWarrantyTypes}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">Warranty Types</p>
-                  </CardContent>
-                </Card>
+            <>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-32">Status</TableHead>
+                      <TableHead>Serial Number</TableHead>
+                      <TableHead>Make/Model</TableHead>
+                      <TableHead>Specifications</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Coverage</TableHead>
+                      <TableHead className="text-right">Period</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {coveredUnits.map((unit) => (
+                      <TableRow key={unit.id} data-testid={`row-warranty-${unit.id}`}>
+                        <TableCell>
+                          {getExpirationBadge(unit)}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {unit.serialNumber}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{unit.make}</div>
+                          <div className="text-sm text-muted-foreground">{unit.model}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm space-y-0.5">
+                            {unit.processor && (
+                              <div className="text-muted-foreground">{unit.processor}</div>
+                            )}
+                            {unit.ram && <div className="text-muted-foreground">{unit.ram} RAM</div>}
+                            {unit.category && (
+                              <Badge variant="outline" className="text-xs">
+                                {unit.category}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div className="font-medium">{unit.customerName || "N/A"}</div>
+                            {unit.orderNumber && (
+                              <div className="text-muted-foreground text-xs">
+                                Order: {unit.orderNumber}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {unit.coverageDescription || "Standard Warranty"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          <div>{formatDate(unit.coverageStartDate)}</div>
+                          <div className="text-muted-foreground">to</div>
+                          <div>{formatDate(unit.coverageEndDate)}</div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
 
-              {/* Drill Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Inventory Dispatch Timeline</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[250px]">
-                      <Line
-                        data={drillTimelineData}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: { display: false },
-                          },
-                          scales: {
-                            y: {
-                              beginAtZero: true,
-                              ticks: { stepSize: 1 },
-                            },
-                          },
-                        }}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Warranty Types</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[250px]">
-                      <Bar
-                        data={drillWarrantyTypesData}
-                        options={{
-                          indexAxis: 'y',
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: { display: false },
-                          },
-                          scales: {
-                            x: {
-                              beginAtZero: true,
-                              ticks: { stepSize: 1 },
-                            },
-                          },
-                        }}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Drill Table */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Device Details</CardTitle>
-                    <div className="relative w-64">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search devices..."
-                        value={drillSearchQuery}
-                        onChange={(e) => setDrillSearchQuery(e.target.value)}
-                        className="pl-10"
-                        data-testid="input-drill-search"
-                      />
-                    </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to{" "}
+                    {Math.min(currentPage * itemsPerPage, stats?.total || 0)} of{" "}
+                    {(stats?.total || 0).toLocaleString()} records
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="border rounded-md overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="p-2 text-left font-medium whitespace-nowrap">Serial ID</th>
-                          <th className="p-2 text-left font-medium whitespace-nowrap">Area</th>
-                          <th className="p-2 text-left font-medium whitespace-nowrap">Grade</th>
-                          <th className="p-2 text-left font-medium whitespace-nowrap">Processor</th>
-                          <th className="p-2 text-left font-medium whitespace-nowrap">RAM</th>
-                          <th className="p-2 text-left font-medium whitespace-nowrap">HDD</th>
-                          <th className="p-2 text-left font-medium whitespace-nowrap">Warranty</th>
-                          <th className="p-2 text-left font-medium whitespace-nowrap">Start Date</th>
-                          <th className="p-2 text-left font-medium whitespace-nowrap">End Date</th>
-                          <th className="p-2 text-left font-medium whitespace-nowrap">Status</th>
-                          <th className="p-2 text-left font-medium whitespace-nowrap">Days</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredDrillData.length === 0 ? (
-                          <tr>
-                            <td colSpan={11} className="p-8 text-center text-muted-foreground">
-                              No devices found
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredDrillData.map((item, index) => (
-                            <tr key={index} className="border-b hover:bg-muted/50 transition-colors">
-                              <td className="p-2 font-mono text-xs">{item.a2c_acinvent_inventserialid || 'N/A'}</td>
-                              <td className="p-2">{item.a2c_acinvent_areaid || 'N/A'}</td>
-                              <td className="p-2">{item.a2c_acinvent_gradeuae || 'N/A'}</td>
-                              <td className="p-2">{`${item.a2c_acinvent_processor_txt || ''} ${item.a2c_acinvent_processorgen_txt || ''}`.trim()}</td>
-                              <td className="p-2">{item.a2c_acinvent_currram || 'N/A'} MB</td>
-                              <td className="p-2">{item.a2c_acinvent_currhdd || 'N/A'} GB</td>
-                              <td className="p-2">{item.warrantydescription || 'N/A'}</td>
-                              <td className="p-2 whitespace-nowrap">{item.warrantystartdate ? new Date(item.warrantystartdate).toLocaleDateString() : 'N/A'}</td>
-                              <td className="p-2 whitespace-nowrap">{item.warrantyenddate ? new Date(item.warrantyenddate).toLocaleDateString() : 'N/A'}</td>
-                              <td className="p-2">
-                                <Badge variant={item.warrantystatus === 'Active' ? 'default' : 'secondary'}>
-                                  {item.warrantystatus || 'Unknown'}
-                                </Badge>
-                              </td>
-                              <td className="p-2">
-                                <Badge
-                                  variant={
-                                    item.dayspending > 365 ? "destructive" :
-                                    item.dayspending > 180 ? "secondary" :
-                                    "outline"
-                                  }
-                                >
-                                  {item.dayspending || 0}
-                                </Badge>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      data-testid="button-prev-page"
+                    >
+                      Previous
+                    </Button>
+                    <div className="text-sm">
+                      Page {currentPage} of {totalPages}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      data-testid="button-next-page"
+                    >
+                      Next
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              )}
+            </>
           )}
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Multi-select filter component
+interface MultiSelectFilterProps {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (value: string[]) => void;
+  placeholder: string;
+  testId?: string;
+}
+
+function MultiSelectFilter({
+  label,
+  options,
+  selected,
+  onChange,
+  placeholder,
+  testId,
+}: MultiSelectFilterProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  // Filter options based on search (case-insensitive)
+  const filteredOptions = useMemo(() => {
+    if (!search) return options;
+    const searchUpper = search.toLocaleUpperCase('en-US');
+    return options.filter(option => 
+      option.toLocaleUpperCase('en-US').includes(searchUpper)
+    );
+  }, [options, search]);
+
+  const toggleOption = (option: string) => {
+    // Case-insensitive toggle
+    const optionUpper = option.toLocaleUpperCase('en-US');
+    const isSelected = selected.some(s => s.toLocaleUpperCase('en-US') === optionUpper);
+    
+    if (isSelected) {
+      onChange(selected.filter(s => s.toLocaleUpperCase('en-US') !== optionUpper));
+    } else {
+      onChange([...selected, option]);
+    }
+  };
+
+  const clearSelection = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange([]);
+  };
+
+  return (
+    <div>
+      <label className="text-sm font-medium mb-2 block">{label}</label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between"
+            data-testid={testId}
+          >
+            <span className="truncate">
+              {selected.length === 0
+                ? placeholder
+                : `${selected.length} selected`}
+            </span>
+            <div className="flex items-center gap-1">
+              {selected.length > 0 && (
+                <X
+                  className="h-3 w-3 opacity-50 hover:opacity-100"
+                  onClick={clearSelection}
+                />
+              )}
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </div>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px] p-0" align="start">
+          <Command>
+            <CommandInput
+              placeholder={`Search ${label.toLowerCase()}...`}
+              value={search}
+              onValueChange={setSearch}
+            />
+            <CommandList>
+              <CommandEmpty>No options found.</CommandEmpty>
+              <CommandGroup>
+                {filteredOptions.map((option) => {
+                  const optionUpper = option.toLocaleUpperCase('en-US');
+                  const isSelected = selected.some(s => s.toLocaleUpperCase('en-US') === optionUpper);
+                  
+                  return (
+                    <CommandItem
+                      key={option}
+                      value={option}
+                      onSelect={() => toggleOption(option)}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        className="mr-2"
+                      />
+                      <span className="flex-1">{option}</span>
+                      {isSelected && <Check className="h-4 w-4" />}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {selected.map((item) => (
+            <Badge
+              key={item}
+              variant="secondary"
+              className="text-xs"
+            >
+              {item}
+              <X
+                className="h-3 w-3 ml-1 cursor-pointer"
+                onClick={() => toggleOption(item)}
+              />
+            </Badge>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
