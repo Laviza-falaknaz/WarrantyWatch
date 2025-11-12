@@ -1049,8 +1049,8 @@ export default function MonitorDashboard() {
                             </Badge>
                           </div>
 
-                          {/* Compact Metrics */}
-                          <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                          {/* Compact Metrics - 5 Columns */}
+                          <div className="grid grid-cols-5 gap-1.5 text-[10px]">
                             <div className="text-center">
                               <div className="text-muted-foreground">Active</div>
                               <div className="font-bold text-xs">{model.covered_count || 0}</div>
@@ -1063,17 +1063,13 @@ export default function MonitorDashboard() {
                               <div className="text-muted-foreground">Run/mo</div>
                               <div className="font-bold text-xs">{(Number(model.run_rate) || 0).toFixed(1)}</div>
                             </div>
-                          </div>
-
-                          {/* Regional Stock */}
-                          <div className="flex items-center justify-center gap-3 text-[10px] bg-muted/30 rounded py-1">
-                            <div className="flex items-center gap-1">
-                              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                              <span className="font-semibold">UK {model.uk_available_count || 0}</span>
+                            <div className="text-center">
+                              <div className="text-muted-foreground">UK</div>
+                              <div className="font-bold text-xs">{model.uk_available_count || 0}</div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                              <span className="font-semibold">UAE {model.uae_available_count || 0}</span>
+                            <div className="text-center">
+                              <div className="text-muted-foreground">UAE</div>
+                              <div className="font-bold text-xs">{model.uae_available_count || 0}</div>
                             </div>
                           </div>
 

@@ -2045,31 +2045,33 @@ export class DatabaseStorage implements IStorage {
           ELSE NULL 
         END as days_of_supply,
         CASE
-          -- Critical: Less than 30 days of supply (immediate action needed)
-          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+          -- Only units with run_rate >= 1 are categorized by days of supply
+          -- Critical: Run rate >= 1 AND less than 30 days of supply (won't last a month)
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 AND 
                (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 < 30
           THEN 'critical'
-          -- High: 30-60 days of supply (1-2 months)
-          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+          -- High: Run rate >= 1 AND 30-60 days of supply (1-2 months)
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 AND 
                (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 BETWEEN 30 AND 60
           THEN 'high'
-          -- Medium: 60-120 days of supply (2-4 months)
-          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+          -- Medium: Run rate >= 1 AND 60-120 days of supply (2-4 months)
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 AND 
                (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 BETWEEN 60 AND 120
           THEN 'medium'
+          -- Low: Either run_rate >= 1 with sufficient supply (120+ days) OR run_rate < 1 (no demand)
           ELSE 'low'
         END as risk_level,
         CASE
-          -- Critical: Less than 30 days
-          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+          -- Critical: Run rate >= 1 AND less than 30 days
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 AND 
                (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 < 30
           THEN 95
-          -- High: 30-60 days
-          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+          -- High: Run rate >= 1 AND 30-60 days
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 AND 
                (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 BETWEEN 30 AND 60
           THEN 75
-          -- Medium: 60-120 days
-          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+          -- Medium: Run rate >= 1 AND 60-120 days
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 AND 
                (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 BETWEEN 60 AND 120
           THEN 50
           ELSE 20
