@@ -143,7 +143,7 @@ export default function WarrantyExplorer() {
   const { toast } = useToast();
   const [selectedUnit, setSelectedUnit] = useState<CoveredUnit | null>(null);
 
-  // Filter state with date ranges defaulting to last 12 months
+  // Filter state with no default date filters
   const [filters, setFilters] = useState<FilterState>({
     make: [],
     model: [],
@@ -155,8 +155,8 @@ export default function WarrantyExplorer() {
     coverageDescription: [],
     status: [],
     search: "",
-    coverageStartDateFrom: format(subMonths(new Date(), 12), "yyyy-MM-dd"),
-    coverageStartDateTo: format(new Date(), "yyyy-MM-dd"),
+    coverageStartDateFrom: "",
+    coverageStartDateTo: "",
     coverageEndDateFrom: "",
     coverageEndDateTo: "",
   });
@@ -339,8 +339,8 @@ export default function WarrantyExplorer() {
       coverageDescription: [],
       status: [],
       search: "",
-      coverageStartDateFrom: format(subMonths(new Date(), 12), "yyyy-MM-dd"),
-      coverageStartDateTo: format(new Date(), "yyyy-MM-dd"),
+      coverageStartDateFrom: "",
+      coverageStartDateTo: "",
       coverageEndDateFrom: "",
       coverageEndDateTo: "",
     });
@@ -897,7 +897,7 @@ export default function WarrantyExplorer() {
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {filters.coverageStartDateFrom
                       ? format(parseISO(filters.coverageStartDateFrom), "MMM dd, yyyy")
-                      : "Select date"}
+                      : "Any date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -926,7 +926,7 @@ export default function WarrantyExplorer() {
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {filters.coverageStartDateTo
                       ? format(parseISO(filters.coverageStartDateTo), "MMM dd, yyyy")
-                      : "Select date"}
+                      : "Any date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
