@@ -274,7 +274,7 @@ export interface IStorage {
     spareRateMax?: number;
     coveredCountMin?: number;
     coveredCountMax?: number;
-  }): Promise<any[]>; // Using any[] for now, will add proper type
+  }): Promise<{ data: any[]; total: number }>; // Returns paginated data with total count
   
   // Configuration
   getConfiguration(): Promise<AppConfiguration>;
@@ -2083,7 +2083,7 @@ export class DatabaseStorage implements IStorage {
             LOWER(COALESCE(c.generation, '')) LIKE LOWER(${'%' + options.search + '%'})
           )` : sql``}
       )
-      SELECT * FROM base_combinations
+      SELECT *, COUNT(*) OVER() as total_count FROM base_combinations
       WHERE 1=1
         ${options?.riskLevels && options.riskLevels.length > 0 ? 
           sql`AND risk_level IN (${sql.join(options.riskLevels.map(level => sql`${level}`), sql`, `)})` 
@@ -2124,7 +2124,13 @@ export class DatabaseStorage implements IStorage {
       OFFSET ${options?.offset || 0}
     `);
     
-    return combinations.rows as any[];
+    const total = combinations.rows.length > 0 ? parseInt(String((combinations.rows[0] as any).total_count)) : 0;
+    const data = combinations.rows.map((row: any) => {
+      const { total_count, ...rest } = row;
+      return rest;
+    });
+    
+    return { data, total };
   }
 
   async getConfiguration(): Promise<AppConfiguration> {

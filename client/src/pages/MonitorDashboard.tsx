@@ -193,6 +193,15 @@ export default function MonitorDashboard() {
   });
   const [selectedDateCell, setSelectedDateCell] = useState<HeatmapCell | null>(null);
   const [dialogSearch, setDialogSearch] = useState("");
+  
+  // Pagination, sorting, and advanced filtering for Units Running Out
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [sortBy, setSortBy] = useState<'coverage_ratio' | 'risk_score' | 'covered_count' | 'spare_count' | 'run_rate'>('coverage_ratio');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [riskLevels, setRiskLevels] = useState<RiskLevel[]>([]);
+  const [coverageRatioMin, setCoverageRatioMin] = useState<number | undefined>();
+  const [coverageRatioMax, setCoverageRatioMax] = useState<number | undefined>();
 
   const endDate = useMemo(() => addMonths(startDate, 13), [startDate]);
   const hasBulkSelection = selectedRiskItems.size > 1;
@@ -237,33 +246,33 @@ export default function MonitorDashboard() {
     queryKey: ["/api/coverage-pools-with-stats"],
   });
 
-  const { data: riskCombinations } = useQuery<RiskCombination[]>({
+  const { data: riskCombinationsData, isLoading: isLoadingRiskCombinations } = useQuery<{ data: RiskCombination[]; total: number }>({
     queryKey: ['/api/risk-combinations', { 
-      sortBy: 'riskScore', 
-      sortOrder: 'desc', 
-      limit: 10,
-      offset: 0,
+      sortBy: sortBy, 
+      sortOrder: sortOrder, 
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
       excludeZeroCovered: excludeZeroCovered,
+      search: riskFilters.search || undefined,
+      riskLevels: riskLevels.length > 0 ? riskLevels : undefined,
+      coverageRatioMin: coverageRatioMin,
+      coverageRatioMax: coverageRatioMax,
     }],
   });
 
-  const filteredRiskCombinations = useMemo(() => {
-    if (!riskCombinations) return [];
+  const riskCombinations = riskCombinationsData?.data || [];
+  const totalRiskCombinations = riskCombinationsData?.total || 0;
+  const totalPages = Math.ceil(totalRiskCombinations / pageSize);
+
+  // Calculate metrics summary from current data
+  const riskMetrics = useMemo(() => {
+    if (!riskCombinations) return { critical: 0, high: 0, medium: 0, low: 0 };
     
-    return riskCombinations.filter((combo) => {
-      const searchLower = riskFilters.search.toLowerCase();
-      const matchesSearch = !riskFilters.search || 
-        combo.make?.toLowerCase().includes(searchLower) ||
-        combo.model?.toLowerCase().includes(searchLower) ||
-        combo.processor?.toLowerCase().includes(searchLower);
-      
-      const matchesRiskLevel = !riskFilters.riskLevel || 
-        riskFilters.riskLevel === "all" ||
-        combo.risk_level === riskFilters.riskLevel;
-      
-      return matchesSearch && matchesRiskLevel;
-    });
-  }, [riskCombinations, riskFilters]);
+    return riskCombinations.reduce((acc, combo) => {
+      acc[combo.risk_level] = (acc[combo.risk_level] || 0) + 1;
+      return acc;
+    }, { critical: 0, high: 0, medium: 0, low: 0 } as Record<RiskLevel, number>);
+  }, [riskCombinations]);
 
   // Mutations for creating pools and sending alerts
   const createPoolMutation = useMutation({
@@ -332,7 +341,7 @@ export default function MonitorDashboard() {
   const handleCreateCombinedPool = () => {
     if (selectedRiskItems.size === 0) return;
     
-    const selectedCombinations = filteredRiskCombinations?.filter(combo => 
+    const selectedCombinations = riskCombinations?.filter(combo => 
       selectedRiskItems.has(getRiskComboKey(combo))
     ) || [];
     
@@ -369,7 +378,7 @@ export default function MonitorDashboard() {
   const handleSendCombinedAlert = () => {
     if (selectedRiskItems.size === 0) return;
     
-    const selectedCombinations = filteredRiskCombinations?.filter(combo => 
+    const selectedCombinations = riskCombinations?.filter(combo => 
       selectedRiskItems.has(getRiskComboKey(combo))
     ) || [];
     
@@ -380,6 +389,75 @@ export default function MonitorDashboard() {
         setSelectedRiskItems(new Set()); // Clear selection after success
       },
     });
+  };
+  
+  // CSV Export handler for risk combinations
+  const handleExportRiskCombinations = async () => {
+    try {
+      // Fetch all filtered results (not just current page)
+      const response = await fetch(`/api/risk-combinations?${new URLSearchParams({
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+        limit: '10000', // Fetch all results
+        offset: '0',
+        excludeZeroCovered: String(excludeZeroCovered),
+        ...(riskFilters.search && { search: riskFilters.search }),
+        ...(riskLevels.length > 0 && { riskLevels: riskLevels.join(',') }),
+        ...(coverageRatioMin !== undefined && { coverageRatioMin: String(coverageRatioMin) }),
+        ...(coverageRatioMax !== undefined && { coverageRatioMax: String(coverageRatioMax) }),
+      })}`);
+      
+      const result = await response.json();
+      const allCombinations = result.data || [];
+      
+      const exportData = allCombinations.map((combo: RiskCombination) => ({
+        'Make': combo.make,
+        'Model': combo.model,
+        'Processor': combo.processor || '',
+        'Generation': combo.generation || '',
+        'Risk Level': combo.risk_level,
+        'Risk Score': combo.risk_score,
+        'Covered Count': combo.covered_count,
+        'Spare Count': combo.spare_count,
+        'Coverage Ratio %': (Number(combo.coverage_ratio) || 0).toFixed(1),
+        'Run Rate': (Number(combo.run_rate) || 0).toFixed(1),
+        'Coverage of Run Rate %': (Number(combo.coverage_of_run_rate) || 0).toFixed(1),
+        'UK Available': combo.uk_available_count,
+        'UAE Available': combo.uae_available_count,
+        'Total Available': combo.available_stock_count,
+        'Claims (6mo)': combo.claims_last_6_months,
+        'Replacements (6mo)': combo.replacements_last_6_months,
+        'Fulfillment Rate %': (Number(combo.fulfillment_rate) || 0).toFixed(1),
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Risk Combinations');
+      
+      XLSX.writeFile(wb, `risk-combinations-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+      
+      toast({
+        title: "Export Successful",
+        description: `Exported ${exportData.length} risk combination(s) to Excel`,
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Failed to export data. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Column sorting handler
+  const handleSort = (column: typeof sortBy) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+    setPage(1); // Reset to first page when sorting changes
   };
 
   // Filter and map warranty expiration data (case-insensitive filtering)
@@ -1080,93 +1158,132 @@ export default function MonitorDashboard() {
           </div>
 
           {/* Right Column: lg:col-span-4 - Units Running Out */}
-          <div className="lg:col-span-4" ref={riskCombinationsRef}>
+          <div className="lg:col-span-4 space-y-4" ref={riskCombinationsRef}>
+            {/* Risk Metrics Summary */}
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="rounded-2xl border-l-4 border-l-red-600">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">Critical</p>
+                      <p className="text-2xl font-bold" data-testid="text-critical-count">{riskMetrics.critical}</p>
+                    </div>
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="rounded-2xl border-l-4 border-l-orange-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">High</p>
+                      <p className="text-2xl font-bold" data-testid="text-high-count">{riskMetrics.high}</p>
+                    </div>
+                    <TrendingDown className="w-6 h-6 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="rounded-2xl border-l-4 border-l-amber-400">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">Medium</p>
+                      <p className="text-2xl font-bold" data-testid="text-medium-count">{riskMetrics.medium}</p>
+                    </div>
+                    <Activity className="w-6 h-6 text-amber-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="rounded-2xl border-l-4 border-l-green-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">Low</p>
+                      <p className="text-2xl font-bold" data-testid="text-low-count">{riskMetrics.low}</p>
+                    </div>
+                    <Shield className="w-6 h-6 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Main Table Card */}
             <Card className="rounded-2xl">
               <CardHeader>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">Units Running Out</CardTitle>
                     <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleExportRiskCombinations}
+                        className="gap-1.5"
+                        data-testid="button-export-csv"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Export
+                      </Button>
                       <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
                         <Switch
                           checked={!excludeZeroCovered}
-                          onCheckedChange={(checked) => setExcludeZeroCovered(!checked)}
+                          onCheckedChange={(checked) => {
+                            setExcludeZeroCovered(!checked);
+                            setPage(1);
+                          }}
                           data-testid="toggle-include-zero-covered"
                         />
-                        Include 0 covered
+                        Show Zero
                       </label>
                     </div>
                   </div>
                   
-                  {/* Filter inputs */}
-                  <div className="flex flex-col gap-2">
-                    <Input
-                      placeholder="Search make/model/processor..."
-                      value={riskFilters.search}
-                      onChange={(e) => setRiskFilters({ ...riskFilters, search: e.target.value })}
-                      className="text-sm"
-                      data-testid="input-risk-search"
-                    />
-                    <Select
-                      value={riskFilters.riskLevel}
-                      onValueChange={(value) => setRiskFilters({ ...riskFilters, riskLevel: value })}
-                    >
-                      <SelectTrigger className="text-sm" data-testid="select-risk-level">
-                        <SelectValue placeholder="All risk levels" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All risk levels</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  {/* Filters */}
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search make, model, processor..."
+                        value={riskFilters.search}
+                        onChange={(e) => {
+                          setRiskFilters({ ...riskFilters, search: e.target.value });
+                          setPage(1);
+                        }}
+                        className="pl-9 text-sm"
+                        data-testid="input-risk-search"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Min Coverage %"
+                        value={coverageRatioMin ?? ''}
+                        onChange={(e) => {
+                          setCoverageRatioMin(e.target.value ? Number(e.target.value) : undefined);
+                          setPage(1);
+                        }}
+                        className="text-sm"
+                        data-testid="input-coverage-min"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Max Coverage %"
+                        value={coverageRatioMax ?? ''}
+                        onChange={(e) => {
+                          setCoverageRatioMax(e.target.value ? Number(e.target.value) : undefined);
+                          setPage(1);
+                        }}
+                        className="text-sm"
+                        data-testid="input-coverage-max"
+                      />
+                    </div>
                   </div>
                   
-                  {/* Select all / Deselect all */}
-                  {filteredRiskCombinations && filteredRiskCombinations.length > 0 && (() => {
-                    // Check if all filtered items are selected
-                    const allFilteredSelected = filteredRiskCombinations.every((combo) => 
-                      selectedRiskItems.has(getRiskComboKey(combo))
-                    );
-                    
-                    return (
-                      <div className="flex gap-2">
-                        {!allFilteredSelected ? (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              const newSelected = new Set(selectedRiskItems);
-                              filteredRiskCombinations.forEach((combo) => newSelected.add(getRiskComboKey(combo)));
-                              setSelectedRiskItems(newSelected);
-                            }}
-                            className="flex-1 text-xs"
-                            data-testid="button-select-all"
-                          >
-                            Select All ({filteredRiskCombinations.length})
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              const newSelected = new Set(selectedRiskItems);
-                              filteredRiskCombinations.forEach((combo) => newSelected.delete(getRiskComboKey(combo)));
-                              setSelectedRiskItems(newSelected);
-                            }}
-                            className="flex-1 text-xs"
-                            data-testid="button-deselect-all"
-                          >
-                            Deselect All
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })()}
-                  
-                  {/* Bulk actions */}
+                  {/* Bulk Actions */}
                   {selectedRiskItems.size > 0 && (
                     <div className="flex gap-2">
                       <Button
@@ -1177,7 +1294,7 @@ export default function MonitorDashboard() {
                         data-testid="button-send-combined-alert"
                       >
                         <Bell className="w-3 h-3" />
-                        Send Combined Alert ({selectedRiskItems.size})
+                        Alert ({selectedRiskItems.size})
                       </Button>
                       <Button
                         size="sm"
@@ -1187,89 +1304,125 @@ export default function MonitorDashboard() {
                         data-testid="button-create-combined-pool"
                       >
                         <FolderPlus className="w-3 h-3" />
-                        Create Combined Pool ({selectedRiskItems.size})
+                        Pool ({selectedRiskItems.size})
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedRiskItems(new Set())}
+                        data-testid="button-clear-selection"
+                      >
+                        <X className="w-3 h-3" />
                       </Button>
                     </div>
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {!filteredRiskCombinations || filteredRiskCombinations.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">
+              
+              <CardContent className="p-0">
+                {isLoadingRiskCombinations ? (
+                  <div className="p-8 text-center">
+                    <Skeleton className="h-64 w-full" />
+                  </div>
+                ) : !riskCombinations || riskCombinations.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-12">
                     <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No units running out found</p>
+                    <p className="text-sm">No risk combinations found</p>
                   </div>
                 ) : (
-                  <div>
-                    <div className="space-y-3">
-                      {filteredRiskCombinations.map((combo, index) => {
-                        const comboKey = getRiskComboKey(combo);
-                        const isSelected = selectedRiskItems.has(comboKey);
-                        
-                        const spareCount = Number(combo.spare_count) || 0;
-                        const runRate = Number(combo.run_rate) || 0;
-                        const coveredCount = Number(combo.covered_count) || 0;
-                        const coverageRatio = Number(combo.coverage_ratio) || 0;
-                        const ukAvailable = Number(combo.uk_available_count) || 0;
-                        const uaeAvailable = Number(combo.uae_available_count) || 0;
-                        
-                        const totalAvailable = ukAvailable + uaeAvailable;
-                        const uncoveredUnits = Math.max(0, coveredCount - spareCount);
-                        
-                        // Inventory runway: days worth of stock based on run rate
-                        const daysOfCover = runRate > 0 ? (spareCount / runRate) * 30 : Infinity;
-                        
-                        // Better urgency logic: 0 run rate = low risk (no recent demand)
-                        const getRunwayStatus = () => {
-                          if (runRate === 0) {
-                            return { 
-                              text: "No Recent Demand", 
-                              color: "text-muted-foreground",
-                              bg: "bg-muted/30"
-                            };
-                          }
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">
+                            <Checkbox
+                              checked={riskCombinations.every(combo => selectedRiskItems.has(getRiskComboKey(combo)))}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  const newSelected = new Set(selectedRiskItems);
+                                  riskCombinations.forEach(combo => newSelected.add(getRiskComboKey(combo)));
+                                  setSelectedRiskItems(newSelected);
+                                } else {
+                                  const newSelected = new Set(selectedRiskItems);
+                                  riskCombinations.forEach(combo => newSelected.delete(getRiskComboKey(combo)));
+                                  setSelectedRiskItems(newSelected);
+                                }
+                              }}
+                              data-testid="checkbox-select-all"
+                            />
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover-elevate"
+                            onClick={() => handleSort('coverage_ratio')}
+                            data-testid="header-coverage-ratio"
+                          >
+                            <div className="flex items-center gap-1">
+                              Coverage %
+                              {sortBy === 'coverage_ratio' && (
+                                <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead>Make/Model</TableHead>
+                          <TableHead>Risk</TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover-elevate text-right"
+                            onClick={() => handleSort('covered_count')}
+                            data-testid="header-covered"
+                          >
+                            <div className="flex items-center justify-end gap-1">
+                              Covered
+                              {sortBy === 'covered_count' && (
+                                <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover-elevate text-right"
+                            onClick={() => handleSort('spare_count')}
+                            data-testid="header-spares"
+                          >
+                            <div className="flex items-center justify-end gap-1">
+                              Spares
+                              {sortBy === 'spare_count' && (
+                                <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover-elevate text-right"
+                            onClick={() => handleSort('run_rate')}
+                            data-testid="header-demand"
+                          >
+                            <div className="flex items-center justify-end gap-1">
+                              Demand
+                              {sortBy === 'run_rate' && (
+                                <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead className="w-24">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {riskCombinations.map((combo, index) => {
+                          const comboKey = getRiskComboKey(combo);
+                          const isSelected = selectedRiskItems.has(comboKey);
+                          const coverageRatio = Number(combo.coverage_ratio) || 0;
                           
-                          if (spareCount === 0) {
-                            return { 
-                              text: "Out of Stock", 
-                              color: "text-red-600 dark:text-red-400",
-                              bg: "bg-red-50 dark:bg-red-950/30"
-                            };
-                          }
+                          const borderClass = 
+                            coverageRatio < 25 ? 'border-l-4 border-l-red-600 bg-red-50/30 dark:bg-red-950/10' :
+                            coverageRatio < 50 ? 'border-l-4 border-l-orange-500 bg-orange-50/30 dark:bg-orange-950/10' :
+                            coverageRatio < 75 ? 'border-l-4 border-l-amber-400 bg-amber-50/20 dark:bg-amber-950/10' :
+                            '';
                           
-                          if (daysOfCover < 30) {
-                            return { 
-                              text: `${Math.floor(daysOfCover)} Days Left`, 
-                              color: "text-red-600 dark:text-red-400",
-                              bg: "bg-red-50 dark:bg-red-950/30"
-                            };
-                          } else if (daysOfCover < 60) {
-                            return { 
-                              text: `${Math.floor(daysOfCover)} Days Left`, 
-                              color: "text-orange-600 dark:text-orange-400",
-                              bg: "bg-orange-50 dark:bg-orange-950/30"
-                            };
-                          } else if (daysOfCover < 90) {
-                            return { 
-                              text: `${(daysOfCover / 30).toFixed(1)} Months`, 
-                              color: "text-amber-600 dark:text-amber-500",
-                              bg: "bg-amber-50 dark:bg-amber-950/30"
-                            };
-                          } else {
-                            return { 
-                              text: `${(daysOfCover / 30).toFixed(1)} Months`, 
-                              color: "text-green-600 dark:text-green-500",
-                              bg: "bg-green-50 dark:bg-green-950/30"
-                            };
-                          }
-                        };
-                        
-                        const runway = getRunwayStatus();
-                        
-                        return (
-                          <Card key={comboKey} className="rounded-xl hover-elevate">
-                            <CardContent className="p-4">
-                              <div className="flex gap-3">
+                          return (
+                            <TableRow 
+                              key={comboKey} 
+                              className={cn(borderClass, "hover-elevate")}
+                              data-testid={`row-risk-${index}`}
+                            >
+                              <TableCell>
                                 <Checkbox
                                   checked={isSelected}
                                   onCheckedChange={(checked) => {
@@ -1282,133 +1435,132 @@ export default function MonitorDashboard() {
                                     setSelectedRiskItems(newSelected);
                                   }}
                                   data-testid={`checkbox-risk-${index}`}
-                                  className="mt-1"
                                 />
-                                
-                                <div className="flex-1 min-w-0 space-y-3">
-                                  {/* Header: Make/Model + Risk Badge */}
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                      <h3 className="text-base font-semibold truncate leading-tight">
-                                        {combo.make} {combo.model}
-                                      </h3>
-                                      {combo.processor && (
-                                        <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                          {combo.processor}
-                                        </p>
-                                      )}
-                                    </div>
-                                    <Badge className={riskBadgeClass(combo.risk_level)} variant="outline">
-                                      {combo.risk_level}
-                                    </Badge>
-                                  </div>
-                                  
-                                  {/* Inventory Runway - Prominent Display */}
-                                  <div className={`${runway.bg} rounded-lg p-3 border-l-4 ${
-                                    runway.color.includes('red') ? 'border-l-red-600' :
-                                    runway.color.includes('orange') ? 'border-l-orange-600' :
-                                    runway.color.includes('amber') ? 'border-l-amber-600' :
-                                    runway.color.includes('muted') ? 'border-l-muted' :
-                                    'border-l-green-600'
-                                  }`}>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs font-medium text-muted-foreground">Inventory Runway</span>
-                                      <span className={`text-xl font-bold ${runway.color}`}>
-                                        {runway.text}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Stock Counts - 4 Column Grid */}
-                                  <div className="grid grid-cols-4 gap-2 text-center">
-                                    <div className="bg-background rounded border p-2">
-                                      <p className="text-[10px] text-muted-foreground mb-1">Covered</p>
-                                      <p className="text-sm font-bold">{coveredCount}</p>
-                                    </div>
-                                    <div className="bg-background rounded border p-2">
-                                      <p className="text-[10px] text-muted-foreground mb-1">Spares</p>
-                                      <p className="text-sm font-bold">{spareCount}</p>
-                                    </div>
-                                    <div className="bg-background rounded border p-2">
-                                      <p className="text-[10px] text-muted-foreground mb-1">Demand/mo</p>
-                                      <p className="text-sm font-bold">{runRate.toFixed(1)}</p>
-                                    </div>
-                                    <div className="bg-background rounded border p-2">
-                                      <p className="text-[10px] text-muted-foreground mb-1">Net Gap</p>
-                                      <p className={`text-sm font-bold ${uncoveredUnits > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-500'}`}>
-                                        {uncoveredUnits}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Available Stock - Regional Breakdown */}
-                                  <div className="bg-muted/20 rounded-lg p-2">
-                                    <div className="flex items-center justify-between text-xs">
-                                      <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
-                                        <Package className="w-3 h-3" />
-                                        <span>Available Stock</span>
-                                      </div>
-                                      <div className="flex items-center gap-3 font-semibold">
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                          <span>{ukAvailable}</span>
-                                          <span className="text-muted-foreground">UK</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                                          <span>{uaeAvailable}</span>
-                                          <span className="text-muted-foreground">UAE</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <span>=</span>
-                                          <span>{totalAvailable}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {!hasBulkSelection && (
-                                    <div className="flex items-center gap-2">
-                                      <Button 
-                                        size="sm" 
-                                        variant="default" 
-                                        className="flex-1 gap-1.5"
-                                        onClick={() => handleSendAlert(combo)}
-                                        data-testid={`button-send-alert-${index}`}
-                                      >
-                                        <Bell className="w-3.5 h-3.5" />
-                                        Send Alert
-                                      </Button>
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline" 
-                                        className="flex-1 gap-1.5"
-                                        onClick={() => handleCreatePool(combo)}
-                                        data-testid={`button-create-pool-${index}`}
-                                      >
-                                        <FolderPlus className="w-3.5 h-3.5" />
-                                        Create Pool
-                                      </Button>
-                                    </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Progress value={coverageRatio} className="w-16 h-2" />
+                                  <span className={cn(
+                                    "text-sm font-semibold",
+                                    coverageRatio < 25 ? "text-red-600 dark:text-red-400" :
+                                    coverageRatio < 50 ? "text-orange-600 dark:text-orange-400" :
+                                    coverageRatio < 75 ? "text-amber-600 dark:text-amber-500" :
+                                    "text-green-600 dark:text-green-500"
+                                  )}>
+                                    {coverageRatio.toFixed(0)}%
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="text-sm font-medium">{combo.make} {combo.model}</p>
+                                  {combo.processor && (
+                                    <p className="text-xs text-muted-foreground">{combo.processor}</p>
                                   )}
                                 </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                    
-                    <div className="mt-4 pt-4 border-t">
-                      <Button 
-                        variant="ghost" 
-                        className="w-full gap-2"
-                        onClick={() => window.location.href = "/risk-combinations"}
-                        data-testid="button-view-all-risk-profiles"
-                      >
-                        View All Risk Profiles
-                        <ChevronRightIcon className="w-4 h-4" />
-                      </Button>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={riskBadgeClass(combo.risk_level)} variant="outline">
+                                  {combo.risk_level}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {combo.covered_count}
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {combo.spare_count}
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {(Number(combo.run_rate) || 0).toFixed(1)}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        onClick={() => handleSendAlert(combo)}
+                                        data-testid={`button-alert-${index}`}
+                                      >
+                                        <Bell className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Send Alert</TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        onClick={() => handleCreatePool(combo)}
+                                        data-testid={`button-pool-${index}`}
+                                      >
+                                        <FolderPlus className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Create Pool</TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+                
+                {/* Pagination */}
+                {totalRiskCombinations > 0 && (
+                  <div className="border-t p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-muted-foreground">
+                          Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalRiskCombinations)} of {totalRiskCombinations}
+                        </p>
+                        <Select
+                          value={String(pageSize)}
+                          onValueChange={(value) => {
+                            setPageSize(Number(value));
+                            setPage(1);
+                          }}
+                        >
+                          <SelectTrigger className="w-24 text-sm" data-testid="select-page-size">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setPage(Math.max(1, page - 1))}
+                          disabled={page === 1}
+                          data-testid="button-prev-page"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <span className="text-sm font-medium px-2">
+                          Page {page} of {totalPages}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setPage(Math.min(totalPages, page + 1))}
+                          disabled={page >= totalPages}
+                          data-testid="button-next-page"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}

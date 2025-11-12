@@ -537,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const coveredCountMin = req.query.coveredCountMin ? parseFloat(req.query.coveredCountMin as string) : undefined;
       const coveredCountMax = req.query.coveredCountMax ? parseFloat(req.query.coveredCountMax as string) : undefined;
       
-      const combinations = await storage.getRiskCombinations({
+      const result = await storage.getRiskCombinations({
         sortBy: sortBy as any,
         sortOrder: sortOrder as any,
         limit,
@@ -556,7 +556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         coveredCountMax,
       });
       
-      res.json(combinations);
+      res.json(result);
     } catch (error) {
       console.error("Error fetching risk combinations:", error);
       res.status(500).json({ error: "Failed to fetch risk combinations" });

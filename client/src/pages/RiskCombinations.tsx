@@ -45,7 +45,7 @@ export default function RiskCombinations() {
   const itemsPerPage = 50;
 
   // Fetch all risk combinations
-  const { data: allRiskCombinations, isLoading } = useQuery<RiskCombination[]>({
+  const { data: riskData, isLoading } = useQuery<{ data: RiskCombination[], total: number }>({
     queryKey: ['/api/risk-combinations', { 
       sortBy: sortField, 
       sortOrder: sortOrder,
@@ -55,6 +55,8 @@ export default function RiskCombinations() {
       status: statusFilter,
     }],
   });
+  
+  const allRiskCombinations = riskData?.data || [];
 
   // Filter and sort combinations
   const filteredCombinations = useMemo(() => {
