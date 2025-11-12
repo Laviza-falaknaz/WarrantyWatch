@@ -50,7 +50,7 @@ function caseInsensitiveIn(column: any, values: string[]) {
     .map(v => v.toLocaleUpperCase('en-US'));
   
   // Deduplicate
-  const upperValues = [...new Set(normalizedValues)];
+  const upperValues = Array.from(new Set(normalizedValues));
   
   if (upperValues.length === 0) {
     return undefined;
@@ -1029,6 +1029,7 @@ export class DatabaseStorage implements IStorage {
     expirationRisk: Array<{ range: string; count: number }>;
     topCustomers: Array<{ name: string; count: number }>;
     manufacturerDistribution: Array<{ make: string; count: number }>;
+    uniqueCustomersCount: number;
     processors: string[];
     rams: string[];
     categories: string[];

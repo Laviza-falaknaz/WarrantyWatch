@@ -516,6 +516,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Risk combinations analysis endpoint
   app.get("/api/risk-combinations", async (req, res) => {
     try {
+      // Disable caching AND ETags to ensure fresh data with different query parameters
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      res.removeHeader('ETag'); // Remove ETag to prevent 304 responses
+      
       const sortBy = (req.query.sortBy as string) || 'riskScore';
       const sortOrder = (req.query.sortOrder as string) || 'desc';
       const limit = parseInt(req.query.limit as string) || 100;
@@ -528,6 +534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const riskLevels = req.query.riskLevels 
         ? (Array.isArray(req.query.riskLevels) ? req.query.riskLevels as string[] : [req.query.riskLevels as string])
         : undefined;
+      
       const runRateMin = req.query.runRateMin ? parseFloat(req.query.runRateMin as string) : undefined;
       const runRateMax = req.query.runRateMax ? parseFloat(req.query.runRateMax as string) : undefined;
       const coverageRatioMin = req.query.coverageRatioMin ? parseFloat(req.query.coverageRatioMin as string) : undefined;
