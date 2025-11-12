@@ -254,7 +254,7 @@ export default function MonitorDashboard() {
   // Clear selected models when data refetches to prevent stale bulk-state
   useEffect(() => {
     setSelectedModels(new Set());
-  }, [topRiskModels]);
+  }, [riskSummaryData]);
 
   // Mutations for creating pools and sending alerts
   const createPoolMutation = useMutation({
