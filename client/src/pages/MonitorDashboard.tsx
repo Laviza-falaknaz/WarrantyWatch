@@ -134,7 +134,8 @@ function HeatmapDay({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <motion.div
+        <motion.button
+          type="button"
           whileHover={{ scale: 1.1 }}
           onClick={() => onCellClick?.(cell)}
           className={cn(
@@ -143,7 +144,8 @@ function HeatmapDay({
             cell.count > 0 && "hover:ring-2 hover:ring-purple-400 dark:hover:ring-purple-600",
             isToday && "ring-2 ring-red-500 dark:ring-red-600 ring-offset-1"
           )}
-          data-testid={`heatmap-day-${format(cell.date, 'yyyy-MM-dd')}`}
+          data-testid={`heatmap-cell-${format(cell.date, 'yyyy-MM-dd')}`}
+          aria-label={`${cell.count} warranties expiring on ${format(cell.date, 'MMM d, yyyy')}`}
         />
       </TooltipTrigger>
       <TooltipContent side="top" align="start">
@@ -157,15 +159,6 @@ function HeatmapDay({
               {cell.count} {cell.count === 1 ? 'unit' : 'units'} expiring
             </Badge>
           </div>
-          {cell.count > 0 && cell.count <= 5 && (
-            <div className="text-xs text-muted-foreground space-y-1 max-w-xs">
-              {cell.units.slice(0, 5).map((unit, i) => (
-                <div key={i} className="truncate">
-                  {unit.orderNumber || 'N/A'} - {unit.make} {unit.model}
-                </div>
-              ))}
-            </div>
-          )}
           {cell.count > 0 && (
             <p className="text-xs text-muted-foreground italic">Click to view details</p>
           )}
@@ -198,8 +191,40 @@ export default function MonitorDashboard() {
   const endDate = useMemo(() => addMonths(startDate, 13), [startDate]);
   const hasBulkSelection = selectedRiskItems.size > 1;
 
-  const { data: coveredUnits, isLoading } = useQuery<CoveredUnit[]>({
-    queryKey: ["/api/covered-units"],
+  // Fetch aggregated heatmap data (server-side filtering for all 100k+ records)
+  const { data: heatmapExpirations, isLoading } = useQuery<Array<{ date: string; count: number }>>({
+    queryKey: ["/api/covered-units/expirations", {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      make: filters.make || undefined,
+      model: filters.model || undefined,
+      customerName: filters.customerName || undefined,
+      orderNumber: filters.orderNumber || undefined,
+    }],
+  });
+
+  // Fetch detailed units for a specific date when dialog opens
+  const { data: dialogUnits, isLoading: isLoadingDialogUnits } = useQuery<CoveredUnit[]>({
+    queryKey: ["/api/covered-units", {
+      limit: 10000,
+      coverageEndDateFrom: selectedDateCell ? format(selectedDateCell.date, 'yyyy-MM-dd') : '',
+      coverageEndDateTo: selectedDateCell ? format(selectedDateCell.date, 'yyyy-MM-dd') : '',
+      make: filters.make || undefined,
+      model: filters.model || undefined,
+      customerName: filters.customerName || undefined,
+      orderNumber: filters.orderNumber || undefined,
+    }],
+    enabled: !!selectedDateCell,
+  });
+
+  // Fetch filter options from server (for all 100k+ records)
+  const { data: filterOptionsData } = useQuery<{
+    makes: string[];
+    models: string[];
+    customers: string[];
+    orders: string[];
+  }>({
+    queryKey: ["/api/covered-units/filter-options"],
   });
 
   const { data: pools } = useQuery<CoveragePoolWithStats[]>({
@@ -353,47 +378,28 @@ export default function MonitorDashboard() {
 
   // Filter and map warranty expiration data (case-insensitive filtering)
   const heatmapData = useMemo(() => {
-    if (!coveredUnits) return [];
+    if (!heatmapExpirations) return [];
 
-    // Cache normalized filter values (locale-aware uppercasing)
-    const orderNumberUpper = filters.orderNumber?.toLocaleUpperCase('en-US');
-    const customerNameUpper = filters.customerName?.toLocaleUpperCase('en-US');
-    const makeUpper = filters.make?.toLocaleUpperCase('en-US');
-    const modelUpper = filters.model?.toLocaleUpperCase('en-US');
-
-    const filtered = coveredUnits.filter((unit) => {
-      if (!unit.isCoverageActive) return false;
-      const endDate = new Date(unit.coverageEndDate);
-      if (endDate < startDate || endDate > addMonths(startDate, 13)) return false;
-
-      // Case-insensitive comparisons using cached uppercase values
-      if (orderNumberUpper && unit.orderNumber?.toLocaleUpperCase('en-US') !== orderNumberUpper) return false;
-      if (customerNameUpper && unit.customerName?.toLocaleUpperCase('en-US') !== customerNameUpper) return false;
-      if (makeUpper && unit.make?.toLocaleUpperCase('en-US') !== makeUpper) return false;
-      if (modelUpper && unit.model?.toLocaleUpperCase('en-US') !== modelUpper) return false;
-
-      return true;
+    // Create a map of date strings to counts for fast lookup
+    const expirationMap = new Map<string, number>();
+    heatmapExpirations.forEach(exp => {
+      const dateStr = format(new Date(exp.date), 'yyyy-MM-dd');
+      expirationMap.set(dateStr, exp.count);
     });
 
     const days = eachDayOfInterval({ start: startDate, end: addMonths(startDate, 13) });
     
     return days.map((date) => {
-      const unitsExpiringOnDay = filtered.filter((unit) => {
-        const endDate = new Date(unit.coverageEndDate);
-        return (
-          endDate.getFullYear() === date.getFullYear() &&
-          endDate.getMonth() === date.getMonth() &&
-          endDate.getDate() === date.getDate()
-        );
-      });
+      const dateStr = format(date, 'yyyy-MM-dd');
+      const count = expirationMap.get(dateStr) || 0;
 
       return {
         date,
-        count: unitsExpiringOnDay.length,
-        units: unitsExpiringOnDay,
+        count,
+        units: [], // Units are loaded on-demand when cell is clicked
       };
     });
-  }, [coveredUnits, startDate, filters]);
+  }, [heatmapExpirations, startDate]);
 
   const maxCount = useMemo(
     () => Math.max(...heatmapData.map((d) => d.count), 1),
@@ -488,37 +494,13 @@ export default function MonitorDashboard() {
     return headers;
   }, [heatmapWeeks]);
 
-  // Extract unique filter options from covered units (preserving original casing)
-  // Case-insensitive deduplication by comparing uppercased values
+  // Use filter options from server (covers all 100k+ records)
   const filterOptions = useMemo(() => {
-    if (!coveredUnits) {
+    if (!filterOptionsData) {
       return { makes: [], models: [], customers: [], orders: [] };
     }
-
-    // Deduplicate case-insensitively but preserve first occurrence's original casing
-    const deduplicateCaseInsensitive = (values: (string | undefined | null)[]) => {
-      const seen = new Set<string>();
-      const result: string[] = [];
-      
-      for (const val of values) {
-        if (!val) continue;
-        const upper = val.toUpperCase();
-        if (!seen.has(upper)) {
-          seen.add(upper);
-          result.push(val); // Preserve original casing
-        }
-      }
-      
-      return result.sort((a, b) => a.toUpperCase().localeCompare(b.toUpperCase()));
-    };
-
-    const makes = deduplicateCaseInsensitive(coveredUnits.map(u => u.make));
-    const models = deduplicateCaseInsensitive(coveredUnits.map(u => u.model));
-    const customers = deduplicateCaseInsensitive(coveredUnits.map(u => u.customerName));
-    const orders = deduplicateCaseInsensitive(coveredUnits.map(u => u.orderNumber));
-
-    return { makes, models, customers, orders };
-  }, [coveredUnits]);
+    return filterOptionsData;
+  }, [filterOptionsData]);
 
   const activeFilterCount = useMemo(
     () => Object.values(filters).filter(v => v).length,
@@ -546,12 +528,12 @@ export default function MonitorDashboard() {
 
   // Filter units in dialog by search term
   const filteredDialogUnits = useMemo(() => {
-    if (!selectedDateCell) return [];
+    if (!dialogUnits) return [];
     
     const searchLower = dialogSearch.toLowerCase();
-    if (!searchLower) return selectedDateCell.units;
+    if (!searchLower) return dialogUnits;
     
-    return selectedDateCell.units.filter(unit => 
+    return dialogUnits.filter(unit => 
       unit.serialNumber?.toLowerCase().includes(searchLower) ||
       unit.make?.toLowerCase().includes(searchLower) ||
       unit.model?.toLowerCase().includes(searchLower) ||
@@ -560,7 +542,7 @@ export default function MonitorDashboard() {
       unit.coverageDescription?.toLowerCase().includes(searchLower) ||
       unit.processor?.toLowerCase().includes(searchLower)
     );
-  }, [selectedDateCell, dialogSearch]);
+  }, [dialogUnits, dialogSearch]);
 
   // Export dialog units to Excel
   const handleExportToExcel = () => {
