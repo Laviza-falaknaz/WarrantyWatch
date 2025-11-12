@@ -163,6 +163,32 @@ export interface IStorage {
     expired: number;
   }>;
   
+  // Warranty Explorer Analytics (server-side aggregation for large datasets)
+  getCoveredUnitsAnalytics(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    status?: string[];
+    customerName?: string[];
+    orderNumber?: string[];
+    coverageDescription?: string[];
+    coverageStartDateFrom?: string;
+    coverageStartDateTo?: string;
+    coverageEndDateFrom?: string;
+    coverageEndDateTo?: string;
+    search?: string;
+  }): Promise<{
+    timeline: Array<{ month: string; starts: number; ends: number }>;
+    expirationRisk: Array<{ range: string; count: number }>;
+    topCustomers: Array<{ name: string; count: number }>;
+    manufacturerDistribution: Array<{ make: string; count: number }>;
+    processors: string[];
+    rams: string[];
+    categories: string[];
+  }>;
+  
   getSpareUnitsStats(filters?: {
     make?: string[];
     model?: string[];
@@ -489,11 +515,16 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (filters?.status && filters.status.length > 0) {
-      if (filters.status.includes("Active")) {
+      const hasActive = filters.status.includes("Active");
+      const hasInactive = filters.status.includes("Inactive");
+      
+      // Only apply filter if one status is selected (not both)
+      if (hasActive && !hasInactive) {
         conditions.push(eq(coveredUnit.isCoverageActive, true));
-      } else if (filters.status.includes("Inactive")) {
+      } else if (hasInactive && !hasActive) {
         conditions.push(eq(coveredUnit.isCoverageActive, false));
       }
+      // If both are selected, don't add any filter (show all)
     }
     
     if (filters?.search) {
@@ -892,11 +923,16 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (filters?.status && filters.status.length > 0) {
-      if (filters.status.includes("Active")) {
+      const hasActive = filters.status.includes("Active");
+      const hasInactive = filters.status.includes("Inactive");
+      
+      // Only apply filter if one status is selected (not both)
+      if (hasActive && !hasInactive) {
         conditions.push(eq(coveredUnit.isCoverageActive, true));
-      } else if (filters.status.includes("Inactive")) {
+      } else if (hasInactive && !hasActive) {
         conditions.push(eq(coveredUnit.isCoverageActive, false));
       }
+      // If both are selected, don't add any filter (show all)
     }
     
     if (filters?.search) {
@@ -949,6 +985,223 @@ export class DatabaseStorage implements IStorage {
     const expired = Number(expiredResult?.count || 0);
     
     return { total, active, expiring, expired };
+  }
+
+  async getCoveredUnitsAnalytics(filters?: {
+    make?: string[];
+    model?: string[];
+    processor?: string[];
+    ram?: string[];
+    category?: string[];
+    status?: string[];
+    customerName?: string[];
+    orderNumber?: string[];
+    coverageDescription?: string[];
+    coverageStartDateFrom?: string;
+    coverageStartDateTo?: string;
+    coverageEndDateFrom?: string;
+    coverageEndDateTo?: string;
+    search?: string;
+  }): Promise<{
+    timeline: Array<{ month: string; starts: number; ends: number }>;
+    expirationRisk: Array<{ range: string; count: number }>;
+    topCustomers: Array<{ name: string; count: number }>;
+    manufacturerDistribution: Array<{ make: string; count: number }>;
+    processors: string[];
+    rams: string[];
+    categories: string[];
+  }> {
+    // Build the same filter conditions as getCoveredUnitsStats
+    const conditions = [];
+    
+    const makeCondition = caseInsensitiveIn(coveredUnit.make, filters?.make || []);
+    if (makeCondition) conditions.push(makeCondition);
+    
+    const modelCondition = caseInsensitiveIn(coveredUnit.model, filters?.model || []);
+    if (modelCondition) conditions.push(modelCondition);
+    
+    const processorCondition = caseInsensitiveIn(coveredUnit.processor, filters?.processor || []);
+    if (processorCondition) conditions.push(processorCondition);
+    
+    const ramCondition = caseInsensitiveIn(coveredUnit.ram, filters?.ram || []);
+    if (ramCondition) conditions.push(ramCondition);
+    
+    const categoryCondition = caseInsensitiveIn(coveredUnit.category, filters?.category || []);
+    if (categoryCondition) conditions.push(categoryCondition);
+    
+    const customerCondition = caseInsensitiveIn(coveredUnit.customerName, filters?.customerName || []);
+    if (customerCondition) conditions.push(customerCondition);
+    
+    const orderCondition = caseInsensitiveIn(coveredUnit.orderNumber, filters?.orderNumber || []);
+    if (orderCondition) conditions.push(orderCondition);
+    
+    const descriptionCondition = caseInsensitiveIn(coveredUnit.coverageDescription, filters?.coverageDescription || []);
+    if (descriptionCondition) conditions.push(descriptionCondition);
+    
+    if (filters?.coverageStartDateFrom) {
+      const startDate = new Date(filters.coverageStartDateFrom);
+      startDate.setUTCHours(0, 0, 0, 0);
+      conditions.push(gte(coveredUnit.coverageStartDate, startDate));
+    }
+    
+    if (filters?.coverageStartDateTo) {
+      const endDate = new Date(filters.coverageStartDateTo);
+      endDate.setUTCHours(23, 59, 59, 999);
+      conditions.push(lte(coveredUnit.coverageStartDate, endDate));
+    }
+    
+    if (filters?.coverageEndDateFrom) {
+      const startDate = new Date(filters.coverageEndDateFrom);
+      startDate.setUTCHours(0, 0, 0, 0);
+      conditions.push(gte(coveredUnit.coverageEndDate, startDate));
+    }
+    
+    if (filters?.coverageEndDateTo) {
+      const endDate = new Date(filters.coverageEndDateTo);
+      endDate.setUTCHours(23, 59, 59, 999);
+      conditions.push(lte(coveredUnit.coverageEndDate, endDate));
+    }
+    
+    if (filters?.status && filters.status.length > 0) {
+      const hasActive = filters.status.includes("Active");
+      const hasInactive = filters.status.includes("Inactive");
+      
+      // Only apply filter if one status is selected (not both)
+      if (hasActive && !hasInactive) {
+        conditions.push(eq(coveredUnit.isCoverageActive, true));
+      } else if (hasInactive && !hasActive) {
+        conditions.push(eq(coveredUnit.isCoverageActive, false));
+      }
+      // If both are selected, don't add any filter (show all)
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(coveredUnit.serialNumber, searchTerm),
+          like(coveredUnit.make, searchTerm),
+          like(coveredUnit.model, searchTerm),
+          like(coveredUnit.coverageDescription, searchTerm),
+          like(coveredUnit.customerName, searchTerm),
+          like(coveredUnit.orderNumber, searchTerm)
+        )
+      );
+    }
+    
+    // Build where clause for the CTE
+    let whereClause = sql`1=1`;
+    if (conditions.length > 0) {
+      whereClause = and(...conditions) as any;
+    }
+    
+    // Single SQL query with CTE for all aggregations
+    const result = await db.execute(sql`
+      WITH filtered_units AS (
+        SELECT * FROM ${coveredUnit}
+        WHERE ${whereClause}
+      ),
+      timeline_starts AS (
+        SELECT 
+          TO_CHAR(coverage_start_date, 'YYYY-MM') as month,
+          COUNT(*) as count
+        FROM filtered_units
+        WHERE coverage_start_date IS NOT NULL
+        GROUP BY TO_CHAR(coverage_start_date, 'YYYY-MM')
+      ),
+      timeline_ends AS (
+        SELECT 
+          TO_CHAR(coverage_end_date, 'YYYY-MM') as month,
+          COUNT(*) as count
+        FROM filtered_units
+        WHERE coverage_end_date IS NOT NULL
+        GROUP BY TO_CHAR(coverage_end_date, 'YYYY-MM')
+      ),
+      expiration_buckets AS (
+        SELECT 
+          CASE 
+            WHEN coverage_end_date - CURRENT_DATE BETWEEN 0 AND 30 THEN '0-30 days'
+            WHEN coverage_end_date - CURRENT_DATE BETWEEN 31 AND 90 THEN '31-90 days'
+            WHEN coverage_end_date - CURRENT_DATE BETWEEN 91 AND 180 THEN '91-180 days'
+            WHEN coverage_end_date - CURRENT_DATE > 180 THEN '180+ days'
+          END as range,
+          COUNT(*) as count
+        FROM filtered_units
+        WHERE coverage_end_date >= CURRENT_DATE AND is_coverage_active = true
+        GROUP BY range
+      ),
+      top_customers AS (
+        SELECT 
+          MIN(customer_name) as name,
+          COUNT(*) as count
+        FROM filtered_units
+        WHERE customer_name IS NOT NULL AND customer_name != ''
+        GROUP BY UPPER(customer_name)
+        ORDER BY count DESC
+        LIMIT 10
+      ),
+      manufacturer_dist AS (
+        SELECT 
+          MIN(make) as make,
+          COUNT(*) as count
+        FROM filtered_units
+        WHERE make IS NOT NULL
+        GROUP BY UPPER(make)
+        ORDER BY count DESC
+      ),
+      unique_values AS (
+        SELECT 
+          array_agg(DISTINCT processor ORDER BY processor) FILTER (WHERE processor IS NOT NULL AND processor != '') as processors,
+          array_agg(DISTINCT ram ORDER BY ram) FILTER (WHERE ram IS NOT NULL AND ram != '') as rams,
+          array_agg(DISTINCT category ORDER BY category) FILTER (WHERE category IS NOT NULL AND category != '') as categories
+        FROM filtered_units
+      )
+      SELECT json_build_object(
+        'timeline', COALESCE((
+          SELECT json_agg(json_build_object(
+            'month', COALESCE(s.month, e.month),
+            'starts', COALESCE(s.count, 0),
+            'ends', COALESCE(e.count, 0)
+          ) ORDER BY COALESCE(s.month, e.month))
+          FROM timeline_starts s
+          FULL OUTER JOIN timeline_ends e ON s.month = e.month
+        ), '[]'::json),
+        'expirationRisk', COALESCE((
+          SELECT json_agg(json_build_object('range', range, 'count', count) ORDER BY 
+            CASE range
+              WHEN '0-30 days' THEN 1
+              WHEN '31-90 days' THEN 2
+              WHEN '91-180 days' THEN 3
+              WHEN '180+ days' THEN 4
+            END
+          )
+          FROM expiration_buckets
+          WHERE range IS NOT NULL
+        ), '[]'::json),
+        'topCustomers', COALESCE((
+          SELECT json_agg(json_build_object('name', name, 'count', count))
+          FROM top_customers
+        ), '[]'::json),
+        'manufacturerDistribution', COALESCE((
+          SELECT json_agg(json_build_object('make', make, 'count', count))
+          FROM manufacturer_dist
+        ), '[]'::json),
+        'processors', COALESCE((SELECT processors FROM unique_values), ARRAY[]::text[]),
+        'rams', COALESCE((SELECT rams FROM unique_values), ARRAY[]::text[]),
+        'categories', COALESCE((SELECT categories FROM unique_values), ARRAY[]::text[])
+      ) as result
+    `);
+    
+    const data = (result.rows[0] as any).result;
+    return {
+      timeline: data.timeline || [],
+      expirationRisk: data.expirationRisk || [],
+      topCustomers: data.topCustomers || [],
+      manufacturerDistribution: data.manufacturerDistribution || [],
+      processors: data.processors || [],
+      rams: data.rams || [],
+      categories: data.categories || [],
+    };
   }
 
   async getSpareUnitsStats(filters?: {

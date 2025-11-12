@@ -192,6 +192,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Analytics endpoint for Warranty Explorer (server-side aggregation for large datasets)
+  app.get("/api/covered-units/analytics", async (req, res) => {
+    try {
+      const filters = {
+        make: req.query.make ? (Array.isArray(req.query.make) ? req.query.make as string[] : [req.query.make as string]) : undefined,
+        model: req.query.model ? (Array.isArray(req.query.model) ? req.query.model as string[] : [req.query.model as string]) : undefined,
+        processor: req.query.processor ? (Array.isArray(req.query.processor) ? req.query.processor as string[] : [req.query.processor as string]) : undefined,
+        ram: req.query.ram ? (Array.isArray(req.query.ram) ? req.query.ram as string[] : [req.query.ram as string]) : undefined,
+        category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category as string[] : [req.query.category as string]) : undefined,
+        status: req.query.status ? (Array.isArray(req.query.status) ? req.query.status as string[] : [req.query.status as string]) : undefined,
+        customerName: req.query.customerName ? (Array.isArray(req.query.customerName) ? req.query.customerName as string[] : [req.query.customerName as string]) : undefined,
+        orderNumber: req.query.orderNumber ? (Array.isArray(req.query.orderNumber) ? req.query.orderNumber as string[] : [req.query.orderNumber as string]) : undefined,
+        coverageDescription: req.query.coverageDescription ? (Array.isArray(req.query.coverageDescription) ? req.query.coverageDescription as string[] : [req.query.coverageDescription as string]) : undefined,
+        coverageStartDateFrom: req.query.coverageStartDateFrom as string | undefined,
+        coverageStartDateTo: req.query.coverageStartDateTo as string | undefined,
+        coverageEndDateFrom: req.query.coverageEndDateFrom as string | undefined,
+        coverageEndDateTo: req.query.coverageEndDateTo as string | undefined,
+        search: req.query.search as string | undefined,
+      };
+      
+      const analytics = await storage.getCoveredUnitsAnalytics(filters);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching covered units analytics:", error);
+      res.status(500).json({ error: "Failed to fetch covered units analytics" });
+    }
+  });
+  
   app.get("/api/covered-units", async (req, res) => {
     try {
       // Validate and clamp limit parameter to prevent memory exhaustion
