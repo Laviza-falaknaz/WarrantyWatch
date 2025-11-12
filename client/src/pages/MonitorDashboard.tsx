@@ -227,7 +227,7 @@ export default function MonitorDashboard() {
     queryKey: ["/api/coverage-pools-with-stats"],
   });
 
-  // Fetch top 30 critical risk models for quick action (both with and without coverage)
+  // Fetch top 30 critical risk models for quick action
   const { data: riskSummaryData, isLoading: isLoadingRiskSummary } = useQuery<{ 
     data: RiskCombination[]; 
     total: number;
@@ -244,17 +244,46 @@ export default function MonitorDashboard() {
       sortOrder: 'asc', 
       limit: 30,
       offset: 0,
-      riskLevels: ['critical'], // Show all critical models
+      riskLevels: ['critical'], // Show critical models
+    }],
+  });
+
+  // Fetch models without coverage (for separate section)
+  const { data: noCoverageData, isLoading: isLoadingNoCoverage } = useQuery<{ 
+    data: RiskCombination[]; 
+    total: number;
+    stats: {
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+      worstDeficit: number | null;
+    };
+  }>({
+    queryKey: ['/api/risk-combinations', { 
+      sortBy: 'days_of_supply', 
+      sortOrder: 'asc', 
+      limit: 20,
+      offset: 0,
+      coveredCountMax: 0, // Show models without coverage
     }],
   });
 
   const topRiskModels = riskSummaryData?.data || [];
   const riskStats = riskSummaryData?.stats || { critical: 0, high: 0, medium: 0, low: 0, worstDeficit: null };
+  const noCoverageModels = noCoverageData?.data || [];
 
   // Clear selected models when data refetches to prevent stale bulk-state
   useEffect(() => {
     setSelectedModels(new Set());
   }, [riskSummaryData]);
+
+  // Separate state for no-coverage models selection
+  const [selectedNoCoverageModels, setSelectedNoCoverageModels] = useState<Set<string>>(new Set());
+  
+  useEffect(() => {
+    setSelectedNoCoverageModels(new Set());
+  }, [noCoverageData]);
 
   // Mutations for creating pools and sending alerts
   const createPoolMutation = useMutation({
@@ -1093,6 +1122,159 @@ export default function MonitorDashboard() {
                               className="flex-1 h-7 text-[10px]"
                               onClick={() => handleCreatePool(model)}
                               data-testid={`button-pool-${index}`}
+                            >
+                              <FolderPlus className="w-3 h-3 mr-1" />
+                              Pool
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Models Without Coverage - Amber Section */}
+            <div className="space-y-4 mt-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight">Models Without Coverage</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Showing {noCoverageModels.length} model{noCoverageModels.length !== 1 ? 's' : ''} without active warranties
+                  </p>
+                </div>
+                <Link href="/risk-combinations?coveredCountMax=0">
+                  <Button variant="ghost" size="sm" className="gap-1" data-testid="link-view-all-no-coverage">
+                    View All
+                    <ChevronRightIcon className="w-3 h-3" />
+                  </Button>
+                </Link>
+              </div>
+
+              {isLoadingNoCoverage ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {[...Array(6)].map((_, i) => (
+                    <Skeleton key={i} className="h-48 w-full" />
+                  ))}
+                </div>
+              ) : noCoverageModels.length === 0 ? (
+                <Card className="rounded-2xl">
+                  <CardContent className="p-12 text-center text-muted-foreground">
+                    <Shield className="w-16 h-16 mx-auto mb-3 opacity-50" />
+                    <p className="text-lg font-medium">All models have coverage</p>
+                    <p className="text-sm mt-1">Every model with demand has active warranty coverage</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {noCoverageModels.map((model, index) => {
+                    const isSelected = selectedNoCoverageModels.has(getModelKey(model));
+                    const daysRemaining = model.days_of_supply !== null ? Number(model.days_of_supply) : null;
+                    const runRate = Number(model.run_rate) || 0;
+
+                    return (
+                      <Card 
+                        key={index}
+                        className={`rounded-xl border-l-4 border-l-amber-500 ${isSelected ? 'ring-2 ring-primary' : ''} cursor-pointer transition-all`}
+                        onClick={() => {
+                          const key = getModelKey(model);
+                          setSelectedNoCoverageModels(prev => {
+                            const newSet = new Set(prev);
+                            if (newSet.has(key)) {
+                              newSet.delete(key);
+                            } else {
+                              newSet.add(key);
+                            }
+                            return newSet;
+                          });
+                        }}
+                        data-testid={`card-no-coverage-model-${index}`}
+                      >
+                        <CardContent className="p-3 space-y-2">
+                          {/* Checkbox + Model Name */}
+                          <div className="flex items-start gap-2">
+                            <Checkbox 
+                              checked={isSelected}
+                              className="mt-0.5"
+                              data-testid={`checkbox-no-coverage-${index}`}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-sm leading-tight">
+                                {model.make} {model.model}
+                              </h3>
+                              {(model.processor || model.generation) && (
+                                <p className="text-[10px] text-muted-foreground truncate">
+                                  {model.processor} {model.generation && `(${model.generation})`}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Days Remaining + Coverage Status */}
+                          <div className="flex items-center justify-between gap-2">
+                            <Badge 
+                              variant={runRate >= 1 ? "destructive" : "secondary"}
+                              className="text-[9px] font-semibold h-4 px-1.5"
+                            >
+                              {daysRemaining !== null ? `${daysRemaining.toFixed(0)} days` : 'No demand'}
+                            </Badge>
+                            <Badge 
+                              variant="destructive"
+                              className="text-[9px] font-semibold h-4 px-1.5"
+                            >
+                              No Active Warranties
+                            </Badge>
+                          </div>
+
+                          {/* Compact Metrics - 5 Columns */}
+                          <div className="grid grid-cols-5 gap-1.5 text-[10px]">
+                            <div className="text-center">
+                              <div className="text-muted-foreground">Active</div>
+                              <div className="font-bold text-xs">{model.covered_count || 0}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-muted-foreground">Spare</div>
+                              <div className="font-bold text-xs">{model.spare_count || 0}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-muted-foreground">Run/mo</div>
+                              <div className="font-bold text-xs">{(Number(model.run_rate) || 0).toFixed(1)}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-muted-foreground">UK</div>
+                              <div className="font-bold text-xs">{model.uk_available_count || 0}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-muted-foreground">UAE</div>
+                              <div className="font-bold text-xs">{model.uae_available_count || 0}</div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 h-7 text-[10px]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSendAlert(model);
+                              }}
+                              data-testid={`button-alert-no-coverage-${index}`}
+                            >
+                              <Bell className="w-3 h-3 mr-1" />
+                              Alert
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 h-7 text-[10px]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCreatePool(model);
+                              }}
+                              data-testid={`button-pool-no-coverage-${index}`}
                             >
                               <FolderPlus className="w-3 h-3 mr-1" />
                               Pool

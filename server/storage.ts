@@ -1950,7 +1950,7 @@ export class DatabaseStorage implements IStorage {
     spareRateMax?: number;
     coveredCountMin?: number;
     coveredCountMax?: number;
-  }): Promise<any[]> {
+  }): Promise<{ data: any[]; total: number; stats: { critical: number; high: number; medium: number; low: number; worstDeficit: number | null } }> {
     // Calculate date 6 months ago
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
