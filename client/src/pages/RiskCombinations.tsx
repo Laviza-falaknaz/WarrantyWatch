@@ -50,7 +50,7 @@ export default function RiskCombinations() {
   // State management for filtering, sorting, and pagination
   const [activeTab, setActiveTab] = useState<"covered" | "not-covered">("covered");
   const [search, setSearch] = useState("");
-  const [riskLevels, setRiskLevels] = useState<RiskLevel[]>([]);
+  const [riskLevels, setRiskLevels] = useState<RiskLevel[]>(['critical', 'high', 'medium']);
   const [coverageRatioMin, setCoverageRatioMin] = useState<number | undefined>();
   const [coverageRatioMax, setCoverageRatioMax] = useState<number | undefined>();
   const [sortField, setSortField] = useState<SortField>("days_of_supply");
