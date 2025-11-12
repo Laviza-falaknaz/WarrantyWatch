@@ -227,7 +227,7 @@ export default function MonitorDashboard() {
     queryKey: ["/api/coverage-pools-with-stats"],
   });
 
-  // Fetch top 10 worst-performing models for dashboard summary
+  // Fetch top 30 worst-performing models for dashboard summary
   const { data: riskSummaryData, isLoading: isLoadingRiskSummary } = useQuery<{ 
     data: RiskCombination[]; 
     total: number;
@@ -242,9 +242,8 @@ export default function MonitorDashboard() {
     queryKey: ['/api/risk-combinations', { 
       sortBy: 'days_of_supply', 
       sortOrder: 'asc', 
-      limit: 10,
+      limit: 30,
       offset: 0,
-      excludeZeroCovered: true,
     }],
   });
 
@@ -903,16 +902,28 @@ export default function MonitorDashboard() {
               </CardContent>
             </Card>
 
-            {/* Models Needing Attention - Redesigned */}
-            <Card className="rounded-2xl">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">Models Needing Attention</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      Top {topRiskModels.length} models running out soonest
-                    </p>
-                  </div>
+            {/* Models Needing Attention - 3-Column Card Grid */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight">Models Needing Attention</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Showing {topRiskModels.length} model{topRiskModels.length !== 1 ? 's' : ''} running out soonest
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {topRiskModels.length > 0 && (
+                    <div className="flex items-center gap-2 mr-3">
+                      <Checkbox 
+                        checked={selectedModels.size === topRiskModels.length && topRiskModels.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        data-testid="checkbox-select-all"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {selectedModels.size > 0 ? `${selectedModels.size} selected` : "Select all"}
+                      </span>
+                    </div>
+                  )}
                   <Link href="/risk-combinations">
                     <Button variant="outline" size="sm" className="gap-1" data-testid="button-view-all">
                       View All
@@ -920,146 +931,177 @@ export default function MonitorDashboard() {
                     </Button>
                   </Link>
                 </div>
-                {topRiskModels.length > 0 && (
-                  <div className="flex items-center gap-2 pt-2">
-                    <Checkbox 
-                      checked={selectedModels.size === topRiskModels.length && topRiskModels.length > 0}
-                      onCheckedChange={toggleSelectAll}
-                      data-testid="checkbox-select-all"
-                    />
-                    <span className="text-sm text-muted-foreground">
-                      {selectedModels.size > 0 
-                        ? `${selectedModels.size} selected` 
-                        : "Select all"}
-                    </span>
+              </div>
+
+              {/* Bulk Action Bar */}
+              {selectedModels.size > 0 && (
+                <div className="flex items-center justify-between gap-2 p-3 bg-accent/50 rounded-lg border">
+                  <span className="text-sm font-medium">
+                    {selectedModels.size} model{selectedModels.size > 1 ? 's' : ''} selected
+                  </span>
+                  <div className="flex gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={handleBulkAlert}
+                      disabled={sendAlertMutation.isPending}
+                      className="gap-1.5"
+                      data-testid="button-bulk-alert"
+                    >
+                      <Bell className="w-3.5 h-3.5" />
+                      Send Alert
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleBulkCreatePool}
+                      disabled={createPoolMutation.isPending}
+                      className="gap-1.5"
+                      data-testid="button-bulk-pool"
+                    >
+                      <FolderPlus className="w-3.5 h-3.5" />
+                      Create Pool
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedModels(new Set())}
+                      data-testid="button-clear-selection"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
-                )}
-              </CardHeader>
-              <CardContent className="pt-0">
-                {isLoadingRiskSummary ? (
-                  <Skeleton className="h-64 w-full" />
-                ) : topRiskModels.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">All models have adequate coverage</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {topRiskModels.map((model, index) => {
-                      const isSelected = selectedModels.has(getModelKey(model));
-                      return (
-                        <div 
-                          key={index} 
-                          className={cn(
-                            "flex items-center gap-2 p-2 rounded-lg border transition-colors hover-elevate",
-                            isSelected && "bg-accent/50"
-                          )}
-                          data-testid={`model-item-${index}`}
-                        >
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleModelSelection(model)}
-                            data-testid={`checkbox-model-${index}`}
-                          />
-                          
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex items-center gap-2">
-                              <div className={cn(
-                                "flex items-center justify-center min-w-[3rem] px-2 py-0.5 rounded-md font-bold text-sm",
-                                model.risk_level === 'critical' && "bg-red-600 text-white",
-                                model.risk_level === 'high' && "bg-orange-500 text-white",
-                                model.risk_level === 'medium' && "bg-amber-400 text-amber-950",
-                                model.risk_level === 'low' && "bg-green-100 text-green-800"
-                              )}>
-                                {model.days_of_supply !== null ? `${Math.floor(Number(model.days_of_supply) || 0)}d` : '∞'}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">
-                                  {model.make} {model.model}
-                                </p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span>{model.covered_count || 0} active</span>
-                                  <span>•</span>
-                                  <span>{model.spare_count || 0} spare</span>
-                                  <span>•</span>
-                                  <span>{(Number(model.run_rate) || 0).toFixed(1)}/mo</span>
+                </div>
+              )}
+
+              {/* 3-Column Card Grid */}
+              {isLoadingRiskSummary ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {[...Array(6)].map((_, i) => (
+                    <Skeleton key={i} className="h-48 w-full" />
+                  ))}
+                </div>
+              ) : topRiskModels.length === 0 ? (
+                <Card className="rounded-2xl">
+                  <CardContent className="p-12 text-center text-muted-foreground">
+                    <Shield className="w-16 h-16 mx-auto mb-3 opacity-50" />
+                    <p className="text-lg font-medium">All models have adequate coverage</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {topRiskModels.map((model, index) => {
+                    const isSelected = selectedModels.has(getModelKey(model));
+                    const hasCoverage = (model.covered_count || 0) > 0;
+                    
+                    return (
+                      <Card 
+                        key={index} 
+                        className={cn(
+                          "rounded-2xl hover-elevate transition-all",
+                          isSelected && "ring-2 ring-primary"
+                        )}
+                        data-testid={`model-item-${index}`}
+                      >
+                        <CardContent className="p-4 space-y-3">
+                          {/* Header: Checkbox + Days Badge */}
+                          <div className="flex items-start gap-2">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleModelSelection(model)}
+                              data-testid={`checkbox-model-${index}`}
+                              className="mt-1"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className={cn(
+                                  "flex items-center justify-center px-3 py-1 rounded-lg font-bold text-sm shadow-sm",
+                                  model.risk_level === 'critical' && "bg-red-600 text-white",
+                                  model.risk_level === 'high' && "bg-orange-500 text-white",
+                                  model.risk_level === 'medium' && "bg-amber-400 text-amber-950",
+                                  model.risk_level === 'low' && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                )}>
+                                  {model.days_of_supply !== null 
+                                    ? `${Math.floor(Number(model.days_of_supply) || 0)} days` 
+                                    : 'No demand'}
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <span className="font-mono">UK:{model.uk_available_count || 0}</span>
-                                <span className="font-mono">UAE:{model.uae_available_count || 0}</span>
+                                <Badge 
+                                  variant={hasCoverage ? "default" : "destructive"}
+                                  className="text-xs font-semibold"
+                                >
+                                  {hasCoverage ? "Coverage" : "No Coverage"}
+                                </Badge>
                               </div>
                             </div>
                           </div>
-                          
-                          <div className="flex items-center gap-0.5">
+
+                          {/* Model Info */}
+                          <div className="space-y-2">
+                            <h3 className="font-semibold text-base leading-tight line-clamp-2">
+                              {model.make} {model.model}
+                            </h3>
+                            
+                            {/* Metrics Grid */}
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                              <div className="bg-muted/30 rounded-md p-2">
+                                <p className="text-xs text-muted-foreground mb-0.5">Active</p>
+                                <p className="font-bold text-sm">{model.covered_count || 0}</p>
+                              </div>
+                              <div className="bg-muted/30 rounded-md p-2">
+                                <p className="text-xs text-muted-foreground mb-0.5">Spare</p>
+                                <p className="font-bold text-sm">{model.spare_count || 0}</p>
+                              </div>
+                              <div className="bg-muted/30 rounded-md p-2">
+                                <p className="text-xs text-muted-foreground mb-0.5">Run/mo</p>
+                                <p className="font-bold text-sm">{(Number(model.run_rate) || 0).toFixed(1)}</p>
+                              </div>
+                            </div>
+
+                            {/* Regional Stock */}
+                            <div className="flex items-center justify-between text-xs bg-muted/20 rounded-md p-2">
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                  <span className="font-semibold">UK: {model.uk_available_count || 0}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full bg-purple-500" />
+                                  <span className="font-semibold">UAE: {model.uae_available_count || 0}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-2 pt-1">
                             <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7"
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 gap-1.5"
                               onClick={() => handleSendAlert(model)}
                               data-testid={`button-alert-${index}`}
                             >
                               <Bell className="w-3.5 h-3.5" />
+                              Alert
                             </Button>
                             <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7"
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 gap-1.5"
                               onClick={() => handleCreatePool(model)}
                               data-testid={`button-pool-${index}`}
                             >
                               <FolderPlus className="w-3.5 h-3.5" />
+                              Pool
                             </Button>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Bulk Action Bar */}
-                {selectedModels.size > 0 && (
-                  <div className="flex items-center justify-between gap-2 mt-3 p-2.5 bg-accent/50 rounded-lg border">
-                    <span className="text-sm font-medium">
-                      {selectedModels.size} model{selectedModels.size > 1 ? 's' : ''} selected
-                    </span>
-                    <div className="flex gap-1.5">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={handleBulkAlert}
-                        disabled={sendAlertMutation.isPending}
-                        className="gap-1.5"
-                        data-testid="button-bulk-alert"
-                      >
-                        <Bell className="w-3.5 h-3.5" />
-                        Send Alert
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleBulkCreatePool}
-                        disabled={createPoolMutation.isPending}
-                        className="gap-1.5"
-                        data-testid="button-bulk-pool"
-                      >
-                        <FolderPlus className="w-3.5 h-3.5" />
-                        Create Pool
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setSelectedModels(new Set())}
-                        data-testid="button-clear-selection"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Column: lg:col-span-4 - Coverage Pools */}
