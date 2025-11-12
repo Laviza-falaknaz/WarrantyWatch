@@ -183,6 +183,7 @@ export default function MonitorDashboard() {
   });
   const [selectedDateCell, setSelectedDateCell] = useState<HeatmapCell | null>(null);
   const [dialogSearch, setDialogSearch] = useState("");
+  const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set());
   
   const endDate = useMemo(() => addMonths(startDate, 13), [startDate]);
 
@@ -239,7 +240,7 @@ export default function MonitorDashboard() {
     };
   }>({
     queryKey: ['/api/risk-combinations', { 
-      sortBy: 'daysOfSupply', 
+      sortBy: 'days_of_supply', 
       sortOrder: 'asc', 
       limit: 10,
       offset: 0,
@@ -249,6 +250,11 @@ export default function MonitorDashboard() {
 
   const topRiskModels = riskSummaryData?.data || [];
   const riskStats = riskSummaryData?.stats || { critical: 0, high: 0, medium: 0, low: 0, worstDeficit: null };
+
+  // Clear selected models when data refetches to prevent stale bulk-state
+  useEffect(() => {
+    setSelectedModels(new Set());
+  }, [topRiskModels]);
 
   // Mutations for creating pools and sending alerts
   const createPoolMutation = useMutation({
@@ -314,6 +320,59 @@ export default function MonitorDashboard() {
     sendAlertMutation.mutate([combo]);
   };
 
+  // Bulk action handlers
+  const getModelKey = (model: RiskCombination) => 
+    `${model.make}|${model.model}|${model.processor || ""}|${model.generation || ""}`;
+
+  const toggleModelSelection = (model: RiskCombination) => {
+    const key = getModelKey(model);
+    setSelectedModels(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedModels.size === topRiskModels.length) {
+      setSelectedModels(new Set());
+    } else {
+      setSelectedModels(new Set(topRiskModels.map(getModelKey)));
+    }
+  };
+
+  const handleBulkAlert = () => {
+    const selected = topRiskModels.filter(model => selectedModels.has(getModelKey(model)));
+    if (selected.length === 0) return;
+    
+    sendAlertMutation.mutate(selected);
+    setSelectedModels(new Set());
+  };
+
+  const handleBulkCreatePool = () => {
+    const selected = topRiskModels.filter(model => selectedModels.has(getModelKey(model)));
+    if (selected.length === 0) return;
+
+    const poolName = `Bulk Pool - ${selected.length} Models`;
+    const allMakes = Array.from(new Set(selected.map(c => c.make).filter(Boolean)));
+    const allModels = Array.from(new Set(selected.map(c => c.model).filter(Boolean)));
+    
+    const filterCriteria = JSON.stringify({
+      make: allMakes.length > 0 ? allMakes : undefined,
+      model: allModels.length > 0 ? allModels : undefined,
+    });
+    
+    createPoolMutation.mutate({
+      name: poolName,
+      description: `Bulk pool for ${selected.length} selected models`,
+      filterCriteria,
+    });
+    setSelectedModels(new Set());
+  };
 
   // Filter and map warranty expiration data (case-insensitive filtering)
   const heatmapData = useMemo(() => {
@@ -844,105 +903,160 @@ export default function MonitorDashboard() {
               </CardContent>
             </Card>
 
-            {/* Models Needing Attention */}
+            {/* Models Needing Attention - Redesigned */}
             <Card className="rounded-2xl">
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg">Models Needing Attention</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Top {topRiskModels.length} models running out soonest (sorted by days of supply remaining)
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Top {topRiskModels.length} models running out soonest
                     </p>
-                  </div>                  <Link href="/risk-combinations">
+                  </div>
+                  <Link href="/risk-combinations">
                     <Button variant="outline" size="sm" className="gap-1" data-testid="button-view-all">
                       View All
                       <ChevronRightIcon className="w-4 h-4" />
                     </Button>
                   </Link>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {isLoadingRiskSummary ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Skeleton className="h-64 w-full" />
+                {topRiskModels.length > 0 && (
+                  <div className="flex items-center gap-2 pt-2">
+                    <Checkbox 
+                      checked={selectedModels.size === topRiskModels.length && topRiskModels.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                      data-testid="checkbox-select-all"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {selectedModels.size > 0 
+                        ? `${selectedModels.size} selected` 
+                        : "Select all"}
+                    </span>
                   </div>
+                )}
+              </CardHeader>
+              <CardContent className="pt-0">
+                {isLoadingRiskSummary ? (
+                  <Skeleton className="h-64 w-full" />
                 ) : topRiskModels.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">All models have adequate coverage</p>
                   </div>
                 ) : (
-                  topRiskModels.map((model, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 border rounded-lg hover-elevate" data-testid={`model-item-${index}`}>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <p className="font-medium truncate">{model.make} {model.model}</p>
-                          <Badge className={riskBadgeClass(model.risk_level)} data-testid={`badge-risk-${index}`}>
-                            {formatRiskLevel(model.risk_level)}
-                          </Badge>
-                          {model.covered_count > 0 && (
-                            <Badge variant="outline" className="text-xs">
-                              {model.covered_count} active
-                            </Badge>
+                  <div className="space-y-1.5">
+                    {topRiskModels.map((model, index) => {
+                      const isSelected = selectedModels.has(getModelKey(model));
+                      return (
+                        <div 
+                          key={index} 
+                          className={cn(
+                            "flex items-center gap-2 p-2 rounded-lg border transition-colors hover-elevate",
+                            isSelected && "bg-accent/50"
                           )}
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-3">
-                              <span className="font-medium">
-                                {model.days_of_supply !== null 
-                                  ? `${(Number(model.days_of_supply) || 0).toFixed(0)} days left`
-                                  : 'No demand'}
-                              </span>
-                              <span className="text-muted-foreground">
-                                {model.spare_count || 0} spare / {(Number(model.run_rate) || 0).toFixed(1)}/mo
-                              </span>
-                            </div>
-                            <span className="text-muted-foreground text-xs">
-                              UK: {model.uk_available_count || 0} • UAE: {model.uae_available_count || 0}
-                            </span>
-                          </div>
-                          <Progress 
-                            value={model.days_of_supply !== null ? Math.min((Number(model.days_of_supply) / 120) * 100, 100) : 100} 
-                            className="h-2"
-                            data-testid={`progress-${index}`}
+                          data-testid={`model-item-${index}`}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleModelSelection(model)}
+                            data-testid={`checkbox-model-${index}`}
                           />
+                          
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "flex items-center justify-center min-w-[3rem] px-2 py-0.5 rounded-md font-bold text-sm",
+                                model.risk_level === 'critical' && "bg-red-600 text-white",
+                                model.risk_level === 'high' && "bg-orange-500 text-white",
+                                model.risk_level === 'medium' && "bg-amber-400 text-amber-950",
+                                model.risk_level === 'low' && "bg-green-100 text-green-800"
+                              )}>
+                                {model.days_of_supply !== null ? `${Math.floor(Number(model.days_of_supply) || 0)}d` : '∞'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">
+                                  {model.make} {model.model}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{model.covered_count || 0} active</span>
+                                  <span>•</span>
+                                  <span>{model.spare_count || 0} spare</span>
+                                  <span>•</span>
+                                  <span>{(Number(model.run_rate) || 0).toFixed(1)}/mo</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <span className="font-mono">UK:{model.uk_available_count || 0}</span>
+                                <span className="font-mono">UAE:{model.uae_available_count || 0}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-0.5">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => handleSendAlert(model)}
+                              data-testid={`button-alert-${index}`}
+                            >
+                              <Bell className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => handleCreatePool(model)}
+                              data-testid={`button-pool-${index}`}
+                            >
+                              <FolderPlus className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleSendAlert(model)}
-                                data-testid={`button-alert-${index}`}
-                              >
-                                <Bell className="w-3.5 h-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Send Alert</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleCreatePool(model)}
-                                data-testid={`button-pool-${index}`}
-                              >
-                                <FolderPlus className="w-3.5 h-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Create Pool</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Bulk Action Bar */}
+                {selectedModels.size > 0 && (
+                  <div className="flex items-center justify-between gap-2 mt-3 p-2.5 bg-accent/50 rounded-lg border">
+                    <span className="text-sm font-medium">
+                      {selectedModels.size} model{selectedModels.size > 1 ? 's' : ''} selected
+                    </span>
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={handleBulkAlert}
+                        disabled={sendAlertMutation.isPending}
+                        className="gap-1.5"
+                        data-testid="button-bulk-alert"
+                      >
+                        <Bell className="w-3.5 h-3.5" />
+                        Send Alert
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleBulkCreatePool}
+                        disabled={createPoolMutation.isPending}
+                        className="gap-1.5"
+                        data-testid="button-bulk-pool"
+                      >
+                        <FolderPlus className="w-3.5 h-3.5" />
+                        Create Pool
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedModels(new Set())}
+                        data-testid="button-clear-selection"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
-                  ))
+                  </div>
                 )}
               </CardContent>
             </Card>

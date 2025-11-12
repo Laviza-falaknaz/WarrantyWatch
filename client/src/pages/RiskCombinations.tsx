@@ -155,6 +155,26 @@ export default function RiskCombinations() {
     },
   });
 
+  const sendAlertMutation = useMutation({
+    mutationFn: async (combinations: RiskCombination[]) => {
+      const res = await apiRequest("POST", "/api/risk-combinations/send-alert", { combinations });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Alert Sent Successfully",
+        description: data.message || "High-risk alert sent to configured webhook.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Alert Failed",
+        description: error.message || "Failed to send alert. Please check your webhook configuration.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreatePool = (combo: RiskCombination) => {
     const poolName = `${combo.make} ${combo.model} Pool`;
     const filterCriteria = JSON.stringify({
@@ -172,10 +192,7 @@ export default function RiskCombinations() {
   };
 
   const handleSendAlert = (combo: RiskCombination) => {
-    toast({
-      title: "Alert Sent",
-      description: `Alert notification sent for ${combo.make} ${combo.model}`,
-    });
+    sendAlertMutation.mutate([combo]);
   };
 
   const handleBulkCreatePool = () => {
@@ -200,11 +217,10 @@ export default function RiskCombinations() {
   };
 
   const handleBulkAlert = () => {
-    const count = selectedItems.size;
-    toast({
-      title: "Alerts Sent",
-      description: `Alert notifications sent for ${count} selected models`,
-    });
+    const selected = riskCombinations.filter(combo => selectedItems.has(getRiskComboKey(combo)));
+    if (selected.length === 0) return;
+    
+    sendAlertMutation.mutate(selected);
     setSelectedItems(new Set());
   };
 
