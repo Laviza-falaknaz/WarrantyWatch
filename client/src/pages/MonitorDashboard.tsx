@@ -1251,6 +1251,35 @@ export default function MonitorDashboard() {
                       />
                     </div>
                     
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-2 block">Risk Level</Label>
+                      <div className="space-y-2">
+                        {(['critical', 'high', 'medium', 'low'] as RiskLevel[]).map((level) => (
+                          <div key={level} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`risk-${level}`}
+                              checked={riskLevels.includes(level)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setRiskLevels([...riskLevels, level]);
+                                } else {
+                                  setRiskLevels(riskLevels.filter(l => l !== level));
+                                }
+                                setPage(1);
+                              }}
+                              data-testid={`checkbox-risk-${level}`}
+                            />
+                            <label
+                              htmlFor={`risk-${level}`}
+                              className="text-sm capitalize cursor-pointer"
+                            >
+                              {level}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
                     <div className="grid grid-cols-2 gap-2">
                       <Input
                         type="number"
