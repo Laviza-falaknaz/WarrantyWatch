@@ -36,13 +36,13 @@ const menuGroups = [
         icon: Activity,
       },
       {
-        title: "Explore",
+        title: "Analytics",
         url: "/explore",
         icon: Compass,
       },
 
       {
-        title: "Insights",
+        title: "Explore",
         url: "/warranty-explorer",
         icon: FileSearch,
       },
