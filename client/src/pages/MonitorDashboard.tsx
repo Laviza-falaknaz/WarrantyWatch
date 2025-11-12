@@ -1171,60 +1171,67 @@ export default function MonitorDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {noCoverageModels.map((model, index) => {
                     const isSelected = selectedNoCoverageModels.has(getModelKey(model));
-                    const daysRemaining = model.days_of_supply !== null ? Number(model.days_of_supply) : null;
-                    const runRate = Number(model.run_rate) || 0;
-
+                    const hasCoverage = (model.covered_count || 0) > 0;
+                    
                     return (
                       <Card 
-                        key={index}
-                        className={`rounded-xl border-l-4 border-l-amber-500 ${isSelected ? 'ring-2 ring-primary' : ''} cursor-pointer transition-all`}
-                        onClick={() => {
-                          const key = getModelKey(model);
-                          setSelectedNoCoverageModels(prev => {
-                            const newSet = new Set(prev);
-                            if (newSet.has(key)) {
-                              newSet.delete(key);
-                            } else {
-                              newSet.add(key);
-                            }
-                            return newSet;
-                          });
-                        }}
+                        key={index} 
+                        className={cn(
+                          "rounded-lg hover-elevate transition-all border-l-4 border-l-amber-500",
+                          isSelected && "ring-2 ring-primary"
+                        )}
                         data-testid={`card-no-coverage-model-${index}`}
                       >
                         <CardContent className="p-3 space-y-2">
-                          {/* Checkbox + Model Name */}
+                          {/* Header: Checkbox + Title */}
                           <div className="flex items-start gap-2">
-                            <Checkbox 
+                            <Checkbox
                               checked={isSelected}
-                              className="mt-0.5"
+                              onCheckedChange={() => {
+                                const key = getModelKey(model);
+                                setSelectedNoCoverageModels(prev => {
+                                  const newSet = new Set(prev);
+                                  if (newSet.has(key)) {
+                                    newSet.delete(key);
+                                  } else {
+                                    newSet.add(key);
+                                  }
+                                  return newSet;
+                                });
+                              }}
                               data-testid={`checkbox-no-coverage-${index}`}
+                              className="mt-0.5"
                             />
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-sm leading-tight">
+                              <h3 className="font-semibold text-xs leading-tight line-clamp-2">
                                 {model.make} {model.model}
+                                {(model.processor || model.generation) && (
+                                  <span className="text-muted-foreground font-normal text-[10px]">
+                                    {' '}({[model.processor, model.generation].filter(Boolean).join(' • ')})
+                                  </span>
+                                )}
                               </h3>
-                              {(model.processor || model.generation) && (
-                                <p className="text-[10px] text-muted-foreground truncate">
-                                  {model.processor} {model.generation && `(${model.generation})`}
-                                </p>
-                              )}
                             </div>
                           </div>
 
-                          {/* Days Remaining + Coverage Status */}
-                          <div className="flex items-center justify-between gap-2">
+                          {/* Status Badges */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className={cn(
+                              "inline-flex items-center px-1.5 py-0.5 rounded font-bold text-[10px]",
+                              model.risk_level === 'critical' && "bg-red-600 text-white",
+                              model.risk_level === 'high' && "bg-orange-500 text-white",
+                              model.risk_level === 'medium' && "bg-amber-500 text-white",
+                              model.risk_level === 'low' && "bg-green-600 text-white"
+                            )}>
+                              {model.days_of_supply !== null 
+                                ? `${Math.floor(Number(model.days_of_supply) || 0)}d` 
+                                : '∞'}
+                            </div>
                             <Badge 
-                              variant={runRate >= 1 ? "destructive" : "secondary"}
+                              variant={hasCoverage ? "default" : "destructive"}
                               className="text-[9px] font-semibold h-4 px-1.5"
                             >
-                              {daysRemaining !== null ? `${daysRemaining.toFixed(0)} days` : 'No demand'}
-                            </Badge>
-                            <Badge 
-                              variant="destructive"
-                              className="text-[9px] font-semibold h-4 px-1.5"
-                            >
-                              No Active Warranties
+                              {hasCoverage ? "Has Active Warranties" : "No Active Warranties"}
                             </Badge>
                           </div>
 
@@ -1258,10 +1265,7 @@ export default function MonitorDashboard() {
                               size="sm"
                               variant="outline"
                               className="flex-1 h-7 text-[10px]"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSendAlert(model);
-                              }}
+                              onClick={() => handleSendAlert(model)}
                               data-testid={`button-alert-no-coverage-${index}`}
                             >
                               <Bell className="w-3 h-3 mr-1" />
@@ -1271,10 +1275,7 @@ export default function MonitorDashboard() {
                               size="sm"
                               variant="outline"
                               className="flex-1 h-7 text-[10px]"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCreatePool(model);
-                              }}
+                              onClick={() => handleCreatePool(model)}
                               data-testid={`button-pool-no-coverage-${index}`}
                             >
                               <FolderPlus className="w-3 h-3 mr-1" />
