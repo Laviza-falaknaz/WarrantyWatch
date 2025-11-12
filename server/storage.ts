@@ -184,6 +184,7 @@ export interface IStorage {
     expirationRisk: Array<{ range: string; count: number }>;
     topCustomers: Array<{ name: string; count: number }>;
     manufacturerDistribution: Array<{ make: string; count: number }>;
+    uniqueCustomersCount: number;
     processors: string[];
     rams: string[];
     categories: string[];
@@ -1155,6 +1156,11 @@ export class DatabaseStorage implements IStorage {
           array_agg(DISTINCT ram ORDER BY ram) FILTER (WHERE ram IS NOT NULL AND ram != '') as rams,
           array_agg(DISTINCT category ORDER BY category) FILTER (WHERE category IS NOT NULL AND category != '') as categories
         FROM filtered_units
+      ),
+      unique_customers_count AS (
+        SELECT COUNT(DISTINCT UPPER(customer_name)) as count
+        FROM filtered_units
+        WHERE customer_name IS NOT NULL AND customer_name != ''
       )
       SELECT json_build_object(
         'timeline', COALESCE((
@@ -1186,6 +1192,7 @@ export class DatabaseStorage implements IStorage {
           SELECT json_agg(json_build_object('make', make, 'count', count))
           FROM manufacturer_dist
         ), '[]'::json),
+        'uniqueCustomersCount', COALESCE((SELECT count FROM unique_customers_count), 0),
         'processors', COALESCE((SELECT processors FROM unique_values), ARRAY[]::text[]),
         'rams', COALESCE((SELECT rams FROM unique_values), ARRAY[]::text[]),
         'categories', COALESCE((SELECT categories FROM unique_values), ARRAY[]::text[])
@@ -1198,6 +1205,7 @@ export class DatabaseStorage implements IStorage {
       expirationRisk: data.expirationRisk || [],
       topCustomers: data.topCustomers || [],
       manufacturerDistribution: data.manufacturerDistribution || [],
+      uniqueCustomersCount: data.uniqueCustomersCount || 0,
       processors: data.processors || [],
       rams: data.rams || [],
       categories: data.categories || [],

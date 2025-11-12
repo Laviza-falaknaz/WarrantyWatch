@@ -201,9 +201,18 @@ export default function WarrantyExplorer() {
     queryKey: ["/api/covered-units", { ...filterParams, limit: pageSize, offset: (page - 1) * pageSize }],
   });
 
-  // Fetch all units for analytics (limited to filtered set)
-  const { data: allUnits = [] } = useQuery<CoveredUnit[]>({
-    queryKey: ["/api/covered-units", { ...filterParams, limit: 10000, offset: 0 }],
+  // Fetch analytics (server-side aggregation for all data, no limit)
+  const { data: analytics } = useQuery<{
+    timeline: Array<{ month: string; starts: number; ends: number }>;
+    expirationRisk: Array<{ range: string; count: number }>;
+    topCustomers: Array<{ name: string; count: number }>;
+    manufacturerDistribution: Array<{ make: string; count: number }>;
+    uniqueCustomersCount: number;
+    processors: string[];
+    rams: string[];
+    categories: string[];
+  }>({
+    queryKey: ["/api/covered-units/analytics", filterParams],
   });
 
   // Fetch filter options
@@ -217,146 +226,61 @@ export default function WarrantyExplorer() {
     queryKey: ["/api/covered-units/filter-options"],
   });
 
-  // Extract unique values for additional filters (case-insensitive)
-  const uniqueProcessors = useMemo(() => {
-    const uniqueMap = new Map<string, string>();
-    allUnits.forEach(u => {
-      if (u.processor) {
-        const key = u.processor.toUpperCase();
-        if (!uniqueMap.has(key)) {
-          uniqueMap.set(key, u.processor);
-        }
-      }
-    });
-    return Array.from(uniqueMap.values()).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-  }, [allUnits]);
-  
-  const uniqueRam = useMemo(() => {
-    const uniqueMap = new Map<string, string>();
-    allUnits.forEach(u => {
-      if (u.ram) {
-        const key = u.ram.toUpperCase();
-        if (!uniqueMap.has(key)) {
-          uniqueMap.set(key, u.ram);
-        }
-      }
-    });
-    return Array.from(uniqueMap.values()).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-  }, [allUnits]);
-  
-  const uniqueCategories = useMemo(() => {
-    const uniqueMap = new Map<string, string>();
-    allUnits.forEach(u => {
-      if (u.category) {
-        const key = u.category.toUpperCase();
-        if (!uniqueMap.has(key)) {
-          uniqueMap.set(key, u.category);
-        }
-      }
-    });
-    return Array.from(uniqueMap.values()).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-  }, [allUnits]);
+  // Get data from server-side analytics (no client-side aggregation needed)
+  const uniqueProcessors = analytics?.processors || [];
+  const uniqueRam = analytics?.rams || [];
+  const uniqueCategories = analytics?.categories || [];
 
-  // Analytics: Coverage Timeline
+  // Analytics: Coverage Timeline (convert from YYYY-MM to MMM yyyy format)
   const coverageTimeline = useMemo(() => {
-    const monthMap = new Map<string, { starts: number; ends: number; active: number }>();
+    if (!analytics?.timeline) return [];
     
-    allUnits.forEach(unit => {
-      const startMonth = format(parseISO(unit.coverageStartDate), "MMM yyyy");
-      const endMonth = format(parseISO(unit.coverageEndDate), "MMM yyyy");
-      
-      if (!monthMap.has(startMonth)) {
-        monthMap.set(startMonth, { starts: 0, ends: 0, active: 0 });
-      }
-      monthMap.get(startMonth)!.starts++;
-      
-      if (!monthMap.has(endMonth)) {
-        monthMap.set(endMonth, { starts: 0, ends: 0, active: 0 });
-      }
-      monthMap.get(endMonth)!.ends++;
-    });
-
-    return Array.from(monthMap.entries())
-      .map(([month, data]) => ({ month, ...data }))
+    return analytics.timeline
+      .map(item => {
+        const [year, month] = item.month.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1);
+        return {
+          month: format(date, "MMM yyyy"),
+          starts: item.starts,
+          ends: item.ends,
+          active: 0, // Not used in current charts
+        };
+      })
       .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime())
       .slice(-12);
-  }, [allUnits]);
+  }, [analytics]);
 
-  // Analytics: Unique Customers Count
-  const uniqueCustomersCount = useMemo(() => {
-    const customerSet = new Set<string>();
-    allUnits.forEach(unit => {
-      const customer = unit.customerName || "Unknown";
-      customerSet.add(customer);
-    });
-    return customerSet.size;
-  }, [allUnits]);
+  // Analytics: Unique Customers Count (from server)
+  const uniqueCustomersCount = analytics?.uniqueCustomersCount || 0;
 
-  // Analytics: Customer Distribution (top 10 for chart)
+  // Analytics: Customer Distribution (from server)
   const customerDistribution = useMemo(() => {
-    const customerMap = new Map<string, { name: string; count: number }>();
-    allUnits.forEach(unit => {
-      const customer = unit.customerName || "Unknown";
-      const key = customer.toUpperCase();
-      const existing = customerMap.get(key);
-      if (existing) {
-        existing.count++;
-      } else {
-        customerMap.set(key, { name: customer, count: 1 });
-      }
-    });
-    return Array.from(customerMap.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-  }, [allUnits]);
+    if (!analytics?.topCustomers) return [];
+    return analytics.topCustomers;
+  }, [analytics]);
 
-  // Analytics: Make Distribution (case-insensitive aggregation)
+  // Analytics: Make Distribution (from server)
   const makeDistribution = useMemo(() => {
-    const makeMap = new Map<string, { name: string; count: number }>();
-    allUnits.forEach(unit => {
-      const key = unit.make.toUpperCase();
-      const existing = makeMap.get(key);
-      if (existing) {
-        existing.count++;
-      } else {
-        makeMap.set(key, { name: unit.make, count: 1 });
-      }
-    });
-    return Array.from(makeMap.values())
-      .sort((a, b) => b.count - a.count);
-  }, [allUnits]);
+    if (!analytics?.manufacturerDistribution) return [];
+    return analytics.manufacturerDistribution.map(item => ({
+      name: item.make,
+      count: item.count,
+    }));
+  }, [analytics]);
 
-  // Analytics: Expiration Risk Timeline
+  // Analytics: Expiration Risk (map server data to chart format)
   const expirationRisk = useMemo(() => {
-    const today = new Date();
-    const next30 = allUnits.filter(u => {
-      const endDate = parseISO(u.coverageEndDate);
-      const daysUntil = differenceInDays(endDate, today);
-      return daysUntil >= 0 && daysUntil <= 30;
-    }).length;
-    const next90 = allUnits.filter(u => {
-      const endDate = parseISO(u.coverageEndDate);
-      const daysUntil = differenceInDays(endDate, today);
-      return daysUntil > 30 && daysUntil <= 90;
-    }).length;
-    const next180 = allUnits.filter(u => {
-      const endDate = parseISO(u.coverageEndDate);
-      const daysUntil = differenceInDays(endDate, today);
-      return daysUntil > 90 && daysUntil <= 180;
-    }).length;
-    const beyond = allUnits.filter(u => {
-      const endDate = parseISO(u.coverageEndDate);
-      const daysUntil = differenceInDays(endDate, today);
-      return daysUntil > 180;
-    }).length;
-
+    if (!analytics?.expirationRisk) return [];
+    
+    const riskMap = new Map(analytics.expirationRisk.map(r => [r.range, r.count]));
+    
     return [
-      { period: "0-30 Days", count: next30, fill: CHART_COLORS.error },
-      { period: "31-90 Days", count: next90, fill: CHART_COLORS.warning },
-      { period: "91-180 Days", count: next180, fill: CHART_COLORS.info },
-      { period: "180+ Days", count: beyond, fill: CHART_COLORS.accent },
+      { period: "0-30 Days", count: riskMap.get("0-30 days") || 0, fill: CHART_COLORS.error },
+      { period: "31-90 Days", count: riskMap.get("31-90 days") || 0, fill: CHART_COLORS.warning },
+      { period: "91-180 Days", count: riskMap.get("91-180 days") || 0, fill: CHART_COLORS.info },
+      { period: "180+ Days", count: riskMap.get("180+ days") || 0, fill: CHART_COLORS.accent },
     ];
-  }, [allUnits]);
+  }, [analytics]);
 
   const updateFilter = (key: keyof FilterState, value: string[] | string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -393,8 +317,9 @@ export default function WarrantyExplorer() {
     }));
   };
 
-  const exportToExcel = () => {
-    if (allUnits.length === 0) {
+  const exportToExcel = async () => {
+    const totalUnits = stats?.total || 0;
+    if (totalUnits === 0) {
       toast({
         title: "No data to export",
         variant: "destructive",
@@ -402,31 +327,57 @@ export default function WarrantyExplorer() {
       return;
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(
-      allUnits.map(unit => ({
-        "Serial Number": unit.serialNumber,
-        "Make": unit.make,
-        "Model": unit.model,
-        "Processor": unit.processor || "",
-        "RAM": unit.ram || "",
-        "Category": unit.category || "",
-        "Customer": unit.customerName || "",
-        "Order Number": unit.orderNumber || "",
-        "Coverage": unit.coverageDescription || "",
-        "Start Date": unit.coverageStartDate,
-        "End Date": unit.coverageEndDate,
-        "Status": unit.isCoverageActive ? "Active" : "Inactive",
-      }))
-    );
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Warranty Data");
-    XLSX.writeFile(workbook, `warranty-explorer-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
-
-    toast({
-      title: "Export successful",
-      description: `Exported ${allUnits.length} warranty records`,
+    // Fetch all filtered units for export (up to 100k limit)
+    const exportToast = toast({
+      title: "Exporting...",
+      description: `Fetching ${totalUnits} records...`,
     });
+
+    try {
+      const response = await fetch(`/api/covered-units?${new URLSearchParams({
+        ...filterParams as any,
+        limit: "100000", // Fetch up to 100k records for export
+        offset: "0",
+      })}`);
+      
+      if (!response.ok) throw new Error("Failed to fetch data");
+      
+      const exportUnits = await response.json() as CoveredUnit[];
+
+      const worksheet = XLSX.utils.json_to_sheet(
+        exportUnits.map(unit => ({
+          "Serial Number": unit.serialNumber,
+          "Make": unit.make,
+          "Model": unit.model,
+          "Processor": unit.processor || "",
+          "RAM": unit.ram || "",
+          "Category": unit.category || "",
+          "Customer": unit.customerName || "",
+          "Order Number": unit.orderNumber || "",
+          "Coverage": unit.coverageDescription || "",
+          "Start Date": unit.coverageStartDate,
+          "End Date": unit.coverageEndDate,
+          "Status": unit.isCoverageActive ? "Active" : "Inactive",
+        }))
+      );
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Warranty Data");
+      XLSX.writeFile(workbook, `warranty-explorer-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+
+      exportToast.dismiss();
+      toast({
+        title: "Export successful",
+        description: `Exported ${exportUnits.length} warranty records`,
+      });
+    } catch (error) {
+      exportToast.dismiss();
+      toast({
+        title: "Export failed",
+        description: "Failed to export warranty data",
+        variant: "destructive",
+      });
+    }
   };
 
   const activeFilterCount = useMemo(() => {
@@ -607,7 +558,7 @@ export default function WarrantyExplorer() {
             variant="default"
             size="default"
             onClick={exportToExcel}
-            disabled={allUnits.length === 0}
+            disabled={!stats || stats.total === 0}
             data-testid="button-export"
           >
             <Download className="h-4 w-4 mr-2" />
