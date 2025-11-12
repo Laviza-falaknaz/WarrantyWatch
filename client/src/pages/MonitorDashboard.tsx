@@ -677,6 +677,7 @@ export default function MonitorDashboard() {
                   <CardTitle>Warranty Expiration Timeline</CardTitle>
                   <div className="flex items-center gap-2">
                     <Button
+                      type="button"
                       variant="outline"
                       size="icon"
                       onClick={() => moveTimeWindow('prev')}
@@ -688,6 +689,7 @@ export default function MonitorDashboard() {
                       {format(startDate, 'MMM yyyy')} - {format(endDate, 'MMM yyyy')}
                     </span>
                     <Button
+                      type="button"
                       variant="outline"
                       size="icon"
                       onClick={() => moveTimeWindow('next')}
