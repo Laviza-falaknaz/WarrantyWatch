@@ -850,7 +850,7 @@ export default function MonitorDashboard() {
                             key={index}
                             className="text-xs font-bold text-foreground"
                             style={{
-                              width: `${header.weekCount * 20}px`,
+                              width: `calc(${header.weekCount} * (16px + 2px) - 2px)`,
                               textAlign: 'left'
                             }}
                           >
