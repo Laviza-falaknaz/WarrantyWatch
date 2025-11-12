@@ -844,6 +844,139 @@ export default function MonitorDashboard() {
               </CardContent>
             </Card>
 
+            {/* Models Needing Attention */}
+            <Card className="rounded-2xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Models Needing Attention</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Top {topRiskModels.length} models running out soonest (sorted by days of supply remaining)
+                    </p>
+                  </div>                  <Link href="/risk-combinations">
+                    <Button variant="outline" size="sm" className="gap-1" data-testid="button-view-all">
+                      View All
+                      <ChevronRightIcon className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {isLoadingRiskSummary ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Skeleton className="h-64 w-full" />
+                  </div>
+                ) : topRiskModels.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">All models have adequate coverage</p>
+                  </div>
+                ) : (
+                  topRiskModels.map((model, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 border rounded-lg hover-elevate" data-testid={`model-item-${index}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="font-medium truncate">{model.make} {model.model}</p>
+                          <Badge className={riskBadgeClass(model.risk_level)} data-testid={`badge-risk-${index}`}>
+                            {formatRiskLevel(model.risk_level)}
+                          </Badge>
+                          {model.covered_count > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              {model.covered_count} active
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium">
+                                {model.days_of_supply !== null 
+                                  ? `${(Number(model.days_of_supply) || 0).toFixed(0)} days left`
+                                  : 'No demand'}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {model.spare_count || 0} spare / {(Number(model.run_rate) || 0).toFixed(1)}/mo
+                              </span>
+                            </div>
+                            <span className="text-muted-foreground text-xs">
+                              UK: {model.uk_available_count || 0} • UAE: {model.uae_available_count || 0}
+                            </span>
+                          </div>
+                          <Progress 
+                            value={model.days_of_supply !== null ? Math.min((Number(model.days_of_supply) / 120) * 100, 100) : 100} 
+                            className="h-2"
+                            data-testid={`progress-${index}`}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleSendAlert(model)}
+                                data-testid={`button-alert-${index}`}
+                              >
+                                <Bell className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Send Alert</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleCreatePool(model)}
+                                data-testid={`button-pool-${index}`}
+                              >
+                                <FolderPlus className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Create Pool</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column: lg:col-span-4 - Coverage Pools */}
+          <div className="lg:col-span-4 space-y-4" ref={riskCombinationsRef}>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="rounded-2xl border-l-4 border-l-red-600">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">Critical Risk</p>
+                      <p className="text-2xl font-bold" data-testid="text-critical-count">{riskStats.critical}</p>
+                    </div>
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="rounded-2xl border-l-4 border-l-orange-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">High Risk</p>
+                      <p className="text-2xl font-bold" data-testid="text-high-count">{riskStats.high}</p>
+                    </div>
+                    <TrendingDown className="w-6 h-6 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Coverage Pools */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -864,7 +997,7 @@ export default function MonitorDashboard() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-3">
                   {sortedPools.map((pool) => {
                     const coverageRatio = Number(pool.coverageRatio) || 0;
                     const runRate = Number(pool.runRate) || 0;
@@ -1010,139 +1143,6 @@ export default function MonitorDashboard() {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Right Column: lg:col-span-4 - Units Running Out Summary */}
-          <div className="lg:col-span-4 space-y-4" ref={riskCombinationsRef}>
-            {/* KPI Cards */}
-            <div className="grid grid-cols-2 gap-3">
-              <Card className="rounded-2xl border-l-4 border-l-red-600">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground font-medium">Critical Risk</p>
-                      <p className="text-2xl font-bold" data-testid="text-critical-count">{riskStats.critical}</p>
-                    </div>
-                    <AlertTriangle className="w-6 h-6 text-red-600" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="rounded-2xl border-l-4 border-l-orange-500">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground font-medium">High Risk</p>
-                      <p className="text-2xl font-bold" data-testid="text-high-count">{riskStats.high}</p>
-                    </div>
-                    <TrendingDown className="w-6 h-6 text-orange-500" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Models Needing Attention */}
-            <Card className="rounded-2xl">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">Models Needing Attention</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Top {topRiskModels.length} models running out soonest (sorted by days of supply remaining)
-                    </p>
-                  </div>                  <Link href="/risk-combinations">
-                    <Button variant="outline" size="sm" className="gap-1" data-testid="button-view-all">
-                      View All
-                      <ChevronRightIcon className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {isLoadingRiskSummary ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Skeleton className="h-64 w-full" />
-                  </div>
-                ) : topRiskModels.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">All models have adequate coverage</p>
-                  </div>
-                ) : (
-                  topRiskModels.map((model, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 border rounded-lg hover-elevate" data-testid={`model-item-${index}`}>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <p className="font-medium truncate">{model.make} {model.model}</p>
-                          <Badge className={riskBadgeClass(model.risk_level)} data-testid={`badge-risk-${index}`}>
-                            {formatRiskLevel(model.risk_level)}
-                          </Badge>
-                          {model.covered_count > 0 && (
-                            <Badge variant="outline" className="text-xs">
-                              {model.covered_count} active
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-3">
-                              <span className="font-medium">
-                                {model.days_of_supply !== null 
-                                  ? `${(Number(model.days_of_supply) || 0).toFixed(0)} days left`
-                                  : 'No demand'}
-                              </span>
-                              <span className="text-muted-foreground">
-                                {model.spare_count || 0} spare / {(Number(model.run_rate) || 0).toFixed(1)}/mo
-                              </span>
-                            </div>
-                            <span className="text-muted-foreground text-xs">
-                              UK: {model.uk_available_count || 0} • UAE: {model.uae_available_count || 0}
-                            </span>
-                          </div>
-                          <Progress 
-                            value={model.days_of_supply !== null ? Math.min((Number(model.days_of_supply) / 120) * 100, 100) : 100} 
-                            className="h-2"
-                            data-testid={`progress-${index}`}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleSendAlert(model)}
-                                data-testid={`button-alert-${index}`}
-                              >
-                                <Bell className="w-3.5 h-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Send Alert</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleCreatePool(model)}
-                                data-testid={`button-pool-${index}`}
-                              >
-                                <FolderPlus className="w-3.5 h-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Create Pool</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
