@@ -56,7 +56,7 @@ export default function RiskCombinations() {
   const [sortField, setSortField] = useState<SortField>("days_of_supply");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(50);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   // Fetch risk combinations with server-side filtering and pagination
