@@ -256,7 +256,17 @@ export default function WarrantyExplorer() {
       .slice(-12);
   }, [allUnits]);
 
-  // Analytics: Customer Distribution
+  // Analytics: Unique Customers Count
+  const uniqueCustomersCount = useMemo(() => {
+    const customerSet = new Set<string>();
+    allUnits.forEach(unit => {
+      const customer = unit.customerName || "Unknown";
+      customerSet.add(customer);
+    });
+    return customerSet.size;
+  }, [allUnits]);
+
+  // Analytics: Customer Distribution (top 10 for chart)
   const customerDistribution = useMemo(() => {
     const customerMap = new Map<string, number>();
     allUnits.forEach(unit => {
@@ -652,7 +662,7 @@ export default function WarrantyExplorer() {
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Unique Customers</p>
               <p className="text-4xl font-bold tracking-tight">
-                {customerDistribution.length}
+                {uniqueCustomersCount}
               </p>
             </div>
           </CardContent>
