@@ -248,7 +248,7 @@ export default function MonitorDashboard() {
     }],
   });
 
-  // Fetch models without coverage (for separate section)
+  // Fetch critical models without coverage (for separate section)
   const { data: noCoverageData, isLoading: isLoadingNoCoverage } = useQuery<{ 
     data: RiskCombination[]; 
     total: number;
@@ -265,7 +265,8 @@ export default function MonitorDashboard() {
       sortOrder: 'asc', 
       limit: 20,
       offset: 0,
-      coveredCountMax: 0, // Show models without coverage
+      coveredCountMax: 0, // Must have zero coverage
+      riskLevels: ['critical'], // Must be critical (run_rate >= 1, days < 30)
     }],
   });
 
@@ -1139,12 +1140,12 @@ export default function MonitorDashboard() {
             <div className="space-y-4 mt-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold tracking-tight">Models Without Coverage</h2>
+                  <h2 className="text-xl font-bold tracking-tight">Critical Models Without Coverage</h2>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    Showing {noCoverageModels.length} model{noCoverageModels.length !== 1 ? 's' : ''} without active warranties
+                    Showing {noCoverageModels.length} critical model{noCoverageModels.length !== 1 ? 's' : ''} (run rate ≥ 1/month, &lt; 30 days supply)
                   </p>
                 </div>
-                <Link href="/risk-combinations?coveredCountMax=0">
+                <Link href="/risk-combinations?coveredCountMax=0&riskLevels=critical">
                   <Button variant="ghost" size="sm" className="gap-1" data-testid="link-view-all-no-coverage">
                     View All
                     <ChevronRightIcon className="w-3 h-3" />
@@ -1162,8 +1163,8 @@ export default function MonitorDashboard() {
                 <Card className="rounded-2xl">
                   <CardContent className="p-12 text-center text-muted-foreground">
                     <Shield className="w-16 h-16 mx-auto mb-3 opacity-50" />
-                    <p className="text-lg font-medium">All models have coverage</p>
-                    <p className="text-sm mt-1">Every model with demand has active warranty coverage</p>
+                    <p className="text-lg font-medium">No critical models without coverage</p>
+                    <p className="text-sm mt-1">All critical high-demand models have active warranty coverage</p>
                   </CardContent>
                 </Card>
               ) : (
