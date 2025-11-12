@@ -227,7 +227,7 @@ export default function MonitorDashboard() {
     queryKey: ["/api/coverage-pools-with-stats"],
   });
 
-  // Fetch top 30 worst-performing models for dashboard summary
+  // Fetch top 30 critical risk models for dashboard summary
   const { data: riskSummaryData, isLoading: isLoadingRiskSummary } = useQuery<{ 
     data: RiskCombination[]; 
     total: number;
@@ -244,6 +244,7 @@ export default function MonitorDashboard() {
       sortOrder: 'asc', 
       limit: 30,
       offset: 0,
+      riskLevels: ['critical'],
     }],
   });
 
@@ -906,9 +907,9 @@ export default function MonitorDashboard() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold tracking-tight">Models Needing Attention</h2>
+                  <h2 className="text-xl font-bold tracking-tight">Critical Risk Models</h2>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    Showing {topRiskModels.length} model{topRiskModels.length !== 1 ? 's' : ''} running out soonest
+                    Showing {topRiskModels.length} critical model{topRiskModels.length !== 1 ? 's' : ''} (won't last a month)
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -985,7 +986,8 @@ export default function MonitorDashboard() {
                 <Card className="rounded-2xl">
                   <CardContent className="p-12 text-center text-muted-foreground">
                     <Shield className="w-16 h-16 mx-auto mb-3 opacity-50" />
-                    <p className="text-lg font-medium">All models have adequate coverage</p>
+                    <p className="text-lg font-medium">No critical risk models</p>
+                    <p className="text-sm mt-1">All high-demand models have sufficient spare coverage</p>
                   </CardContent>
                 </Card>
               ) : (
