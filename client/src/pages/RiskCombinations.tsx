@@ -76,7 +76,7 @@ export default function RiskCombinations() {
       sortOrder: sortOrder,
       limit: pageSize,
       offset: (page - 1) * pageSize,
-      excludeZeroCovered: activeTab === "covered",
+      coveredCountMax: activeTab === "not-covered" ? 0 : undefined,
       search: search || undefined,
       riskLevels: riskLevels.length > 0 ? riskLevels : undefined,
       coverageRatioMin,
@@ -121,8 +121,11 @@ export default function RiskCombinations() {
     const params = new URLSearchParams({
       sortBy: sortField,
       sortOrder: sortOrder,
-      excludeZeroCovered: String(activeTab === "covered"),
     });
+    
+    if (activeTab === "not-covered") {
+      params.append('coveredCountMax', '0');
+    }
     
     if (search) params.append('search', search);
     if (riskLevels.length > 0) {
