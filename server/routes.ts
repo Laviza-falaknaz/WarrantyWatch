@@ -711,6 +711,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Model statistics endpoint - comprehensive stats for all models
+  app.get("/api/models/stats", async (req, res) => {
+    try {
+      // Disable caching to ensure fresh data
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      
+      // Validate sortBy parameter
+      const allowedSortFields = ['make', 'model', 'runRate', 'spareRate', 'daysOfSupply', 'coveredCount', 'spareCount', 'coverageRatio'];
+      const sortBy = req.query.sortBy as string;
+      const validatedSortBy = sortBy && allowedSortFields.includes(sortBy) ? sortBy : 'make';
+      
+      // Validate sortOrder parameter
+      const sortOrder = req.query.sortOrder as string;
+      const validatedSortOrder = sortOrder === 'desc' ? 'desc' : 'asc';
+      
+      const result = await storage.getAllModelStats({
+        sortBy: validatedSortBy as any,
+        sortOrder: validatedSortOrder,
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching model statistics:", error);
+      res.status(500).json({ error: "Failed to fetch model statistics" });
+    }
+  });
+
   // Combined endpoint for coverage pools with statistics
   app.get("/api/coverage-pools-with-stats", async (req, res) => {
     try {

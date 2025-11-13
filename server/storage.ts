@@ -286,6 +286,27 @@ export interface IStorage {
     };
   }>; // Returns paginated data with total count and aggregated stats
   
+  // Model Statistics - Comprehensive stats for all models
+  getAllModelStats(options?: {
+    sortBy?: 'make' | 'model' | 'runRate' | 'spareRate' | 'daysOfSupply' | 'coveredCount' | 'spareCount' | 'coverageRatio';
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<Array<{
+    make: string;
+    model: string;
+    processor: string | null;
+    generation: string | null;
+    coveredCount: number;
+    spareCount: number;
+    availableStockCount: number;
+    ukAvailableCount: number;
+    uaeAvailableCount: number;
+    runRate: number;
+    spareRate: number | null;
+    daysOfSupply: number | null;
+    coverageRatio: number | null;
+    riskLevel: string;
+  }>>;
+  
   // Configuration
   getConfiguration(): Promise<AppConfiguration>;
   updateConfiguration(data: Partial<InsertAppConfiguration>): Promise<AppConfiguration>;
@@ -2182,6 +2203,153 @@ export class DatabaseStorage implements IStorage {
     });
     
     return { data, total, stats };
+  }
+
+  async getAllModelStats(options?: {
+    sortBy?: 'make' | 'model' | 'runRate' | 'spareRate' | 'daysOfSupply' | 'coveredCount' | 'spareCount' | 'coverageRatio';
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<Array<{
+    make: string;
+    model: string;
+    processor: string | null;
+    generation: string | null;
+    coveredCount: number;
+    spareCount: number;
+    availableStockCount: number;
+    ukAvailableCount: number;
+    uaeAvailableCount: number;
+    runRate: number;
+    spareRate: number | null;
+    daysOfSupply: number | null;
+    coverageRatio: number | null;
+    riskLevel: string;
+  }>> {
+    // Calculate date 6 months ago for run rate calculation
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    // Aggregate all model statistics using CTEs
+    const result = await db.execute(sql`
+      WITH all_combinations AS (
+        -- Get all unique combinations from all tables
+        SELECT DISTINCT make, model, processor, generation FROM ${coveredUnit}
+        UNION
+        SELECT DISTINCT make, model, processor, generation FROM ${claim}
+        UNION
+        SELECT DISTINCT make, model, processor, generation FROM ${spareUnit}
+        UNION
+        SELECT DISTINCT make, model, processor, generation FROM ${availableStock}
+      ),
+      covered_metrics AS (
+        SELECT 
+          make, model, processor, generation,
+          COUNT(*) as covered_count
+        FROM ${coveredUnit}
+        WHERE coverage_end_date >= CURRENT_DATE
+        GROUP BY make, model, processor, generation
+      ),
+      spare_metrics AS (
+        SELECT 
+          make, model, processor, generation,
+          COUNT(*) as spare_count
+        FROM ${spareUnit}
+        GROUP BY make, model, processor, generation
+      ),
+      available_metrics AS (
+        SELECT 
+          make, model, processor, generation,
+          COUNT(*) as available_count,
+          COUNT(*) FILTER (WHERE UPPER(area_id) = 'UK') as uk_available_count,
+          COUNT(*) FILTER (WHERE UPPER(area_id) = 'UAE') as uae_available_count
+        FROM ${availableStock}
+        GROUP BY make, model, processor, generation
+      ),
+      claims_metrics AS (
+        SELECT 
+          make, model, processor, generation,
+          COUNT(*) as claims_count
+        FROM ${claim}
+        WHERE claim_date >= ${sixMonthsAgo}
+        GROUP BY make, model, processor, generation
+      )
+      SELECT
+        c.make,
+        c.model,
+        c.processor,
+        c.generation,
+        COALESCE(cov.covered_count, 0)::int as covered_count,
+        COALESCE(sp.spare_count, 0)::int as spare_count,
+        COALESCE(av.available_count, 0)::int as available_stock_count,
+        COALESCE(av.uk_available_count, 0)::int as uk_available_count,
+        COALESCE(av.uae_available_count, 0)::int as uae_available_count,
+        -- Run rate: average claims per month over last 6 months
+        ROUND(COALESCE(cl.claims_count, 0)::numeric / 6.0, 2) as run_rate,
+        -- Spare rate: (spare_count / run_rate) * 100
+        CASE 
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 
+          THEN ROUND((COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 100, 2) 
+          ELSE NULL 
+        END as spare_rate,
+        -- Days of supply: (spare_count / run_rate_per_month) * 30
+        CASE 
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 
+          THEN ROUND((COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30, 1) 
+          ELSE NULL 
+        END as days_of_supply,
+        -- Coverage ratio: (spare_count / covered_count) * 100
+        CASE 
+          WHEN COALESCE(cov.covered_count, 0) > 0 
+          THEN ROUND((COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100, 2) 
+          ELSE NULL 
+        END as coverage_ratio,
+        -- Risk level based on days of supply
+        CASE
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 < 30
+          THEN 'critical'
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 BETWEEN 30 AND 60
+          THEN 'high'
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 AND 
+               (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 BETWEEN 60 AND 120
+          THEN 'medium'
+          ELSE 'low'
+        END as risk_level
+      FROM all_combinations c
+      LEFT JOIN covered_metrics cov USING (make, model, processor, generation)
+      LEFT JOIN spare_metrics sp USING (make, model, processor, generation)
+      LEFT JOIN available_metrics av USING (make, model, processor, generation)
+      LEFT JOIN claims_metrics cl USING (make, model, processor, generation)
+      WHERE (COALESCE(cl.claims_count, 0) > 0 OR COALESCE(cov.covered_count, 0) > 0 OR COALESCE(sp.spare_count, 0) > 0)
+      ORDER BY 
+        ${options?.sortBy === 'make' ? sql`c.make` : 
+          options?.sortBy === 'model' ? sql`c.model` :
+          options?.sortBy === 'runRate' ? sql`run_rate` :
+          options?.sortBy === 'spareRate' ? sql`spare_rate` :
+          options?.sortBy === 'daysOfSupply' ? sql`days_of_supply` :
+          options?.sortBy === 'coveredCount' ? sql`covered_count` :
+          options?.sortBy === 'spareCount' ? sql`spare_count` :
+          options?.sortBy === 'coverageRatio' ? sql`coverage_ratio` :
+          sql`c.make, c.model`}
+        ${options?.sortOrder === 'desc' ? sql`DESC` : sql`ASC`}
+    `);
+    
+    return result.rows.map((row: any) => ({
+      make: row.make,
+      model: row.model,
+      processor: row.processor || null,
+      generation: row.generation || null,
+      coveredCount: parseInt(row.covered_count),
+      spareCount: parseInt(row.spare_count),
+      availableStockCount: parseInt(row.available_stock_count),
+      ukAvailableCount: parseInt(row.uk_available_count),
+      uaeAvailableCount: parseInt(row.uae_available_count),
+      runRate: parseFloat(row.run_rate),
+      spareRate: row.spare_rate !== null ? parseFloat(row.spare_rate) : null,
+      daysOfSupply: row.days_of_supply !== null ? parseFloat(row.days_of_supply) : null,
+      coverageRatio: row.coverage_ratio !== null ? parseFloat(row.coverage_ratio) : null,
+      riskLevel: row.risk_level,
+    }));
   }
 
   async getConfiguration(): Promise<AppConfiguration> {

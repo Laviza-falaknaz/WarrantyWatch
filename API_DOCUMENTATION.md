@@ -12,15 +12,129 @@ This document describes all REST API endpoints for the Coverage Pool Management 
 ---
 
 ## Table of Contents
-1. [Spare Units (Replacement Pool)](#spare-units-replacement-pool)
-2. [Covered Units (Stock Under Warranty)](#covered-units-stock-under-warranty)
-3. [Available Stock](#available-stock)
-4. [Claims](#claims)
-5. [Replacements](#replacements)
-6. [Coverage Pools](#coverage-pools)
-7. [Analytics](#analytics)
-8. [Configuration](#configuration)
-9. [Filters](#filters)
+1. [Model Statistics](#model-statistics)
+2. [Spare Units (Replacement Pool)](#spare-units-replacement-pool)
+3. [Covered Units (Stock Under Warranty)](#covered-units-stock-under-warranty)
+4. [Available Stock](#available-stock)
+5. [Claims](#claims)
+6. [Replacements](#replacements)
+7. [Coverage Pools](#coverage-pools)
+8. [Analytics](#analytics)
+9. [Configuration](#configuration)
+10. [Filters](#filters)
+
+---
+
+## Model Statistics
+
+### Get All Model Statistics
+Returns comprehensive statistics for all unique model combinations (make, model, processor, generation) across the entire inventory system. This endpoint provides a complete overview of warranty coverage, spare units, regional stock distribution, claim rates, and risk analysis.
+
+**Endpoint**: `GET /api/models/stats`
+
+**Query Parameters**:
+- `sortBy` (optional): Field to sort results by
+  - Options: `make`, `model`, `runRate`, `spareRate`, `daysOfSupply`, `coveredCount`, `spareCount`, `coverageRatio`
+  - Default: `make`
+- `sortOrder` (optional): Sort direction
+  - Options: `asc`, `desc`
+  - Default: `asc`
+
+**Response**: Array of model statistics objects
+```json
+[
+  {
+    "make": "LENOVO",
+    "model": "ThinkPad X1 Carbon Gen 9",
+    "processor": "Intel Core i7",
+    "generation": "11th Gen",
+    "coveredCount": 150,
+    "spareCount": 12,
+    "availableStockCount": 18,
+    "ukAvailableCount": 10,
+    "uaeAvailableCount": 8,
+    "runRate": 2.5,
+    "spareRate": 480.0,
+    "daysOfSupply": 144.0,
+    "coverageRatio": 8.0,
+    "riskLevel": "low"
+  },
+  {
+    "make": "LENOVO",
+    "model": "ThinkPad T14 Gen 2",
+    "processor": "AMD Ryzen 7",
+    "generation": "5th Gen",
+    "coveredCount": 95,
+    "spareCount": 3,
+    "availableStockCount": 5,
+    "ukAvailableCount": 3,
+    "uaeAvailableCount": 2,
+    "runRate": 4.2,
+    "spareRate": 71.43,
+    "daysOfSupply": 21.4,
+    "coverageRatio": 3.16,
+    "riskLevel": "critical"
+  }
+]
+```
+
+**Field Descriptions**:
+- `make` (string): Manufacturer name
+- `model` (string): Product model name
+- `processor` (string | null): CPU/processor type
+- `generation` (string | null): Product generation
+- `coveredCount` (number): Number of units with active warranty coverage (coverage_end_date >= current date)
+- `spareCount` (number): Number of spare units available in replacement pool
+- `availableStockCount` (number): Total available stock units across all regions
+- `ukAvailableCount` (number): Available stock units in UK region
+- `uaeAvailableCount` (number): Available stock units in UAE region
+- `runRate` (number): Average claim rate per month (calculated from claims in last 6 months)
+  - Formula: `claims_last_6_months / 6`
+- `spareRate` (number | null): Percentage ratio of spare units to monthly run rate
+  - Formula: `(spare_count / run_rate) * 100`
+  - Interpretation: 100% means spare units exactly match one month of demand
+  - Example: 480% means spare units can cover 4.8 months of demand at current claim rate
+  - Returns `null` if no demand (run_rate = 0)
+- `daysOfSupply` (number | null): Number of days until spare stock is depleted at current run rate
+  - Formula: `(spare_count / run_rate) * 30`
+  - Returns `null` if no demand (run_rate = 0)
+- `coverageRatio` (number | null): Percentage of covered units that have spare unit coverage
+  - Formula: `(spare_count / covered_count) * 100`
+  - Returns `null` if no covered units (covered_count = 0)
+- `riskLevel` (string): Risk categorization based on days of supply remaining
+  - **critical**: Run rate ≥ 1.0 AND days_of_supply < 30 (won't last a month)
+  - **high**: Run rate ≥ 1.0 AND days_of_supply 30-60 (1-2 months remaining)
+  - **medium**: Run rate ≥ 1.0 AND days_of_supply 60-120 (2-4 months remaining)
+  - **low**: Run rate ≥ 1.0 AND days_of_supply > 120 OR run_rate < 1.0 (low/no demand)
+
+**Example Requests**:
+```bash
+# Get all models sorted by make (default)
+GET /api/models/stats
+
+# Get models sorted by run rate (highest demand first)
+GET /api/models/stats?sortBy=runRate&sortOrder=desc
+
+# Get models sorted by days of supply (most urgent first)
+GET /api/models/stats?sortBy=daysOfSupply&sortOrder=asc
+
+# Get models sorted by coverage ratio
+GET /api/models/stats?sortBy=coverageRatio&sortOrder=asc
+```
+
+**Use Cases**:
+1. **Inventory Planning**: Identify which models need more spare units based on run rate and days of supply
+2. **Risk Management**: Monitor critical and high-risk models that may run out of spares soon
+3. **Regional Analysis**: Compare UK vs UAE stock distribution for capacity planning
+4. **Performance Metrics**: Track coverage ratios to ensure adequate spare pool depth
+5. **Data Export**: Export comprehensive model statistics for reporting and analysis
+
+**Performance Notes**:
+- Query uses Common Table Expressions (CTEs) for efficient aggregation
+- Calculates statistics for all unique model combinations in the system
+- No pagination (returns all models in single response)
+- Recommended for periodic reporting and dashboard data feeds
+- For filtered/paginated analysis, use `/api/risk-combinations` endpoint instead
 
 ---
 
