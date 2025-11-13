@@ -113,7 +113,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-base font-semibold px-2 mb-2">
-            Coverage Pool Management
+            Warranty Management
           </SidebarGroupLabel>
         </SidebarGroup>
 
