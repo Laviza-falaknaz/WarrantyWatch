@@ -61,7 +61,7 @@ import {
   Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, addMonths, subMonths, eachDayOfInterval, startOfWeek, addWeeks, endOfWeek, isSameDay, differenceInCalendarWeeks } from "date-fns";
+import { format, addMonths, subMonths, eachDayOfInterval, startOfWeek, addWeeks, endOfWeek, isSameDay, differenceInCalendarWeeks, subWeeks } from "date-fns";
 import type { CoveragePoolWithStats } from "@shared/schema";
 import type { RiskCombination, RiskLevel } from "@shared/risk-analysis-types";
 import { formatRiskLevel } from "@shared/risk-analysis-types";
@@ -174,7 +174,13 @@ export default function MonitorDashboard() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const riskCombinationsRef = useRef<HTMLDivElement>(null);
-  const [startDate, setStartDate] = useState(() => subMonths(new Date(), 5));
+  
+  // Calculate default start date: 2 weeks before current month, aligned to first Monday
+  const [startDate, setStartDate] = useState(() => {
+    const twoWeeksAgo = subWeeks(new Date(), 2);
+    return startOfWeek(twoWeeksAgo, { weekStartsOn: 1 }); // 1 = Monday
+  });
+  
   const [filters, setFilters] = useState({
     orderNumber: "",
     customerName: "",
@@ -185,7 +191,11 @@ export default function MonitorDashboard() {
   const [dialogSearch, setDialogSearch] = useState("");
   const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set());
   
-  const endDate = useMemo(() => addMonths(startDate, 13), [startDate]);
+  // Calculate end date: 11 months ahead from start, aligned to last Sunday
+  const endDate = useMemo(() => {
+    const elevenMonthsAhead = addMonths(startDate, 11);
+    return endOfWeek(elevenMonthsAhead, { weekStartsOn: 1 }); // 1 = Monday, so endOfWeek gives Sunday
+  }, [startDate]);
 
   // Fetch aggregated heatmap data (server-side filtering for all 100k+ records)
   const { data: heatmapExpirations, isLoading } = useQuery<Array<{ date: string; count: number }>>({
@@ -415,16 +425,10 @@ export default function MonitorDashboard() {
       expirationMap.set(dateStr, exp.count);
     });
 
-    // Calculate the actual range to display
-    const rangeEnd = addMonths(startDate, 13);
-    
-    // Start from the Monday of the week containing startDate
-    const actualStart = startOfWeek(startDate, { weekStartsOn: 1 }); // 1 = Monday
-    
-    // End on the Sunday of the week containing rangeEnd
-    const actualEnd = endOfWeek(rangeEnd, { weekStartsOn: 1 });
-    
-    const days = eachDayOfInterval({ start: actualStart, end: actualEnd });
+    // Use the calculated date range (startDate and endDate are already aligned to week boundaries)
+    // startDate: 2 weeks back, aligned to Monday
+    // endDate: 11 months ahead, aligned to Sunday
+    const days = eachDayOfInterval({ start: startDate, end: endDate });
     
     return days.map((date) => {
       const dateStr = format(date, 'yyyy-MM-dd');
@@ -436,7 +440,7 @@ export default function MonitorDashboard() {
         units: [], // Units are loaded on-demand when cell is clicked
       };
     });
-  }, [heatmapExpirations, startDate]);
+  }, [heatmapExpirations, startDate, endDate]);
 
   const maxCount = useMemo(
     () => Math.max(...heatmapData.map((d) => d.count), 1),
