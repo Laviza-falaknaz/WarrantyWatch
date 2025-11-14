@@ -1340,7 +1340,7 @@ export default function MonitorDashboard() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {sortedPools.map((pool) => {
                     const coverageRatio = Number(pool.coverageRatio) || 0;
                     const runRate = Number(pool.runRate) || 0;
@@ -1349,6 +1349,48 @@ export default function MonitorDashboard() {
                     const ukAvailable = Number(pool.ukAvailableCount) || 0;
                     const uaeAvailable = Number(pool.uaeAvailableCount) || 0;
                     const totalAvailable = ukAvailable + uaeAvailable;
+                    
+                    // Parse filter criteria for display
+                    let filterTags: { label: string; value: string }[] = [];
+                    if (pool.filterCriteria && typeof pool.filterCriteria === 'string') {
+                      try {
+                        const criteria = JSON.parse(pool.filterCriteria);
+                        if (criteria?.make) {
+                          const makes = Array.isArray(criteria.make) ? criteria.make : [criteria.make];
+                          if (makes.length <= 2) {
+                            filterTags.push({ label: 'Make', value: makes.join(', ') });
+                          } else {
+                            filterTags.push({ label: 'Make', value: `${makes.length} makes` });
+                          }
+                        }
+                        if (criteria?.model) {
+                          const models = Array.isArray(criteria.model) ? criteria.model : [criteria.model];
+                          if (models.length <= 2) {
+                            filterTags.push({ label: 'Model', value: models.join(', ') });
+                          } else {
+                            filterTags.push({ label: 'Model', value: `${models.length} models` });
+                          }
+                        }
+                        if (criteria?.processor) {
+                          const processors = Array.isArray(criteria.processor) ? criteria.processor : [criteria.processor];
+                          if (processors.length <= 2) {
+                            filterTags.push({ label: 'Processor', value: processors.join(', ') });
+                          } else {
+                            filterTags.push({ label: 'Processor', value: `${processors.length} types` });
+                          }
+                        }
+                        if (criteria?.generation) {
+                          const generations = Array.isArray(criteria.generation) ? criteria.generation : [criteria.generation];
+                          if (generations.length <= 2) {
+                            filterTags.push({ label: 'Gen', value: generations.join(', ') });
+                          } else {
+                            filterTags.push({ label: 'Gen', value: `${generations.length} gens` });
+                          }
+                        }
+                      } catch (e) {
+                        // Invalid JSON, skip filter tags
+                      }
+                    }
                     
                     // Calculate runway in months
                     const runwayMonths = runRate > 0 ? spareCount / runRate : 0;
@@ -1419,6 +1461,23 @@ export default function MonitorDashboard() {
                                   {status.text}
                                 </Badge>
                               </div>
+                              
+                              {/* Filter Tags */}
+                              {filterTags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {filterTags.map((tag, idx) => (
+                                    <Badge 
+                                      key={idx} 
+                                      variant="secondary" 
+                                      className="text-[10px] px-1.5 py-0.5 font-medium"
+                                      data-testid={`badge-filter-${tag.label.toLowerCase()}`}
+                                    >
+                                      <span className="text-muted-foreground mr-1">{tag.label}:</span>
+                                      <span>{tag.value}</span>
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
                               
                               {/* Inventory Runway - Prominent Display */}
                               <div className={`${status.bg} rounded-lg p-3 border-l-4 ${status.borderColor}`}>
