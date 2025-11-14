@@ -286,7 +286,7 @@ export interface IStorage {
     };
   }>; // Returns paginated data with total count and aggregated stats
   
-  // Model Statistics - Comprehensive stats for all models
+  // Model Statistics - Comprehensive stats for all models (filtered to 60 or fewer days of supply)
   getAllModelStats(options?: {
     sortBy?: 'make' | 'model' | 'runRate' | 'spareRate' | 'daysOfSupply' | 'coveredCount' | 'spareCount' | 'coverageRatio';
     sortOrder?: 'asc' | 'desc';
@@ -304,6 +304,7 @@ export interface IStorage {
     spareRate: number | null;
     daysOfSupply: number | null;
     coverageRatio: number | null;
+    unitsNeededFor2Months: number;
     riskLevel: string;
   }>>;
   
@@ -2222,6 +2223,7 @@ export class DatabaseStorage implements IStorage {
     spareRate: number | null;
     daysOfSupply: number | null;
     coverageRatio: number | null;
+    unitsNeededFor2Months: number;
     riskLevel: string;
   }>> {
     // Calculate date 6 months ago for run rate calculation
@@ -2302,6 +2304,12 @@ export class DatabaseStorage implements IStorage {
           THEN ROUND((COALESCE(sp.spare_count, 0)::numeric / cov.covered_count::numeric) * 100, 2) 
           ELSE NULL 
         END as coverage_ratio,
+        -- Units needed for 2 months: MAX(0, (run_rate * 2) - spare_count)
+        CASE 
+          WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 
+          THEN GREATEST(0, ROUND((COALESCE(cl.claims_count, 0)::numeric / 6.0) * 2, 0)::int - COALESCE(sp.spare_count, 0))
+          ELSE 0 
+        END as units_needed_for_2_months,
         -- Risk level based on days of supply
         CASE
           WHEN COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1 AND 
@@ -2321,6 +2329,11 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN available_metrics av USING (make, model, processor, generation)
       LEFT JOIN claims_metrics cl USING (make, model, processor, generation)
       WHERE (COALESCE(cl.claims_count, 0) > 0 OR COALESCE(cov.covered_count, 0) > 0 OR COALESCE(sp.spare_count, 0) > 0)
+        -- Filter for models with 60 or fewer days of supply
+        AND (
+          (COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+           (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 <= 60)
+        )
       ORDER BY 
         ${options?.sortBy === 'make' ? sql`c.make` : 
           options?.sortBy === 'model' ? sql`c.model` :
@@ -2348,6 +2361,7 @@ export class DatabaseStorage implements IStorage {
       spareRate: row.spare_rate !== null ? parseFloat(row.spare_rate) : null,
       daysOfSupply: row.days_of_supply !== null ? parseFloat(row.days_of_supply) : null,
       coverageRatio: row.coverage_ratio !== null ? parseFloat(row.coverage_ratio) : null,
+      unitsNeededFor2Months: parseInt(row.units_needed_for_2_months),
       riskLevel: row.risk_level,
     }));
   }
