@@ -28,9 +28,11 @@ This document describes all REST API endpoints for the Coverage Pool Management 
 ## Model Statistics
 
 ### Get All Model Statistics
-Returns comprehensive statistics for all unique model combinations (make, model, processor, generation) across the entire inventory system. This endpoint provides a complete overview of warranty coverage, spare units, regional stock distribution, claim rates, and risk analysis.
+Returns comprehensive statistics for all unique model combinations (make, model, processor, generation) **with 60 or fewer days of supply remaining**. This endpoint is designed to identify models requiring immediate attention for spare unit procurement. It provides warranty coverage, spare units, regional stock distribution, claim rates, risk analysis, and procurement recommendations.
 
 **Endpoint**: `GET /api/models/stats`
+
+**Important**: This endpoint only returns models where `daysOfSupply <= 60` (critical and high risk models requiring action within 2 months).
 
 **Query Parameters**:
 - `sortBy` (optional): Field to sort results by
@@ -40,25 +42,9 @@ Returns comprehensive statistics for all unique model combinations (make, model,
   - Options: `asc`, `desc`
   - Default: `asc`
 
-**Response**: Array of model statistics objects
+**Response**: Array of model statistics objects (only models with daysOfSupply <= 60)
 ```json
 [
-  {
-    "make": "LENOVO",
-    "model": "ThinkPad X1 Carbon Gen 9",
-    "processor": "Intel Core i7",
-    "generation": "11th Gen",
-    "coveredCount": 150,
-    "spareCount": 12,
-    "availableStockCount": 18,
-    "ukAvailableCount": 10,
-    "uaeAvailableCount": 8,
-    "runRate": 2.5,
-    "spareRate": 480.0,
-    "daysOfSupply": 144.0,
-    "coverageRatio": 8.0,
-    "riskLevel": "low"
-  },
   {
     "make": "LENOVO",
     "model": "ThinkPad T14 Gen 2",
@@ -73,7 +59,25 @@ Returns comprehensive statistics for all unique model combinations (make, model,
     "spareRate": 71.43,
     "daysOfSupply": 21.4,
     "coverageRatio": 3.16,
+    "unitsNeededFor2Months": 6,
     "riskLevel": "critical"
+  },
+  {
+    "make": "HP",
+    "model": "EliteBook 840 G8",
+    "processor": "Intel Core i5",
+    "generation": "11th Gen",
+    "coveredCount": 120,
+    "spareCount": 5,
+    "availableStockCount": 12,
+    "ukAvailableCount": 7,
+    "uaeAvailableCount": 5,
+    "runRate": 3.0,
+    "spareRate": 166.67,
+    "daysOfSupply": 50.0,
+    "coverageRatio": 4.17,
+    "unitsNeededFor2Months": 1,
+    "riskLevel": "high"
   }
 ]
 ```
@@ -101,11 +105,16 @@ Returns comprehensive statistics for all unique model combinations (make, model,
 - `coverageRatio` (number | null): Percentage of covered units that have spare unit coverage
   - Formula: `(spare_count / covered_count) * 100`
   - Returns `null` if no covered units (covered_count = 0)
+- `unitsNeededFor2Months` (number): Number of additional spare units needed to cover 2 months (60 days) of demand
+  - Formula: `MAX(0, (run_rate * 2) - spare_count)`
+  - Example: If run_rate is 4.2 units/month and spare_count is 3, then: (4.2 × 2) - 3 = 5.4 ≈ 6 units needed
+  - Value of 0 means current spare inventory already covers 2+ months of demand
+  - Useful for procurement planning and purchase order generation
 - `riskLevel` (string): Risk categorization based on days of supply remaining
   - **critical**: Run rate ≥ 1.0 AND days_of_supply < 30 (won't last a month)
   - **high**: Run rate ≥ 1.0 AND days_of_supply 30-60 (1-2 months remaining)
-  - **medium**: Run rate ≥ 1.0 AND days_of_supply 60-120 (2-4 months remaining)
-  - **low**: Run rate ≥ 1.0 AND days_of_supply > 120 OR run_rate < 1.0 (low/no demand)
+  - **medium**: Run rate ≥ 1.0 AND days_of_supply 60-120 (2-4 months remaining) - NOTE: Not included in this endpoint
+  - **low**: Run rate ≥ 1.0 AND days_of_supply > 120 OR run_rate < 1.0 (low/no demand) - NOTE: Not included in this endpoint
 
 **Example Requests**:
 ```bash
@@ -123,18 +132,23 @@ GET /api/models/stats?sortBy=coverageRatio&sortOrder=asc
 ```
 
 **Use Cases**:
-1. **Inventory Planning**: Identify which models need more spare units based on run rate and days of supply
-2. **Risk Management**: Monitor critical and high-risk models that may run out of spares soon
-3. **Regional Analysis**: Compare UK vs UAE stock distribution for capacity planning
-4. **Performance Metrics**: Track coverage ratios to ensure adequate spare pool depth
-5. **Data Export**: Export comprehensive model statistics for reporting and analysis
+1. **Procurement Planning**: Generate purchase orders using `unitsNeededFor2Months` field to ensure 60-day spare coverage
+2. **Urgent Action Items**: Focus on critical and high-risk models (daysOfSupply <= 60) requiring immediate attention
+3. **Risk Mitigation**: Identify models that will run out of spares within 1-2 months before stockouts occur
+4. **Regional Procurement**: Use UK/UAE stock breakdown to determine which regions need replenishment
+5. **Budget Planning**: Calculate total procurement costs by multiplying `unitsNeededFor2Months` by unit costs
+
+**Key Features**:
+- **Filtered Results**: Only returns models with 60 or fewer days of supply (critical & high risk)
+- **Action-Oriented**: Provides exact procurement quantities via `unitsNeededFor2Months` field
+- **Real-Time Risk**: Based on actual claim rates from last 6 months for accurate forecasting
 
 **Performance Notes**:
 - Query uses Common Table Expressions (CTEs) for efficient aggregation
-- Calculates statistics for all unique model combinations in the system
-- No pagination (returns all models in single response)
-- Recommended for periodic reporting and dashboard data feeds
-- For filtered/paginated analysis, use `/api/risk-combinations` endpoint instead
+- Filters results to critical/high-risk models only (daysOfSupply <= 60)
+- No pagination (returns all qualifying models in single response)
+- Optimized for procurement dashboards and automated purchase order workflows
+- For broader analysis including low-risk models, use `/api/risk-combinations` endpoint instead
 
 ---
 
