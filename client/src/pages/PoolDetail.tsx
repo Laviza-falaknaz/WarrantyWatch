@@ -11,13 +11,48 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Package, Target, Calendar, ArrowUpRight, ArrowDownRight, Minus, HelpCircle, Download, Edit2, Clock, Shield, Activity } from "lucide-react";
+import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Package, Target, Calendar, ArrowUpRight, ArrowDownRight, Minus, HelpCircle, Download, Edit2, Clock, Shield, Activity, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 import DataTable, { Column } from "@/components/DataTable";
 import * as XLSX from "xlsx";
 import type { CoveragePoolAnalytics, MonthlyAnalytics } from "@shared/schema";
+
+// Helper to normalize filter criteria - converts all values to arrays of strings
+const normalizeFilterCriteria = (filterCriteria: any): Record<string, string[]> | null => {
+  if (!filterCriteria) return null;
+
+  try {
+    // Handle both string and already-parsed object
+    let criteria: any;
+    if (typeof filterCriteria === 'string') {
+      criteria = JSON.parse(filterCriteria);
+    } else {
+      criteria = filterCriteria;
+    }
+
+    const normalized: Record<string, string[]> = {};
+
+    // Normalize all criteria keys to arrays
+    Object.keys(criteria || {}).forEach((key) => {
+      const value = criteria[key];
+      if (value !== null && value !== undefined) {
+        // Convert to array if not already
+        const arrayValue = Array.isArray(value) ? value : [value];
+        // Filter out empty values and convert to strings
+        const stringArray = arrayValue.filter(v => v !== null && v !== undefined && v !== '').map(String);
+        if (stringArray.length > 0) {
+          normalized[key] = stringArray;
+        }
+      }
+    });
+
+    return Object.keys(normalized).length > 0 ? normalized : null;
+  } catch (e) {
+    return null;
+  }
+};
 
 export default function PoolDetail() {
   const [, params] = useRoute("/pools/:poolId");
@@ -35,6 +70,51 @@ export default function PoolDetail() {
     queryKey: [`/api/coverage-pools/${poolId}`],
     enabled: !!poolId,
   });
+
+  // Parse and normalize filter criteria for display
+  const filterDetails = useMemo(() => {
+    const normalized = normalizeFilterCriteria(poolData?.filterCriteria);
+    if (!normalized) return null;
+
+    // Map of field names to display labels and priority order
+    const labelMap: Record<string, string> = {
+      make: 'Manufacturer',
+      model: 'Model',
+      processor: 'Processor',
+      generation: 'Generation',
+      ram: 'RAM',
+      category: 'Category',
+      hdd: 'Storage',
+      displaySize: 'Display Size',
+      touchscreen: 'Touchscreen',
+    };
+
+    // Priority order for common fields
+    const fieldPriority = ['make', 'model', 'processor', 'generation', 'ram', 'category', 'hdd', 'displaySize', 'touchscreen'];
+
+    // Sort keys: priority fields first (in order), then alphabetically
+    const sortedKeys = Object.keys(normalized).sort((a, b) => {
+      const aPriority = fieldPriority.indexOf(a);
+      const bPriority = fieldPriority.indexOf(b);
+      
+      if (aPriority !== -1 && bPriority !== -1) {
+        return aPriority - bPriority; // Both in priority list
+      } else if (aPriority !== -1) {
+        return -1; // a is in priority list, comes first
+      } else if (bPriority !== -1) {
+        return 1; // b is in priority list, comes first
+      } else {
+        return a.localeCompare(b); // Both not in priority, sort alphabetically
+      }
+    });
+
+    const details = sortedKeys.map(key => ({
+      label: labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
+      values: normalized[key],
+    }));
+
+    return details.length > 0 ? details : null;
+  }, [poolData?.filterCriteria]);
 
   // Loading state
   if (isLoading || !analytics) {
@@ -146,7 +226,16 @@ export default function PoolDetail() {
         return;
       }
 
-      const filterCriteria = JSON.parse(poolData.filterCriteria);
+      // Use normalized filter criteria
+      const normalizedCriteria = normalizeFilterCriteria(poolData.filterCriteria);
+      if (!normalizedCriteria) {
+        toast({
+          title: "Export Failed",
+          description: "Invalid filter criteria. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
       
       let endpoint = '';
       let filename = '';
@@ -175,13 +264,13 @@ export default function PoolDetail() {
           break;
       }
       
-      // Build query params from filter criteria
+      // Build query params from normalized filter criteria (all values are now arrays)
       const params = new URLSearchParams();
-      if (filterCriteria.make?.length) params.append('make', filterCriteria.make.join(','));
-      if (filterCriteria.model?.length) params.append('model', filterCriteria.model.join(','));
-      if (filterCriteria.processor?.length) params.append('processor', filterCriteria.processor.join(','));
-      if (filterCriteria.ram?.length) params.append('ram', filterCriteria.ram.join(','));
-      if (filterCriteria.category?.length) params.append('category', filterCriteria.category.join(','));
+      Object.entries(normalizedCriteria).forEach(([key, values]) => {
+        if (values && values.length > 0) {
+          params.append(key, values.join(','));
+        }
+      });
       
       const response = await fetch(`${endpoint}?${params.toString()}`);
       
@@ -263,6 +352,62 @@ export default function PoolDetail() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Filter Criteria Display */}
+      {filterDetails && filterDetails.length > 0 && (
+        <Card className="mb-6 border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20" data-testid="card-filter-criteria">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5">
+                <Filter className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">Pool Filter Criteria</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {filterDetails.map((detail, idx) => (
+                    <div key={idx} className="bg-background rounded-lg border border-blue-200 dark:border-blue-800 p-3" data-testid={`filter-detail-${detail.label.toLowerCase()}`}>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">{detail.label}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {detail.values.length <= 3 ? (
+                          detail.values.map((value, vidx) => (
+                            <Badge 
+                              key={vidx} 
+                              variant="secondary" 
+                              className="text-xs font-semibold"
+                              data-testid={`badge-value-${value}`}
+                            >
+                              {value}
+                            </Badge>
+                          ))
+                        ) : (
+                          <>
+                            {detail.values.slice(0, 3).map((value, vidx) => (
+                              <Badge 
+                                key={vidx} 
+                                variant="secondary" 
+                                className="text-xs font-semibold"
+                                data-testid={`badge-value-${value}`}
+                              >
+                                {value}
+                              </Badge>
+                            ))}
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs font-medium text-muted-foreground"
+                            >
+                              +{detail.values.length - 3} more
+                            </Badge>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recommendations Alert */}
       {!isOnTarget && (
