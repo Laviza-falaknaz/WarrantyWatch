@@ -28,11 +28,14 @@ This document describes all REST API endpoints for the Coverage Pool Management 
 ## Model Statistics
 
 ### Get All Model Statistics
-Returns comprehensive statistics for all unique model combinations (make, model, processor, generation) **with 60 or fewer days of supply remaining**. This endpoint is designed to identify models requiring immediate attention for spare unit procurement. It provides warranty coverage, spare units, regional stock distribution, claim rates, risk analysis, and procurement recommendations.
+Returns comprehensive statistics for all unique model combinations (make, model, processor, generation) **with meaningful demand (≥1 claim/month) and 60 or fewer days of supply remaining**. This endpoint is designed to identify models requiring immediate attention for spare unit procurement. It provides warranty coverage, spare units, regional stock distribution, claim rates, risk analysis, and procurement recommendations.
 
 **Endpoint**: `GET /api/models/stats`
 
-**Important**: This endpoint only returns models where `daysOfSupply <= 60` (critical and high risk models requiring action within 2 months).
+**Important Filters**:
+- Only models with `runRate >= 1.0` (at least 1 claim per month - meaningful demand)
+- AND `daysOfSupply <= 60` (critical and high risk models requiring action within 2 months)
+- This focuses results on actionable procurement opportunities, excluding low-demand models
 
 **Query Parameters**:
 - `sortBy` (optional): Field to sort results by
@@ -113,8 +116,7 @@ Returns comprehensive statistics for all unique model combinations (make, model,
 - `riskLevel` (string): Risk categorization based on days of supply remaining
   - **critical**: Run rate ≥ 1.0 AND days_of_supply < 30 (won't last a month)
   - **high**: Run rate ≥ 1.0 AND days_of_supply 30-60 (1-2 months remaining)
-  - **medium**: Run rate ≥ 1.0 AND days_of_supply 60-120 (2-4 months remaining) - NOTE: Not included in this endpoint
-  - **low**: Run rate ≥ 1.0 AND days_of_supply > 120 OR run_rate < 1.0 (low/no demand) - NOTE: Not included in this endpoint
+  - NOTE: Only **critical** and **high** risk levels are returned by this endpoint due to the 60-day filter
 
 **Example Requests**:
 ```bash

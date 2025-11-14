@@ -2329,9 +2329,9 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN available_metrics av USING (make, model, processor, generation)
       LEFT JOIN claims_metrics cl USING (make, model, processor, generation)
       WHERE (COALESCE(cl.claims_count, 0) > 0 OR COALESCE(cov.covered_count, 0) > 0 OR COALESCE(sp.spare_count, 0) > 0)
-        -- Filter for models with 60 or fewer days of supply
+        -- Filter for models with meaningful demand (run_rate >= 1.0) AND 60 or fewer days of supply
         AND (
-          (COALESCE(cl.claims_count, 0)::numeric / 6.0 > 0 AND 
+          (COALESCE(cl.claims_count, 0)::numeric / 6.0 >= 1.0 AND 
            (COALESCE(sp.spare_count, 0)::numeric / (COALESCE(cl.claims_count, 0)::numeric / 6.0)) * 30 <= 60)
         )
       ORDER BY 
