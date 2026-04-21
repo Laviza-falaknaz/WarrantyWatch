@@ -32,10 +32,13 @@ jobs:
       - name: Remove dev dependencies before deploy
         run: npm prune --production
 
+      - name: Zip build output for deployment
+        run: zip -r deploy.zip dist/ node_modules/ package.json package-lock.json
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'coverage-pool-app'
           slot-name: 'Production'
-          package: .
+          package: deploy.zip
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_73077F1544B64DA186C4EA1026CF68E3 }}

@@ -1,0 +1,138 @@
+2m 32s
+Run azure/webapps-deploy@v3
+  with:
+    app-name: coverage-pool-app
+    slot-name: Production
+    package: .
+    publish-profile: ***
+(node:2185) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:2185) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+(node:2185) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+Predeployment Step Started
+Deployment Step Started
+Starting deployment for web app...
+Package deployment using OneDeploy initiated.
+{
+  id: 'f61672b9-8e33-4801-b689-d6df0fc88bec',
+  status: 3,
+  status_text: '',
+  author_email: 'N/A',
+  author: 'N/A',
+  deployer: 'OneDeploy',
+  message: 'OneDeploy',
+  progress: '',
+  received_time: '2026-04-21T10:37:07.5595586Z',
+  start_time: '2026-04-21T10:37:09.1940593Z',
+  end_time: '2026-04-21T10:38:42.4718237Z',
+  last_success_end_time: null,
+  complete: true,
+  active: false,
+  is_temp: false,
+  is_readonly: true,
+  url: 'https://coverage-pool-app-e3huccdce2dbdfg7.scm.westeurope-01.azurewebsites.net/api/deployments/f61672b9-8e33-4801-b689-d6df0fc88bec',
+  log_url: 'https://coverage-pool-app-e3huccdce2dbdfg7.scm.westeurope-01.azurewebsites.net/api/deployments/f61672b9-8e33-4801-b689-d6df0fc88bec/log',
+  site_name: 'coverage-pool-app',
+  build_summary: { errors: [], warnings: [] }
+}
+Updating submodules.
+Preparing deployment for commit id 'f61672b9-8'.
+PreDeployment: context.CleanOutputPath False
+PreDeployment: context.OutputPath /home/site/wwwroot
+Repository path is /tmp/zipdeploy/extracted
+Running oryx build...
+Command: oryx build /tmp/zipdeploy/extracted -o /home/site/wwwroot --platform nodejs --platform-version 20 -p virtualenv_name= --log-file /tmp/build-debug.log  -i /tmp/8de9f91f0e4e078 -p compress_node_modules=tar-gz | tee /tmp/oryx-build.log
+Operation performed by Microsoft Oryx, https://github.com/Microsoft/Oryx
+You can report issues at https://github.com/Microsoft/Oryx/issues
+
+Oryx Version: 0.2.20260204.1+0fdbe200b286be083841ff7fa201c6c2316dc6b9, Commit: 0fdbe200b286be083841ff7fa201c6c2316dc6b9, ReleaseTagName: 20260204.1
+
+Build Operation ID: 9f8a3aa58f4678bd
+Repository Commit : f61672b9-8e33-4801-b689-d6df0fc88bec
+OS Type           : bookworm
+Image Type        : githubactions
+
+Primary SDK Storage URL: https://oryx-cdn.microsoft.io
+Backup SDK Storage URL: 
+Detecting platforms...
+External SDK provider is enabled.
+Requesting metadata for platform nodejs from external SDK provider
+Requesting metadata for platform nodejs from external SDK provider
+Detected following platforms:
+  nodejs: 20.20.0
+Requesting metadata for platform nodejs from external SDK provider
+Version '20.20.0' of platform 'nodejs' is not installed. Generating script to install it...
+Detected the following frameworks: Typescript,Express,React
+
+Using intermediate directory '/tmp/8de9f91f0e4e078'.
+
+Copying files to the intermediate directory...
+Copying files to intermediate directory done in 0 sec(s).
+
+Source directory     : /tmp/8de9f91f0e4e078
+Destination directory: /home/site/wwwroot
+
+Installing platform...
+
+Downloading and extracting 'nodejs' version '20.20.0' to '/tmp/oryx/platforms/nodejs/20.20.0'...
+Detected image debian flavor: bookworm.
+Skipping download of nodejs version 20.20.0 as it is available in external sdk provider cache...
+Extracting contents...
+Successfully extracted nodejs version 20.20.0 from external sdk provider cache...
+
+Platform installation done in 10 sec(s).
+Running build script snippets...
+Removing existing manifest file
+Creating directory for command manifest file if it does not exist
+Creating a manifest file...
+Node Build Command Manifest file created.
+
+Using Node version:
+v20.20.0
+
+Using Npm version:
+10.8.2
+
+Running 'npm install'...
+
+
+added 384 packages, and audited 385 packages in 58s
+
+52 packages are looking for funding
+  run `npm fund` for details
+
+14 vulnerabilities (3 low, 3 moderate, 8 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues possible (including breaking changes), run:
+  npm audit fix --force
+
+Some issues need review, and may require choosing
+a different dependency.
+
+Run `npm audit` for details.
+
+Running 'npm run build'...
+
+
+> rest-express@1.0.0 build
+sh: 1: vite: not found
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+sh: 1: vite: not found\n/bin/bash -c "oryx build /tmp/zipdeploy/extracted -o /home/site/wwwroot --platform nodejs --platform-version 20 -p virtualenv_name= --log-file /tmp/build-debug.log  -i /tmp/8de9f91f0e4e078 -p compress_node_modules=tar-gz | tee /tmp/oryx-build.log ; exit $PIPESTATUS "
+
+Generating summary of Oryx build
+Parsing the build logs
+Found 0 issue(s)
+
+Build Summary :
+===============
+Errors (0)
+Warnings (0)
+
+Deployment Failed. deployer = OneDeploy deploymentPath = OneDeploy
+Error: Failed to deploy web package to App Service.
+Error: Deployment Failed, Package deployment using ZIP Deploy failed. Refer logs for more details.
+App Service Application URL: https://coverage-pool-app-e3huccdce2dbdfg7.westeurope-01.azurewebsites.net
