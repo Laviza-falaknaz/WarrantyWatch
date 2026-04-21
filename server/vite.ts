@@ -17,8 +17,9 @@ export function log(message: string, source = "express") {
 
 export async function setupVite(app: Express, server: Server) {
   // Dynamically import vite only in development — not bundled into production
+  // Do NOT import vite.config here as it statically imports "vite" which would
+  // cause ERR_MODULE_NOT_FOUND in production. Let vite auto-detect its config.
   const { createServer: createViteServer, createLogger } = await import("vite");
-  const viteConfig = (await import("../vite.config")).default;
 
   const viteLogger = createLogger();
 
@@ -29,8 +30,6 @@ export async function setupVite(app: Express, server: Server) {
   };
 
   const vite = await createViteServer({
-    ...viteConfig,
-    configFile: false,
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {
