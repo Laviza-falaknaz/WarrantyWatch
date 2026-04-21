@@ -4,6 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
+packages = ["azure-cli"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -13,62 +14,6 @@ run = ["npm", "run", "start"]
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 33717
-externalPort = 5000
-
-[[ports]]
-localPort = 34989
-externalPort = 3000
-
-[[ports]]
-localPort = 35715
-externalPort = 5173
-
-[[ports]]
-localPort = 37227
-externalPort = 6000
-
-[[ports]]
-localPort = 38483
-externalPort = 8000
-
-[[ports]]
-localPort = 40191
-externalPort = 8080
-
-[[ports]]
-localPort = 40529
-externalPort = 8099
-
-[[ports]]
-localPort = 41135
-externalPort = 8081
-
-[[ports]]
-localPort = 43063
-externalPort = 3003
-
-[[ports]]
-localPort = 44579
-externalPort = 3002
-
-[[ports]]
-localPort = 44875
-externalPort = 4200
-
-[[ports]]
-localPort = 45365
-externalPort = 3001
-
-[[ports]]
-localPort = 46013
-externalPort = 8008
-
-[[ports]]
-localPort = 46061
-externalPort = 6800
 
 [env]
 PORT = "5000"
