@@ -1,0 +1,93 @@
+2026-04-21T10:52:11.2903748Z    _____
+2026-04-21T10:52:11.2904058Z   /  _  \ __________ _________   ____
+2026-04-21T10:52:11.2904086Z  /  /_\  \\___   /  |  \_  __ \_/ __ \
+2026-04-21T10:52:11.2904104Z /    |    \/    /|  |  /|  | \/\  ___/
+2026-04-21T10:52:11.2904119Z \____|__  /_____ \____/ |__|    \___  >
+2026-04-21T10:52:11.2904135Z         \/      \/                  \/
+2026-04-21T10:52:11.2904151Z A P P   S E R V I C E   O N   L I N U X
+2026-04-21T10:52:11.2904169Z
+2026-04-21T10:52:11.2904185Z Documentation    : http://aka.ms/webapp-linux
+2026-04-21T10:52:11.2904263Z NodeJS quickstart: https://aka.ms/node-qs
+2026-04-21T10:52:11.2904282Z NodeJS Version   : v20.20.0
+2026-04-21T10:52:11.2904298Z Instance Name    : lw1sdlwk0003SX
+2026-04-21T10:52:11.2904317Z Instance Id      : 9ce97f8f24755d11bd74c7b8b09c8739d1f240b32d55d8b6eab87750321bd6ee
+2026-04-21T10:52:11.2904331Z
+2026-04-21T10:52:11.2904347Z Note: Any data outside '/home' is not persisted
+2026-04-21T10:52:37.2788194Z Starting OpenBSD Secure Shell server: sshd.
+2026-04-21T10:52:37.2985062Z WEBSITES_INCLUDE_CLOUD_CERTS is not set to true.
+2026-04-21T10:52:37.3493783Z Updating certificates in /etc/ssl/certs...
+2026-04-21T10:52:56.9154413Z rehash: warning: skipping duplicate certificate in azl_SSL.com_TLS_ECC_Root_CA_2022.pem
+2026-04-21T10:52:56.9167144Z rehash: warning: skipping duplicate certificate in azl_SSL.com_TLS_RSA_Root_CA_2022.pem
+2026-04-21T10:52:57.4484785Z rehash: warning: skipping ca-certificates.crt,it does not contain exactly one certificate or CRL
+2026-04-21T10:52:57.5297802Z 4 added, 0 removed; done.
+2026-04-21T10:52:57.5306896Z Running hooks in /etc/ca-certificates/update.d...
+2026-04-21T10:52:57.5736735Z done.
+2026-04-21T10:52:57.6826168Z CA certificates copied and updated successfully.
+2026-04-21T10:52:58.1005622Z Starting periodic command scheduler: cron.
+2026-04-21T10:52:58.5191404Z Found build manifest file at '/home/site/wwwroot/oryx-manifest.toml'. Deserializing it...
+2026-04-21T10:52:58.530297Z Could not find operation ID in manifest. Generating an operation id...
+2026-04-21T10:52:58.5311977Z Build Operation ID: 19aff60f-271a-4580-8217-28c535109224
+2026-04-21T10:52:58.9323205Z Environment Variables for Application Insight's IPA Codeless Configuration exists..
+2026-04-21T10:52:58.96156Z Writing output script to '/opt/startup/startup.sh'
+2026-04-21T10:52:59.0141556Z Running #!/bin/sh
+2026-04-21T10:52:59.0142119Z
+2026-04-21T10:52:59.0142152Z # Enter the source directory to make sure the script runs where the user expects
+2026-04-21T10:52:59.0142337Z cd "/home/site/wwwroot"
+2026-04-21T10:52:59.0142357Z
+2026-04-21T10:52:59.0142375Z export NODE_PATH=/usr/local/lib/node_modules:$NODE_PATH
+2026-04-21T10:52:59.014239Z if [ -z "$PORT" ]; then
+2026-04-21T10:52:59.0142405Z 		export PORT=8080
+2026-04-21T10:52:59.0142419Z fi
+2026-04-21T10:52:59.0142433Z
+2026-04-21T10:52:59.0142449Z echo Found tar.gz based node_modules.
+2026-04-21T10:52:59.0142466Z extractionCommand="tar -xzf node_modules.tar.gz -C /node_modules"
+2026-04-21T10:52:59.0142483Z echo "Removing existing modules directory from root..."
+2026-04-21T10:52:59.0142498Z rm -fr /node_modules
+2026-04-21T10:52:59.0142514Z mkdir -p /node_modules
+2026-04-21T10:52:59.0142555Z echo Extracting modules...
+2026-04-21T10:52:59.0142573Z $extractionCommand
+2026-04-21T10:52:59.0142589Z export NODE_PATH="/node_modules":$NODE_PATH
+2026-04-21T10:52:59.0142605Z export PATH=/node_modules/.bin:$PATH
+2026-04-21T10:52:59.0142622Z if [ -d node_modules ]; then
+2026-04-21T10:52:59.0142638Z     mv -f node_modules _del_node_modules || true
+2026-04-21T10:52:59.0142652Z fi
+2026-04-21T10:52:59.0142666Z
+2026-04-21T10:52:59.0142682Z if [ -d /node_modules ]; then
+2026-04-21T10:52:59.0142698Z     ln -sfn /node_modules ./node_modules
+2026-04-21T10:52:59.0142711Z fi
+2026-04-21T10:52:59.0142903Z
+2026-04-21T10:52:59.0142921Z echo "Done."
+2026-04-21T10:52:59.0224084Z PATH="$PATH:/home/site/wwwroot" npm start
+2026-04-21T10:52:59.0242498Z Found tar.gz based node_modules.
+2026-04-21T10:52:59.0319834Z Removing existing modules directory from root...
+2026-04-21T10:52:59.072216Z Extracting modules...
+2026-04-21T10:53:20.3630932Z Done.
+2026-04-21T10:53:22.6232608Z npm info using npm@10.9.2
+2026-04-21T10:53:22.6322685Z npm info using node@v20.20.0
+2026-04-21T10:53:25.5982187Z
+2026-04-21T10:53:25.5982718Z > rest-express@1.0.0 start
+2026-04-21T10:53:25.5982747Z > NODE_ENV=production node dist/index.js
+2026-04-21T10:53:25.5982763Z
+2026-04-21T10:53:27.1446269Z node:internal/modules/esm/resolve:873
+2026-04-21T10:53:27.144688Z   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+2026-04-21T10:53:27.1446902Z         ^
+2026-04-21T10:53:27.1446919Z
+2026-04-21T10:53:27.1446942Z Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /home/site/wwwroot/dist/index.js
+2026-04-21T10:53:27.1446959Z     at packageResolve (node:internal/modules/esm/resolve:873:9)
+2026-04-21T10:53:27.1446976Z     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+2026-04-21T10:53:27.1446994Z     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+2026-04-21T10:53:27.1447081Z     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+2026-04-21T10:53:27.1447101Z     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+2026-04-21T10:53:27.1447118Z     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+2026-04-21T10:53:27.1447135Z     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+2026-04-21T10:53:27.1447153Z     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+2026-04-21T10:53:27.1447169Z   code: 'ERR_MODULE_NOT_FOUND'
+2026-04-21T10:53:27.1447183Z }
+2026-04-21T10:53:27.1449621Z
+2026-04-21T10:53:27.1449668Z Node.js v20.20.0
+2026-04-21T10:53:27.1858759Z npm http fetch GET 200 https://registry.npmjs.org/npm 1172ms
+2026-04-21T10:53:27.2246125Z npm notice
+2026-04-21T10:53:27.2246519Z npm notice New major version of npm available! 10.9.2 -> 11.12.1
+2026-04-21T10:53:27.2246543Z npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+2026-04-21T10:53:27.224656Z npm notice To update run: npm install -g npm@11.12.1
+2026-04-21T10:53:27.2246575Z npm notice
